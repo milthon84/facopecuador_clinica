@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { formatTimeLocal } from "@/lib/availability";
 import { Clock, User, CheckCircle2, XCircle, AlertCircle } from "lucide-react";
 
 export const dynamic = "force-dynamic";
@@ -67,7 +68,7 @@ export default async function AdminDashboard() {
                       <div className="text-center">
                         <div className="text-xs text-ink-600 uppercase">Hora</div>
                         <div className="font-bold text-lg">
-                          {dt.toLocaleTimeString("es-CO", { hour: "2-digit", minute: "2-digit" })}
+                          {formatTimeLocal(dt)}
                         </div>
                       </div>
                       <div className="flex-1">

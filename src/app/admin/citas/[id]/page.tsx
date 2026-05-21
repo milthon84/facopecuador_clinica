@@ -1,4 +1,5 @@
 import { createAdminClient } from "@/lib/supabase/admin";
+import { formatTimeLocal } from "@/lib/availability";
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import { ArrowLeft, Mail, Phone, IdCard, Calendar } from "lucide-react";
@@ -43,9 +44,9 @@ export default async function CitaDetalle({ params }: { params: { id: string } }
             <div className="text-sm text-ink-600 capitalize">
               {start.toLocaleDateString("es-CO", { weekday: "long", day: "numeric", month: "long", year: "numeric" })}
               {" · "}
-              {start.toLocaleTimeString("es-CO", { hour: "2-digit", minute: "2-digit" })}
+              {formatTimeLocal(start)}
               {" – "}
-              {end.toLocaleTimeString("es-CO", { hour: "2-digit", minute: "2-digit" })}
+              {formatTimeLocal(end)}
             </div>
           </div>
           <StatusBadge status={appt.status} />
@@ -80,7 +81,11 @@ export default async function CitaDetalle({ params }: { params: { id: string } }
             {history.map((h) => (
               <li key={h.id} className="px-5 py-3 flex items-center justify-between text-sm">
                 <Link href={`/admin/citas/${h.id}`} className="hover:text-lilac-700">
-                  {new Date(h.starts_at).toLocaleDateString("es-CO", { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" })}
+                  {(() => {
+                    const dt = new Date(h.starts_at);
+                    const datePart = dt.toLocaleDateString("es-CO", { day: "2-digit", month: "short", year: "numeric" });
+                    return `${datePart} ${formatTimeLocal(dt)}`;
+                  })()}
                 </Link>
                 <StatusBadge status={h.status} />
               </li>

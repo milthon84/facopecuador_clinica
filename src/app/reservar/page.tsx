@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { ChevronLeft, ChevronRight, Calendar, ArrowLeft, ArrowRight, CheckCircle2 } from "lucide-react";
-import { formatDateLocal } from "@/lib/availability";
+import { formatDateLocal, formatTimeLocal } from "@/lib/availability";
 import type { TimeSlot } from "@/lib/types";
 
 type Step = "date" | "slot" | "data" | "submitting";
@@ -142,8 +142,7 @@ export default function ReservarPage() {
             ) : (
               <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
                 {slots.map((s) => {
-                  const dt = new Date(s.start);
-                  const label = dt.toLocaleTimeString("es-CO", { hour: "2-digit", minute: "2-digit", hour12: false });
+                  const label = formatTimeLocal(s.start);
                   const isSelected = selectedSlot?.start === s.start;
                   return (
                     <button
@@ -184,9 +183,13 @@ export default function ReservarPage() {
 
             <div className="mb-5 p-3 rounded-xl bg-gold-50 text-sm text-gold-800 flex items-center gap-2">
               <Calendar size={14} />
-              {new Date(selectedSlot.start).toLocaleString("es-CO", {
-                weekday: "long", day: "numeric", month: "long", hour: "2-digit", minute: "2-digit",
-              })}
+              {(() => {
+                const dt = new Date(selectedSlot.start);
+                const datePart = dt.toLocaleDateString("es-CO", {
+                  weekday: "long", day: "numeric", month: "long"
+                });
+                return `${datePart} a las ${formatTimeLocal(dt)}`;
+              })()}
             </div>
 
             <div className="grid gap-4">

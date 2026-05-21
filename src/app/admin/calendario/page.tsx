@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { formatTimeLocal } from "@/lib/availability";
 import { ChevronLeft, ChevronRight, Plus } from "lucide-react";
 
 export const dynamic = "force-dynamic";
@@ -76,7 +77,7 @@ export default async function CalendarioPage({ searchParams }: { searchParams: S
                 <ul className="space-y-1.5">
                   {(list as any[]).map((a) => {
                     const t = new Date(a.starts_at);
-                    const time = t.toLocaleTimeString("es-CO", { hour: "2-digit", minute: "2-digit" });
+                    const time = formatTimeLocal(t);
                     const p = Array.isArray(a.patient) ? a.patient[0] : a.patient;
                     const color =
                       a.status === "cancelled" ? "bg-red-50 text-red-700 line-through" :

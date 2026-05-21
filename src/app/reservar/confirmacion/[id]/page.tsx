@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { CheckCircle2, Calendar, ArrowLeft, MapPin, Phone } from "lucide-react";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { formatTimeLocal } from "@/lib/availability";
 import { notFound } from "next/navigation";
 
 export default async function ConfirmacionPage({ params }: { params: { id: string } }) {
@@ -21,7 +22,7 @@ export default async function ConfirmacionPage({ params }: { params: { id: strin
   const dateLabel = start.toLocaleDateString("es-CO", {
     weekday: "long", day: "numeric", month: "long", year: "numeric",
   });
-  const timeLabel = start.toLocaleTimeString("es-CO", { hour: "2-digit", minute: "2-digit" });
+  const timeLabel = formatTimeLocal(start);
   const patient = Array.isArray(appt.patient) ? appt.patient[0] : appt.patient;
 
   return (

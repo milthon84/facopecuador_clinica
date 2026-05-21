@@ -130,3 +130,10 @@ export function canCancel(appointmentStartsAt: string): boolean {
   const hoursUntil = (start - now) / (1000 * 60 * 60);
   return hoursUntil >= 24;
 }
+
+export function formatTimeLocal(d: Date | string): string {
+  const date = typeof d === "string" ? new Date(d) : d;
+  const hours = date.getHours().toString().padStart(2, "0");
+  const minutes = date.getMinutes().toString().padStart(2, "0");
+  return minutes === "00" ? `${hours}H` : `${hours}H${minutes}`;
+}
