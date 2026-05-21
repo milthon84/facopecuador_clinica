@@ -1,0 +1,41 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: light;
+}
+
+html, body {
+  background: #ffffff;
+  color: #0f0f0f;
+}
+
+/* Botón primario reutilizable */
+.btn-primary {
+  @apply inline-flex items-center justify-center gap-2 rounded-xl bg-ink-900 px-5 py-3 text-sm font-semibold text-gold hover:bg-ink-800 transition active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed;
+}
+
+.btn-secondary {
+  @apply inline-flex items-center justify-center gap-2 rounded-xl bg-lilac-100 px-5 py-3 text-sm font-semibold text-lilac-800 hover:bg-lilac-200 transition active:scale-[0.98];
+}
+
+.btn-ghost {
+  @apply inline-flex items-center justify-center gap-2 rounded-xl border border-lilac-200 px-5 py-3 text-sm font-medium text-ink-900 hover:bg-lilac-50 transition;
+}
+
+.btn-danger {
+  @apply inline-flex items-center justify-center gap-2 rounded-xl bg-red-600 px-4 py-2 text-sm font-semibold text-white hover:bg-red-700 transition;
+}
+
+.input {
+  @apply w-full rounded-xl border border-lilac-200 bg-white px-4 py-3 text-sm text-ink-900 placeholder-ink-600/40 focus:border-gold-500 focus:outline-none focus:ring-2 focus:ring-gold-200 transition;
+}
+
+.label {
+  @apply block text-sm font-medium text-ink-900 mb-1.5;
+}
+
+.card {
+  @apply rounded-2xl border border-lilac-100 bg-white shadow-sm;
+}
