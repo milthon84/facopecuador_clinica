@@ -26,6 +26,7 @@ export async function POST(req: Request) {
       odontogram_state,
       treatment_notes,
       prescription,
+      dentition_mode,
     } = body;
 
     if (!appointment_id || !patient_id || !treatment_notes) {
@@ -171,6 +172,18 @@ export async function POST(req: Request) {
         weekday: "long", day: "numeric", month: "long", year: "numeric", hour: "2-digit", minute: "2-digit"
       });
 
+      let computedDentitionMode = dentition_mode;
+      if (!computedDentitionMode && date_of_birth) {
+        const birthDateObj = new Date(date_of_birth);
+        const today = new Date();
+        let age = today.getFullYear() - birthDateObj.getFullYear();
+        const m = today.getMonth() - birthDateObj.getMonth();
+        if (m < 0 || (m === 0 && today.getDate() < birthDateObj.getDate())) {
+          age--;
+        }
+        computedDentitionMode = age <= 12 ? "infantil" : "adulta";
+      }
+
       // 6) Send premium summary email to the patient
       await sendDentalConsultationEmail({
         patientName: patient.full_name,
@@ -181,6 +194,10 @@ export async function POST(req: Request) {
         medicalHistorySummary: historySummary,
         stomatognathicSummary,
         odontogramSummary,
+        medicalHistoryRaw: medical_history,
+        stomatognathicExamRaw: stomatognathic_exam,
+        odontogramStateRaw: odontogram_state,
+        dentitionMode: computedDentitionMode,
       });
     }
 

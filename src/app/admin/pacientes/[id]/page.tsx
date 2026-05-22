@@ -30,26 +30,28 @@ export default async function PacienteDetalle({ params }: { params: { id: string
     
   if (!patient) return notFound();
 
-  // 2) Fetch permanent dental record
-  const { data: dentalRecord } = await supabase
-    .from("dental_records")
-    .select("*")
-    .eq("patient_id", patient.id)
-    .maybeSingle();
+  // Ejecutar el resto de las consultas a Supabase en paralelo para optimizar la carga del perfil del paciente
+  const [dentalRecordRes, apptsRes, consultationsRes] = await Promise.all([
+    supabase
+      .from("dental_records")
+      .select("*")
+      .eq("patient_id", patient.id)
+      .maybeSingle(),
+    supabase
+      .from("appointments")
+      .select("id, starts_at, ends_at, status, reason")
+      .eq("patient_id", patient.id)
+      .order("starts_at", { ascending: false }),
+    supabase
+      .from("dental_consultations")
+      .select("*")
+      .eq("patient_id", patient.id)
+      .order("created_at", { ascending: false })
+  ]);
 
-  // 3) Fetch all appointments
-  const { data: appts } = await supabase
-    .from("appointments")
-    .select("id, starts_at, ends_at, status, reason")
-    .eq("patient_id", patient.id)
-    .order("starts_at", { ascending: false });
-
-  // 4) Fetch all past consultations
-  const { data: consultations } = await supabase
-    .from("dental_consultations")
-    .select("*")
-    .eq("patient_id", patient.id)
-    .order("created_at", { ascending: false });
+  const dentalRecord = dentalRecordRes.data;
+  const appts = apptsRes.data;
+  const consultations = consultationsRes.data;
 
   // Help format date nicely
   const formatDateES = (d: string) => {

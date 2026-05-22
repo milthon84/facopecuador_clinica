@@ -32,15 +32,6 @@ export default async function AdminDashboard() {
     59
   ).toISOString();
 
-  const { data: todayAppts } = await supabase
-    .from("appointments")
-    .select(
-      "id, starts_at, ends_at, status, reason, patient:patients(full_name, phone, document_number), dental_consultation:dental_consultations(id)"
-    )
-    .gte("starts_at", startOfDay)
-    .lte("starts_at", endOfDay)
-    .order("starts_at");
-
   // Próximos 7 días (sin incluir hoy)
   const tomorrow = new Date(today);
   tomorrow.setDate(tomorrow.getDate() + 1);
@@ -48,16 +39,30 @@ export default async function AdminDashboard() {
   const weekEnd = new Date(today);
   weekEnd.setDate(weekEnd.getDate() + 7);
 
-  const { count: upcomingCount } = await supabase
-    .from("appointments")
-    .select("id", { count: "exact", head: true })
-    .gte("starts_at", tomorrow.toISOString())
-    .lte("starts_at", weekEnd.toISOString())
-    .eq("status", "scheduled");
+  // Ejecutar todas las consultas a Supabase en paralelo para optimizar la velocidad drásticamente
+  const [todayRes, upcomingRes, patientsRes] = await Promise.all([
+    supabase
+      .from("appointments")
+      .select(
+        "id, starts_at, ends_at, status, reason, patient:patients(full_name, phone, document_number), dental_consultation:dental_consultations(id)"
+      )
+      .gte("starts_at", startOfDay)
+      .lte("starts_at", endOfDay)
+      .order("starts_at"),
+    supabase
+      .from("appointments")
+      .select("id", { count: "exact", head: true })
+      .gte("starts_at", tomorrow.toISOString())
+      .lte("starts_at", weekEnd.toISOString())
+      .eq("status", "scheduled"),
+    supabase
+      .from("patients")
+      .select("id", { count: "exact", head: true })
+  ]);
 
-  const { count: patientsCount } = await supabase
-    .from("patients")
-    .select("id", { count: "exact", head: true });
+  const todayAppts = todayRes.data;
+  const upcomingCount = upcomingRes.count;
+  const patientsCount = patientsRes.count;
 
   // Derivar stats
   const appts = todayAppts || [];

@@ -95,6 +95,26 @@ export default function ReservarPage() {
 
   return (
     <main className="min-h-screen bg-gradient-to-br from-lilac-50 via-white to-gold-50">
+      {step === "submitting" && (
+        <div className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-ink/40 backdrop-blur-sm transition-all duration-300">
+          <div className="bg-white/95 border border-lilac-100 rounded-3xl p-8 max-w-sm w-full mx-4 shadow-2xl flex flex-col items-center text-center animate-in fade-in duration-200">
+            {/* Elegant Clinic Spinner with Golden/Lilac Accents */}
+            <div className="relative mb-6">
+              <div className="h-16 w-16 rounded-full border-4 border-lilac-50 border-t-gold animate-spin"></div>
+              <div className="absolute inset-0 flex items-center justify-center text-lilac-600">
+                <svg className="w-6 h-6 animate-pulse" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                </svg>
+              </div>
+            </div>
+            <h3 className="text-xl font-bold text-ink mb-2">Procesando tu reserva</h3>
+            <p className="text-sm text-ink/75 leading-relaxed">
+              Estamos agendando tu cita y preparando tus correos de confirmación. Por favor, no cierres esta ventana.
+            </p>
+          </div>
+        </div>
+      )}
+
       <header className="px-6 py-5 max-w-3xl mx-auto flex items-center gap-3">
         <Link href="/" className="text-ink-600 hover:text-ink-900">
           <ChevronLeft size={20} />
@@ -217,7 +237,6 @@ export default function ReservarPage() {
                     type="email"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    onBlur={(e) => lookupPatient("email", e.target.value)}
                     placeholder="tu@email.com"
                   />
                 </Field>

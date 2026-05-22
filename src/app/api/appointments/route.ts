@@ -47,12 +47,12 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Ese horario ya fue tomado" }, { status: 409 });
   }
 
-  // 2) Upsert del paciente (por cédula o email)
+  // 2) Upsert del paciente (únicamente por cédula)
   const emailLower = patient.email.toLowerCase();
   const { data: existingPatient } = await supabase
     .from("patients")
     .select("id")
-    .or(`document_number.eq.${patient.document_number},email.eq.${emailLower}`)
+    .eq("document_number", patient.document_number.trim())
     .maybeSingle();
 
   let patientId: string;
@@ -63,7 +63,6 @@ export async function POST(req: Request) {
         full_name: patient.full_name,
         phone: patient.phone,
         email: emailLower,
-        document_number: patient.document_number,
       })
       .eq("id", existingPatient.id);
     if (updErr) return NextResponse.json({ error: updErr.message }, { status: 500 });
@@ -75,11 +74,11 @@ export async function POST(req: Request) {
         full_name: patient.full_name,
         phone: patient.phone,
         email: emailLower,
-        document_number: patient.document_number,
+        document_number: patient.document_number.trim(),
       })
       .select("id")
       .single();
-    if (insErr || !newPatient) return NextResponse.json({ error: insErr?.message || "Error" }, { status: 500 });
+    if (insErr || !newPatient) return NextResponse.json({ error: insErr?.message || "Error al registrar el paciente" }, { status: 500 });
     patientId = newPatient.id;
   }
 

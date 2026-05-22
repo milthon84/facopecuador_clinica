@@ -93,7 +93,28 @@ export default function EditarFichaClientPage({ patient }: EditarFichaClientPage
         
         if (data.record) {
           const rec = data.record;
-          if (rec.date_of_birth) setBirthDate(rec.date_of_birth.substring(0, 10));
+          if (rec.date_of_birth) {
+            const bDate = rec.date_of_birth.substring(0, 10);
+            setBirthDate(bDate);
+            
+            // Calculate age
+            const birthDateObj = new Date(bDate);
+            const today = new Date();
+            let age = today.getFullYear() - birthDateObj.getFullYear();
+            const m = today.getMonth() - birthDateObj.getMonth();
+            if (m < 0 || (m === 0 && today.getDate() < birthDateObj.getDate())) {
+              age--;
+            }
+            
+            // Default to infantil if age <= 12
+            const hasChildTeeth = rec.odontogram_state && Object.keys(rec.odontogram_state).some((toothNumStr) => {
+              const tNum = parseInt(toothNumStr, 10);
+              return tNum >= 51 && tNum <= 85;
+            });
+            if (!hasChildTeeth) {
+              setDentitionMode(age <= 12 ? "infantil" : "adulta");
+            }
+          }
           if (rec.sex) setSex(rec.sex);
           if (rec.address) setAddress(rec.address);
           
@@ -113,6 +134,13 @@ export default function EditarFichaClientPage({ patient }: EditarFichaClientPage
           
           if (rec.odontogram_state) {
             setOdontogram(rec.odontogram_state);
+            const hasChildTeeth = Object.keys(rec.odontogram_state).some((toothNumStr) => {
+              const tNum = parseInt(toothNumStr, 10);
+              return tNum >= 51 && tNum <= 85;
+            });
+            if (hasChildTeeth) {
+              setDentitionMode("infantil");
+            }
           }
         }
       } catch (err) {
@@ -123,6 +151,20 @@ export default function EditarFichaClientPage({ patient }: EditarFichaClientPage
     }
     loadRecord();
   }, [patient.id]);
+
+  // Automatically change dentition mode when birthDate changes
+  useEffect(() => {
+    if (birthDate) {
+      const birthDateObj = new Date(birthDate);
+      const today = new Date();
+      let age = today.getFullYear() - birthDateObj.getFullYear();
+      const m = today.getMonth() - birthDateObj.getMonth();
+      if (m < 0 || (m === 0 && today.getDate() < birthDateObj.getDate())) {
+        age--;
+      }
+      setDentitionMode(age <= 12 ? "infantil" : "adulta");
+    }
+  }, [birthDate]);
 
   // Handle Odontogram interactions
   const handleSurfaceClick = (toothNum: number, surface: string, tool: string) => {
@@ -179,6 +221,7 @@ export default function EditarFichaClientPage({ patient }: EditarFichaClientPage
     setIsSubmitting(true);
     setErrorMsg("");
     setSuccessMsg("");
+    let isRedirecting = false;
 
     try {
       const res = await fetch("/api/admin/dental-records", {
@@ -200,11 +243,15 @@ export default function EditarFichaClientPage({ patient }: EditarFichaClientPage
 
       setSuccessMsg("¡Ficha dental permanente guardada con éxito!");
       
-      // Navigate to reload data properly bypassing client cache
-      window.location.replace(`/admin/pacientes/${patient.id}`);
+      isRedirecting = true;
+      router.refresh();
+      router.push(`/admin/pacientes/${patient.id}`);
     } catch (err: any) {
       setErrorMsg(err.message || "Error al actualizar la ficha dental.");
-      setIsSubmitting(false);
+    } finally {
+      if (!isRedirecting) {
+        setIsSubmitting(false);
+      }
     }
   };
 
@@ -236,6 +283,24 @@ export default function EditarFichaClientPage({ patient }: EditarFichaClientPage
 
   return (
     <div className="max-w-6xl mx-auto pb-10">
+      {isSubmitting && (
+        <div className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-ink/40 backdrop-blur-sm transition-all duration-300">
+          <div className="bg-white/95 border border-lilac-100 rounded-3xl p-8 max-w-sm w-full mx-4 shadow-2xl flex flex-col items-center text-center animate-in fade-in duration-200">
+            {/* Elegant Clinic Spinner with Golden/Lilac Accents */}
+            <div className="relative mb-6">
+              <div className="h-16 w-16 rounded-full border-4 border-lilac-50 border-t-gold animate-spin"></div>
+              <div className="absolute inset-0 flex items-center justify-center text-lilac-600 animate-pulse">
+                <Activity size={24} />
+              </div>
+            </div>
+            <h3 className="text-xl font-bold text-ink mb-2">Guardando Ficha Clínica</h3>
+            <p className="text-sm text-ink/75 leading-relaxed">
+              Estamos actualizando la ficha dental permanente del paciente y sincronizando con la nube. Por favor, no cierres esta ventana.
+            </p>
+          </div>
+        </div>
+      )}
+
       <Link
         href={`/admin/pacientes/${patient.id}`}
         className="inline-flex items-center gap-1 text-sm text-ink-600 hover:text-ink-900 mb-4 transition-colors"

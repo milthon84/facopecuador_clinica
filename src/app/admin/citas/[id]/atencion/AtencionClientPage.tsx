@@ -108,7 +108,28 @@ export default function AtencionClientPage({ appointment, patient, initialConsul
         
         if (data.record) {
           const rec = data.record;
-          if (rec.date_of_birth) setBirthDate(rec.date_of_birth.substring(0, 10));
+          if (rec.date_of_birth) {
+            const bDate = rec.date_of_birth.substring(0, 10);
+            setBirthDate(bDate);
+            
+            // Calculate age
+            const birthDateObj = new Date(bDate);
+            const today = new Date();
+            let age = today.getFullYear() - birthDateObj.getFullYear();
+            const m = today.getMonth() - birthDateObj.getMonth();
+            if (m < 0 || (m === 0 && today.getDate() < birthDateObj.getDate())) {
+              age--;
+            }
+            
+            // Default to infantil if age <= 12
+            const hasChildTeeth = rec.odontogram_state && Object.keys(rec.odontogram_state).some((toothNumStr) => {
+              const tNum = parseInt(toothNumStr, 10);
+              return tNum >= 51 && tNum <= 85;
+            });
+            if (!hasChildTeeth) {
+              setDentitionMode(age <= 12 ? "infantil" : "adulta");
+            }
+          }
           if (rec.sex) setSex(rec.sex);
           if (rec.address) setAddress(rec.address);
           
@@ -128,6 +149,13 @@ export default function AtencionClientPage({ appointment, patient, initialConsul
           
           if (rec.odontogram_state) {
             setOdontogram(rec.odontogram_state);
+            const hasChildTeeth = Object.keys(rec.odontogram_state).some((toothNumStr) => {
+              const tNum = parseInt(toothNumStr, 10);
+              return tNum >= 51 && tNum <= 85;
+            });
+            if (hasChildTeeth) {
+              setDentitionMode("infantil");
+            }
           }
         }
       } catch (err) {
@@ -138,6 +166,20 @@ export default function AtencionClientPage({ appointment, patient, initialConsul
     }
     loadRecord();
   }, [patient.id]);
+
+  // Automatically change dentition mode when birthDate changes
+  useEffect(() => {
+    if (birthDate) {
+      const birthDateObj = new Date(birthDate);
+      const today = new Date();
+      let age = today.getFullYear() - birthDateObj.getFullYear();
+      const m = today.getMonth() - birthDateObj.getMonth();
+      if (m < 0 || (m === 0 && today.getDate() < birthDateObj.getDate())) {
+        age--;
+      }
+      setDentitionMode(age <= 12 ? "infantil" : "adulta");
+    }
+  }, [birthDate]);
 
   // Handle Odontogram interactions
   const handleSurfaceClick = (toothNum: number, surface: string, tool: string) => {
@@ -202,6 +244,7 @@ export default function AtencionClientPage({ appointment, patient, initialConsul
 
     setIsSubmitting(true);
     setErrorMsg("");
+    let isRedirecting = false;
 
     try {
       const res = await fetch("/api/admin/dental-consultations", {
@@ -218,17 +261,22 @@ export default function AtencionClientPage({ appointment, patient, initialConsul
           odontogram_state: odontogram,
           treatment_notes: treatmentNotes,
           prescription: prescription || null,
+          dentition_mode: dentitionMode,
         }),
       });
 
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Ocurrió un error al guardar");
 
-      window.location.replace(`/admin/citas/${appointment.id}`);
+      isRedirecting = true;
+      router.refresh();
+      router.push("/admin");
     } catch (err: any) {
       setErrorMsg(err.message || "Error al registrar la atención.");
     } finally {
-      setIsSubmitting(false);
+      if (!isRedirecting) {
+        setIsSubmitting(false);
+      }
     }
   };
 
@@ -258,8 +306,72 @@ export default function AtencionClientPage({ appointment, patient, initialConsul
     (exam: any) => exam?.status === "alteracion"
   );
 
+  const renderPastConsultations = () => (
+    <div className="card p-6 bg-white border border-lilac-100 shadow-sm rounded-2xl">
+      <h2 className="text-sm font-bold text-ink-950 flex items-center gap-2 mb-4 border-b border-lilac-50 pb-2">
+        <Activity size={16} className="text-lilac-700 animate-pulse" /> Evoluciones Anteriores ({pastConsultations.length})
+      </h2>
+      
+      {pastConsultations.length === 0 ? (
+        <div className="text-xs text-ink-500 italic py-4 text-center">
+          No se registran evoluciones previas en el historial para este paciente.
+        </div>
+      ) : (
+        <div className="space-y-4 max-h-[680px] overflow-y-auto pr-1">
+          {pastConsultations.map((c) => (
+            <div key={c.id} className="bg-lilac-50/30 hover:bg-lilac-50/50 p-4 rounded-xl border border-lilac-100 text-xs transition-all space-y-2">
+              <div className="flex justify-between items-center border-b border-lilac-50 pb-1.5 mb-1.5">
+                <span className="font-bold text-ink-900">
+                  {new Date(c.created_at).toLocaleDateString("es-CO", {
+                    day: "2-digit",
+                    month: "short",
+                    year: "numeric"
+                  })}
+                </span>
+                <span className="text-[10px] text-ink-500 capitalize">
+                  {new Date(c.created_at).toLocaleTimeString("es-CO", {
+                    hour: "2-digit",
+                    minute: "2-digit"
+                  })}
+                </span>
+              </div>
+              <div>
+                <span className="font-bold text-lilac-900 uppercase text-[9px] block mb-0.5">Evolución</span>
+                <p className="text-ink-800 whitespace-pre-wrap leading-relaxed">{c.treatment_notes}</p>
+              </div>
+              {c.prescription && (
+                <div className="pt-2 border-t border-lilac-50/80">
+                  <span className="font-bold text-gold-800 uppercase text-[9px] block mb-0.5">Receta / Indicaciones</span>
+                  <p className="text-ink-800 whitespace-pre-wrap leading-relaxed">{c.prescription}</p>
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+
   return (
     <div className="max-w-6xl mx-auto pb-10">
+      {isSubmitting && (
+        <div className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-ink/40 backdrop-blur-sm transition-all duration-300">
+          <div className="bg-white/95 border border-lilac-100 rounded-3xl p-8 max-w-sm w-full mx-4 shadow-2xl flex flex-col items-center text-center animate-in fade-in duration-200">
+            {/* Elegant Clinic Spinner with Golden/Lilac Accents */}
+            <div className="relative mb-6">
+              <div className="h-16 w-16 rounded-full border-4 border-lilac-50 border-t-gold animate-spin"></div>
+              <div className="absolute inset-0 flex items-center justify-center text-lilac-600 animate-pulse">
+                <Activity size={24} />
+              </div>
+            </div>
+            <h3 className="text-xl font-bold text-ink mb-2">Finalizando Atención</h3>
+            <p className="text-sm text-ink/75 leading-relaxed">
+              Estamos guardando la atención en la ficha clínica y enviando el correo con el odontograma interactivo al paciente. Por favor, no cierres esta ventana.
+            </p>
+          </div>
+        </div>
+      )}
+
       <Link
         href={`/admin/citas/${appointment.id}`}
         className="inline-flex items-center gap-1 text-sm text-ink-600 hover:text-ink-900 mb-4 transition-colors"
@@ -336,7 +448,7 @@ export default function AtencionClientPage({ appointment, patient, initialConsul
       </div>
 
       <div className="grid lg:grid-cols-3 gap-6 items-start">
-        <div className="lg:col-span-2">
+        <div className={activeTab === "odontogram" ? "lg:col-span-3" : "lg:col-span-2"}>
           <form onSubmit={handleSubmit}>
             {/* Tab 1: Ficha y Antecedentes */}
         {activeTab === "ficha" && (
@@ -826,7 +938,7 @@ export default function AtencionClientPage({ appointment, patient, initialConsul
               </div>
             </div>
 
-            <div className="flex justify-between gap-3">
+            <div className="flex justify-between gap-3 mt-6">
               <button
                 type="button"
                 onClick={() => setActiveTab("ficha")}
@@ -919,52 +1031,12 @@ export default function AtencionClientPage({ appointment, patient, initialConsul
           </form>
         </div>
 
-        {/* Right Column: Historical Consultations for Reference */}
-        <div className="lg:col-span-1 space-y-6">
-          <div className="card p-6 bg-white border border-lilac-100 shadow-sm rounded-2xl">
-            <h2 className="text-sm font-bold text-ink-950 flex items-center gap-2 mb-4 border-b border-lilac-50 pb-2">
-              <Activity size={16} className="text-lilac-700 animate-pulse" /> Evoluciones Anteriores ({pastConsultations.length})
-            </h2>
-            
-            {pastConsultations.length === 0 ? (
-              <div className="text-xs text-ink-500 italic py-4 text-center">
-                No se registran evoluciones previas en el historial para este paciente.
-              </div>
-            ) : (
-              <div className="space-y-4 max-h-[680px] overflow-y-auto pr-1">
-                {pastConsultations.map((c) => (
-                  <div key={c.id} className="bg-lilac-50/30 hover:bg-lilac-50/50 p-4 rounded-xl border border-lilac-100 text-xs transition-all space-y-2">
-                    <div className="flex justify-between items-center border-b border-lilac-50 pb-1.5 mb-1.5">
-                      <span className="font-bold text-ink-900">
-                        {new Date(c.created_at).toLocaleDateString("es-CO", {
-                          day: "2-digit",
-                          month: "short",
-                          year: "numeric"
-                        })}
-                      </span>
-                      <span className="text-[10px] text-ink-500 capitalize">
-                        {new Date(c.created_at).toLocaleTimeString("es-CO", {
-                          hour: "2-digit",
-                          minute: "2-digit"
-                        })}
-                      </span>
-                    </div>
-                    <div>
-                      <span className="font-bold text-lilac-900 uppercase text-[9px] block mb-0.5">Evolución</span>
-                      <p className="text-ink-800 whitespace-pre-wrap leading-relaxed">{c.treatment_notes}</p>
-                    </div>
-                    {c.prescription && (
-                      <div className="pt-2 border-t border-lilac-50/80">
-                        <span className="font-bold text-gold-800 uppercase text-[9px] block mb-0.5">Receta / Indicaciones</span>
-                        <p className="text-ink-800 whitespace-pre-wrap leading-relaxed">{c.prescription}</p>
-                      </div>
-                    )}
-                  </div>
-                ))}
-              </div>
-            )}
+        {/* Columnas del lado derecho: Solo visibles si no estamos en el tab de odontograma */}
+        {activeTab !== "odontogram" && (
+          <div className="lg:col-span-1 space-y-6">
+            {renderPastConsultations()}
           </div>
-        </div>
+        )}
       </div>
     </div>
   );

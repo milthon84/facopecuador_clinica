@@ -11,7 +11,16 @@ export default async function CalendarioPage({ searchParams }: { searchParams: S
   const supabase = createAdminClient();
 
   // Parsear semana base
-  const baseDate = searchParams.week ? new Date(searchParams.week) : new Date();
+  let baseDate: Date;
+  if (searchParams.week && searchParams.week.includes("-")) {
+    const parts = searchParams.week.split("-");
+    const year = parseInt(parts[0], 10);
+    const month = parseInt(parts[1], 10) - 1;
+    const day = parseInt(parts[2], 10);
+    baseDate = new Date(year, month, day);
+  } else {
+    baseDate = new Date();
+  }
   const monday = mondayOf(baseDate);
   const sunday = new Date(monday);
   sunday.setDate(sunday.getDate() + 6);
@@ -39,16 +48,19 @@ export default async function CalendarioPage({ searchParams }: { searchParams: S
   const prevWeek = new Date(monday); prevWeek.setDate(prevWeek.getDate() - 7);
   const nextWeek = new Date(monday); nextWeek.setDate(nextWeek.getDate() + 7);
 
+  const prevWeekStr = formatLocalDate(prevWeek);
+  const nextWeekStr = formatLocalDate(nextWeek);
+
   return (
     <div>
       <div className="flex items-center justify-between mb-5 flex-wrap gap-3">
         <h1 className="text-2xl font-bold">Calendario semanal</h1>
         <div className="flex gap-2">
-          <Link href={`/admin/calendario?week=${prevWeek.toISOString().slice(0,10)}`} className="btn-ghost px-3 py-2">
+          <Link href={`/admin/calendario?week=${prevWeekStr}`} className="btn-ghost px-3 py-2">
             <ChevronLeft size={16} />
           </Link>
           <Link href="/admin/calendario" className="btn-ghost">Hoy</Link>
-          <Link href={`/admin/calendario?week=${nextWeek.toISOString().slice(0,10)}`} className="btn-ghost px-3 py-2">
+          <Link href={`/admin/calendario?week=${nextWeekStr}`} className="btn-ghost px-3 py-2">
             <ChevronRight size={16} />
           </Link>
         </div>
@@ -120,4 +132,11 @@ function mondayOf(d: Date): Date {
   date.setDate(date.getDate() + diff);
   date.setHours(0, 0, 0, 0);
   return date;
+}
+
+function formatLocalDate(d: Date): string {
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
 }
