@@ -1,4 +1,9 @@
 import { createClient } from "@supabase/supabase-js";
+import dns from "dns";
+
+if (dns && typeof dns.setDefaultResultOrder === "function") {
+  dns.setDefaultResultOrder("ipv4first");
+}
 
 /**
  * Cliente con SERVICE_ROLE - bypassa RLS.
