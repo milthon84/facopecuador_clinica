@@ -48,6 +48,7 @@ export default async function PacientesPage({ searchParams }: { searchParams: Se
                 <th className="text-left px-4 py-2 hidden sm:table-cell">Cédula</th>
                 <th className="text-left px-4 py-2 hidden md:table-cell">Teléfono</th>
                 <th className="text-left px-4 py-2 hidden md:table-cell">Email</th>
+                <th className="text-right px-4 py-2">Acciones</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-lilac-50">
@@ -61,6 +62,14 @@ export default async function PacientesPage({ searchParams }: { searchParams: Se
                   <td className="px-4 py-3 hidden sm:table-cell text-ink-600">{p.document_number || "—"}</td>
                   <td className="px-4 py-3 hidden md:table-cell text-ink-600">{p.phone}</td>
                   <td className="px-4 py-3 hidden md:table-cell text-ink-600">{p.email}</td>
+                  <td className="px-4 py-3 text-right">
+                    <Link
+                      href={`/admin/pacientes/${p.id}`}
+                      className="inline-flex items-center justify-center bg-lilac-100 hover:bg-lilac-200 text-lilac-800 font-semibold text-xs px-3 py-1.5 rounded-xl transition-all shadow-sm hover:scale-[1.02] active:scale-[0.98]"
+                    >
+                      Ver Ficha e Historial
+                    </Link>
+                  </td>
                 </tr>
               ))}
             </tbody>

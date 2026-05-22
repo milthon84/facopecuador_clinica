@@ -19,7 +19,7 @@ export default async function CalendarioPage({ searchParams }: { searchParams: S
 
   const { data: appts } = await supabase
     .from("appointments")
-    .select("id, starts_at, status, patient:patients(full_name)")
+    .select("id, starts_at, status, patient:patients(full_name), dental_consultation:dental_consultations(id)")
     .gte("starts_at", monday.toISOString())
     .lte("starts_at", sunday.toISOString())
     .order("starts_at");
@@ -79,6 +79,9 @@ export default async function CalendarioPage({ searchParams }: { searchParams: S
                     const t = new Date(a.starts_at);
                     const time = formatTimeLocal(t);
                     const p = Array.isArray(a.patient) ? a.patient[0] : a.patient;
+                    const hasConsultation = Array.isArray(a.dental_consultation)
+                      ? a.dental_consultation.length > 0
+                      : !!a.dental_consultation;
                     const color =
                       a.status === "cancelled" ? "bg-red-50 text-red-700 line-through" :
                       a.status === "attended" ? "bg-green-50 text-green-700" :
@@ -86,8 +89,15 @@ export default async function CalendarioPage({ searchParams }: { searchParams: S
                       "bg-lilac-50 text-lilac-800";
                     return (
                       <li key={a.id}>
-                        <Link href={`/admin/citas/${a.id}`} className={`block rounded-lg px-2 py-1.5 text-xs ${color} hover:opacity-80`}>
-                          <div className="font-semibold">{time}</div>
+                        <Link href={`/admin/citas/${a.id}`} className={`block rounded-lg px-2 py-1.5 text-xs ${color} hover:opacity-80 transition-all`}>
+                          <div className="flex items-center justify-between gap-1 font-semibold">
+                            <span>{time}</span>
+                            {hasConsultation && (
+                              <span className="text-[10px] text-gold-600 font-bold bg-gold-50 px-1 rounded-sm border border-gold-200" title="Ficha Clínica Completada y Enviada">
+                                📄✓
+                              </span>
+                            )}
+                          </div>
                           <div className="truncate">{p?.full_name}</div>
                         </Link>
                       </li>

@@ -2,8 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { createClient } from "@/lib/supabase/client";
-import { CheckCircle2, XCircle, AlertCircle, MessageSquare, Save } from "lucide-react";
+import { CheckCircle2, XCircle, AlertCircle, MessageSquare } from "lucide-react";
 
 interface Props { appointment: any }
 
@@ -16,29 +15,32 @@ export default function AppointmentActions({ appointment }: Props) {
 
   async function updateStatus(status: string, extra: Record<string, any> = {}) {
     setLoading(true);
-    const supabase = createClient();
-    const { error } = await supabase
-      .from("appointments")
-      .update({ status, ...extra })
-      .eq("id", appointment.id);
-    setLoading(false);
-    if (error) {
-      alert(error.message);
-      return;
-    }
-    router.refresh();
-  }
+    try {
+      const res = await fetch("/api/admin/appointments", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          id: appointment.id,
+          status,
+          extra: { ...extra, admin_notes: notes },
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Error al actualizar el estado");
 
-  async function saveNotes() {
-    setLoading(true);
-    const supabase = createClient();
-    const { error } = await supabase
-      .from("appointments")
-      .update({ admin_notes: notes })
-      .eq("id", appointment.id);
-    setLoading(false);
-    if (error) alert(error.message);
-    else router.refresh();
+      // Invalida el router cache del cliente: sin esto, al volver a esta
+      // pagina Next.js sirve el RSC payload en memoria (estado viejo)
+      // en lugar de pedir datos frescos al servidor.
+      router.refresh();
+
+      if (status === "attended") {
+        router.push(`/admin/citas/${appointment.id}/atencion`);
+      }
+    } catch (err: any) {
+      alert(err.message);
+    } finally {
+      setLoading(false);
+    }
   }
 
   const disabled = loading || appointment.status === "cancelled";
@@ -53,21 +55,24 @@ export default function AppointmentActions({ appointment }: Props) {
           className="input min-h-[80px]"
           value={notes}
           onChange={(e) => setNotes(e.target.value)}
-          placeholder="Observaciones de la consulta…"
+          placeholder="Observaciones de la consulta..."
         />
-        <div className="mt-2 flex justify-end">
-          <button onClick={saveNotes} disabled={loading} className="btn-secondary text-xs px-3 py-1.5">
-            <Save size={12} /> Guardar notas
-          </button>
-        </div>
       </div>
 
       <div className="flex flex-wrap gap-2 pt-3 border-t border-lilac-100">
-        <button onClick={() => updateStatus("attended")} disabled={disabled} className="btn-secondary text-xs">
+        <button
+          onClick={() => updateStatus("attended")}
+          disabled={disabled}
+          className="btn-secondary text-xs"
+        >
           <CheckCircle2 size={14} /> Marcar atendida
         </button>
-        <button onClick={() => updateStatus("no_show")} disabled={disabled} className="btn-ghost text-xs">
-          <AlertCircle size={14} /> No asistió
+        <button
+          onClick={() => updateStatus("no_show")}
+          disabled={disabled}
+          className="btn-ghost text-xs"
+        >
+          <AlertCircle size={14} /> No asistio
         </button>
         {appointment.status !== "cancelled" && (
           <button onClick={() => setShowCancel(!showCancel)} className="btn-danger">
@@ -78,20 +83,28 @@ export default function AppointmentActions({ appointment }: Props) {
 
       {showCancel && (
         <div className="bg-red-50 border border-red-200 rounded-lg p-3">
-          <label className="label text-red-900">Motivo de cancelación</label>
+          <label className="label text-red-900">Motivo de cancelacion</label>
           <input
             className="input mb-2"
             value={cancelReason}
             onChange={(e) => setCancelReason(e.target.value)}
-            placeholder="Ej: paciente avisó por teléfono"
+            placeholder="Ej: paciente aviso por telefono"
           />
           <div className="flex justify-end gap-2">
-            <button onClick={() => setShowCancel(false)} className="btn-ghost text-xs">Atrás</button>
+            <button onClick={() => setShowCancel(false)} className="btn-ghost text-xs">
+              Atras
+            </button>
             <button
-              onClick={() => updateStatus("cancelled", { cancelled_at: new Date().toISOString(), cancelled_by: "admin", cancellation_reason: cancelReason || null })}
+              onClick={() =>
+                updateStatus("cancelled", {
+                  cancelled_at: new Date().toISOString(),
+                  cancelled_by: "admin",
+                  cancellation_reason: cancelReason || null,
+                })
+              }
               className="btn-danger"
             >
-              Confirmar cancelación
+              Confirmar cancelacion
             </button>
           </div>
         </div>

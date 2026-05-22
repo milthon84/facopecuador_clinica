@@ -135,3 +135,71 @@ export async function sendAdminNotification(d: ApptEmailData & { phone?: string;
     html: baseHtml("Nueva cita", body),
   });
 }
+
+interface DentalEmailData {
+  patientName: string;
+  patientEmail: string;
+  dateStr: string;
+  treatmentNotes: string;
+  prescription?: string | null;
+  medicalHistorySummary: string;
+  stomatognathicSummary: string;
+  odontogramSummary: string;
+}
+
+export async function sendDentalConsultationEmail(d: DentalEmailData) {
+  if (!resend) return;
+
+  const body = `
+    <h2 style="color:#7E5DB4; margin:0 0 12px;">Resumen de tu atención odontológica</h2>
+    <p style="font-size:15px; line-height:1.6;">Hola <strong>${d.patientName}</strong>,</p>
+    <p style="font-size:15px; line-height:1.6;">Queremos compartirte el resumen y receta de tu última atención en <strong>${CLINIC}</strong>.</p>
+    
+    <div style="background:#f5f1fb; border-radius:10px; padding:20px; margin:20px 0;">
+      <h3 style="color:#604390; margin:0 0 10px; font-size:16px;">Detalles de la Cita</h3>
+      <table style="font-size:14px; width:100%;">
+        <tr><td style="padding:4px 0; color:#604390; width:120px;">Fecha:</td><td style="padding:4px 0;"><strong>${d.dateStr}</strong></td></tr>
+      </table>
+    </div>
+
+    <div style="background:#ffffff; border:1px solid #e1d6f2; border-radius:10px; padding:20px; margin:20px 0;">
+      <h3 style="color:#604390; margin:0 0 10px; font-size:16px;">Evolución y Procedimientos Realizados</h3>
+      <p style="font-size:14px; line-height:1.6; margin:0; white-space:pre-line;">${d.treatmentNotes}</p>
+    </div>
+
+    ${d.prescription ? `
+    <div style="background:#fbf7ee; border-left:4px solid #C9A961; border-radius:4px; padding:20px; margin:20px 0;">
+      <h3 style="color:#9e7920; margin:0 0 10px; font-size:16px;">Receta e Indicaciones Médicas</h3>
+      <p style="font-size:14px; line-height:1.6; margin:0; white-space:pre-line;">${d.prescription}</p>
+    </div>
+    ` : ""}
+
+    <div style="background:#ffffff; border:1px solid #e1d6f2; border-radius:10px; padding:20px; margin:20px 0;">
+      <h3 style="color:#604390; margin:0 0 10px; font-size:16px;">Resumen Clínico Dental</h3>
+      <table style="font-size:14px; width:100%; border-collapse:collapse;">
+        <tr style="border-bottom:1px solid #f0eaf8;">
+          <td style="padding:8px 0; color:#604390; font-weight:600; width:180px;">Antecedentes de Salud:</td>
+          <td style="padding:8px 0; line-height:1.4;">${d.medicalHistorySummary}</td>
+        </tr>
+        <tr style="border-bottom:1px solid #f0eaf8;">
+          <td style="padding:8px 0; color:#604390; font-weight:600;">Examen Estomatognático:</td>
+          <td style="padding:8px 0; line-height:1.4;">${d.stomatognathicSummary}</td>
+        </tr>
+        <tr>
+          <td style="padding:8px 0; color:#604390; font-weight:600; vertical-align:top;">Estado del Odontograma:</td>
+          <td style="padding:8px 0; line-height:1.4; white-space:pre-line;">${d.odontogramSummary}</td>
+        </tr>
+      </table>
+    </div>
+
+    <p style="font-size:13px; color:#604390; margin-top:24px; text-align:center;">¡Gracias por confiar en nosotros para cuidar tu sonrisa!</p>
+  `;
+
+  await resend.emails.send({
+    from: FROM,
+    to: d.patientEmail,
+    subject: `Resumen de tu atención odontológica – ${d.dateStr}`,
+    html: baseHtml("Resumen de Atención", body),
+  });
+}
+

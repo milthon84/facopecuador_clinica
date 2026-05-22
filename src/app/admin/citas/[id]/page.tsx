@@ -2,10 +2,11 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { formatTimeLocal } from "@/lib/availability";
 import { notFound } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft, Mail, Phone, IdCard, Calendar } from "lucide-react";
+import { ArrowLeft, Mail, Phone, IdCard, Calendar, CheckCircle2 } from "lucide-react";
 import AppointmentActions from "@/components/AppointmentActions";
 
 export const dynamic = "force-dynamic";
+export const revalidate = 0;
 
 export default async function CitaDetalle({ params }: { params: { id: string } }) {
   const supabase = createAdminClient();
@@ -30,6 +31,13 @@ export default async function CitaDetalle({ params }: { params: { id: string } }
     .neq("id", appt.id)
     .order("starts_at", { ascending: false })
     .limit(10);
+
+  // Evolución clínica de la cita si está atendida
+  const { data: consultation } = await supabase
+    .from("dental_consultations")
+    .select("*")
+    .eq("appointment_id", appt.id)
+    .single();
 
   return (
     <div className="max-w-3xl">
@@ -69,6 +77,98 @@ export default async function CitaDetalle({ params }: { params: { id: string } }
 
         <AppointmentActions appointment={JSON.parse(JSON.stringify(appt))} />
       </div>
+
+      {appt.status === "attended" && !consultation && (
+        <div className="bg-gold-50 border border-gold-200 rounded-2xl p-5 mb-5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <div>
+            <h3 className="font-semibold text-gold-900 flex items-center gap-2">
+              <CheckCircle2 className="text-gold-600" size={18} /> Registrar Ficha y Atención
+            </h3>
+            <p className="text-xs text-gold-800 mt-1">
+              Esta cita ha sido marcada como atendida. Ahora puedes rellenar los antecedentes de salud, realizar el examen estomatognático, interactuar con el odontograma y guardar la evolución clínica.
+            </p>
+          </div>
+          <Link
+            href={`/admin/citas/${appt.id}/atencion`}
+            className="inline-flex items-center justify-center bg-gold-600 hover:bg-gold-700 text-white font-medium text-sm px-4 py-2 rounded-xl transition-all shadow-sm shrink-0"
+          >
+            Registrar Ficha
+          </Link>
+        </div>
+      )}
+
+      {appt.status === "attended" && consultation && (
+        <div className="card p-6 mb-5 border-t-4 border-green-500">
+          <div className="flex items-center justify-between gap-4 mb-4">
+            <h2 className="text-lg font-bold text-ink-900 flex items-center gap-2">
+              <CheckCircle2 className="text-green-600" size={20} /> Detalles de la Atención Registrada
+            </h2>
+            <Link
+              href={`/admin/citas/${appt.id}/atencion`}
+              className="inline-flex items-center justify-center bg-gold-600 hover:bg-gold-700 text-white font-semibold text-xs px-3.5 py-2 rounded-xl transition-all shadow-sm hover:scale-[1.02] active:scale-[0.98]"
+            >
+              Editar Ficha
+            </Link>
+          </div>
+          
+          <div className="space-y-4">
+            <div className="bg-lilac-50/50 rounded-xl p-4 border border-lilac-100">
+              <h3 className="text-xs font-bold text-lilac-800 uppercase mb-2">Evolución y Procedimientos Realizados</h3>
+              <p className="text-sm text-ink-900 whitespace-pre-wrap leading-relaxed">{consultation.treatment_notes}</p>
+            </div>
+
+            {consultation.prescription && (
+              <div className="bg-gold-50/50 rounded-xl p-4 border border-gold-100">
+                <h3 className="text-xs font-bold text-gold-800 uppercase mb-2">Receta e Indicaciones</h3>
+                <p className="text-sm text-ink-900 whitespace-pre-wrap leading-relaxed">{consultation.prescription}</p>
+              </div>
+            )}
+
+            {consultation.odontogram_snapshot && Object.keys(consultation.odontogram_snapshot).length > 0 && (
+              <div className="bg-ink-900/5 rounded-xl p-4 border border-ink-900/10">
+                <h3 className="text-xs font-bold text-ink-700 uppercase mb-2">Resumen de Odontograma (Captura en Cita)</h3>
+                <div className="text-sm text-ink-800 space-y-1">
+                  {(() => {
+                    const toothStates: Record<string, string> = {
+                      caries: "Caries",
+                      sellante_necesario: "Sellante necesario",
+                      sellante_realizado: "Sellante realizado",
+                      corona: "Corona",
+                      perdida: "Ausente",
+                      extraccion: "Extracción requerida"
+                    };
+                    const list: string[] = [];
+                    Object.entries(consultation.odontogram_snapshot).forEach(([tooth, info]: [string, any]) => {
+                      const conditions: string[] = [];
+                      const toothInfo = info as any;
+                      if (toothInfo.general && toothInfo.general !== "sano" && toothStates[toothInfo.general]) {
+                        conditions.push(toothStates[toothInfo.general]);
+                      }
+                      Object.entries(toothInfo.surfaces || {}).forEach(([surf, cond]: [string, any]) => {
+                        if (cond && cond !== "sano" && toothStates[cond]) {
+                          conditions.push(`${toothStates[cond]} (${surf})`);
+                        }
+                      });
+                      if (conditions.length > 0) {
+                        list.push(`Diente ${tooth}: ${conditions.join(", ")}`);
+                      }
+                    });
+                    if (list.length === 0) {
+                      return <span className="italic text-ink-600">Ningún diente con hallazgos o tratamientos registrados.</span>;
+                    }
+                    return list.map((item, idx) => (
+                      <div key={idx} className="flex items-center gap-1.5">
+                        <span className="w-1.5 h-1.5 rounded-full bg-gold-600"></span>
+                        <span>{item}</span>
+                      </div>
+                    ));
+                  })()}
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       {history && history.length > 0 && (
         <div className="card overflow-hidden">

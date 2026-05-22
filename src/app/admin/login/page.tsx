@@ -1,12 +1,10 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { Lock } from "lucide-react";
 
 export default function LoginPage() {
-  const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -23,8 +21,10 @@ export default function LoginPage() {
       setError(err.message);
       return;
     }
-    router.push("/admin");
-    router.refresh();
+    // Hard navigation: garantiza un ciclo SSR completo con la cookie de
+    // sesion activa. router.push() puede servir una version cacheada de
+    // /admin (redirect a login) y dejar la app colgada hasta F5.
+    window.location.replace("/admin");
   }
 
   return (
@@ -34,20 +34,35 @@ export default function LoginPage() {
           <Lock className="text-gold-500" size={20} />
         </div>
         <h1 className="text-xl font-bold text-center mb-1">Acceso administrador</h1>
-        <p className="text-sm text-ink-600 text-center mb-6">Ingresá tus credenciales</p>
-
+        <p className="text-sm text-ink-600 text-center mb-6">Ingresa tus credenciales</p>
         <form onSubmit={onSubmit} className="space-y-4">
           <div>
             <label className="label">Email</label>
-            <input className="input" type="email" required value={email} onChange={(e) => setEmail(e.target.value)} />
+            <input
+              className="input"
+              type="email"
+              required
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+            />
           </div>
           <div>
-            <label className="label">Contraseña</label>
-            <input className="input" type="password" required value={password} onChange={(e) => setPassword(e.target.value)} />
+            <label className="label">Contrasena</label>
+            <input
+              className="input"
+              type="password"
+              required
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+            />
           </div>
-          {error && <div className="text-sm text-red-700 bg-red-50 border border-red-200 px-3 py-2 rounded-lg">{error}</div>}
+          {error && (
+            <div className="text-sm text-red-700 bg-red-50 border border-red-200 px-3 py-2 rounded-lg">
+              {error}
+            </div>
+          )}
           <button type="submit" disabled={loading} className="btn-primary w-full">
-            {loading ? "Ingresando…" : "Ingresar"}
+            {loading ? "Ingresando..." : "Ingresar"}
           </button>
         </form>
       </div>

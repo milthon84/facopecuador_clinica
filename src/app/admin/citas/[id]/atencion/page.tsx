@@ -1,0 +1,43 @@
+import { createAdminClient } from "@/lib/supabase/admin";
+import { notFound } from "next/navigation";
+import AtencionClientPage from "./AtencionClientPage";
+
+export const dynamic = "force-dynamic";
+
+export default async function AtencionPage({ params }: { params: { id: string } }) {
+  const supabase = createAdminClient();
+
+  const { data: appt } = await supabase
+    .from("appointments")
+    .select("*, patient:patients(*)")
+    .eq("id", params.id)
+    .single();
+
+  if (!appt) return notFound();
+
+  const patient = Array.isArray(appt.patient) ? appt.patient[0] : appt.patient;
+
+  // Buscar consulta previa si existe (para edición)
+  const { data: consultation } = await supabase
+    .from("dental_consultations")
+    .select("*")
+    .eq("appointment_id", appt.id)
+    .single();
+
+  // Buscar historial de consultas pasadas (excluyendo la actual) para referencia clínica
+  const { data: pastConsultations } = await supabase
+    .from("dental_consultations")
+    .select("*")
+    .eq("patient_id", patient.id)
+    .neq("appointment_id", appt.id)
+    .order("created_at", { ascending: false });
+
+  return (
+    <AtencionClientPage
+      appointment={appt}
+      patient={patient}
+      initialConsultation={consultation || null}
+      pastConsultations={pastConsultations || []}
+    />
+  );
+}
