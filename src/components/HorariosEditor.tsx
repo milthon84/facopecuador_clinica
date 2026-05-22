@@ -60,7 +60,7 @@ export default function HorariosEditor({ initialRules }: { initialRules: Rule[] 
             <div className="flex items-center justify-between mb-3">
               <h3 className="font-semibold">{dayName}</h3>
               <button onClick={() => addRule(dow)} disabled={loading} className="btn-secondary text-xs">
-                <Plus size={12} /> Agregar
+                {loading ? "Agregando..." : <><Plus size={12} /> Agregar</>}
               </button>
             </div>
             {dayRules.length === 0 ? (

@@ -12,9 +12,11 @@ export default function AppointmentActions({ appointment }: Props) {
   const [cancelReason, setCancelReason] = useState("");
   const [showCancel, setShowCancel] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [activeStatus, setActiveStatus] = useState<string | null>(null);
 
   async function updateStatus(status: string, extra: Record<string, any> = {}) {
     setLoading(true);
+    setActiveStatus(status);
     try {
       const res = await fetch("/api/admin/appointments", {
         method: "PATCH",
@@ -40,6 +42,7 @@ export default function AppointmentActions({ appointment }: Props) {
       alert(err.message);
     } finally {
       setLoading(false);
+      setActiveStatus(null);
     }
   }
 
@@ -65,17 +68,17 @@ export default function AppointmentActions({ appointment }: Props) {
           disabled={disabled}
           className="btn-secondary text-xs"
         >
-          <CheckCircle2 size={14} /> Marcar atendida
+          <CheckCircle2 size={14} /> {activeStatus === "attended" ? "Procesando..." : "Marcar atendida"}
         </button>
         <button
           onClick={() => updateStatus("no_show")}
           disabled={disabled}
           className="btn-ghost text-xs"
         >
-          <AlertCircle size={14} /> No asistio
+          <AlertCircle size={14} /> {activeStatus === "no_show" ? "Procesando..." : "No asistió"}
         </button>
         {appointment.status !== "cancelled" && (
-          <button onClick={() => setShowCancel(!showCancel)} className="btn-danger">
+          <button onClick={() => setShowCancel(!showCancel)} disabled={disabled} className="btn-danger">
             <XCircle size={14} /> Cancelar
           </button>
         )}
@@ -83,16 +86,16 @@ export default function AppointmentActions({ appointment }: Props) {
 
       {showCancel && (
         <div className="bg-red-50 border border-red-200 rounded-lg p-3">
-          <label className="label text-red-900">Motivo de cancelacion</label>
+          <label className="label text-red-900">Motivo de cancelación</label>
           <input
             className="input mb-2"
             value={cancelReason}
             onChange={(e) => setCancelReason(e.target.value)}
-            placeholder="Ej: paciente aviso por telefono"
+            placeholder="Ej: paciente avisó por teléfono"
           />
           <div className="flex justify-end gap-2">
-            <button onClick={() => setShowCancel(false)} className="btn-ghost text-xs">
-              Atras
+            <button onClick={() => setShowCancel(false)} disabled={disabled} className="btn-ghost text-xs">
+              Atrás
             </button>
             <button
               onClick={() =>
@@ -102,9 +105,10 @@ export default function AppointmentActions({ appointment }: Props) {
                   cancellation_reason: cancelReason || null,
                 })
               }
+              disabled={disabled}
               className="btn-danger"
             >
-              Confirmar cancelacion
+              {activeStatus === "cancelled" ? "Cancelando..." : "Confirmar cancelación"}
             </button>
           </div>
         </div>

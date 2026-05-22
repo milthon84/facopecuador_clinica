@@ -112,7 +112,9 @@ export default function BloqueosEditor({ initialExceptions }: { initialException
 
             <div className="flex justify-end gap-2">
               <button onClick={() => setShowForm(false)} className="btn-ghost text-xs">Cancelar</button>
-              <button onClick={addException} disabled={loading} className="btn-primary text-xs px-3 py-2">Guardar</button>
+              <button onClick={addException} disabled={loading} className="btn-primary text-xs px-3 py-2">
+                {loading ? "Guardando..." : "Guardar"}
+              </button>
             </div>
           </div>
         )}
