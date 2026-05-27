@@ -57,7 +57,7 @@ export default function HomePage() {
           Agendá tu cita en menos de un minuto
         </h1>
         <p className="text-lg text-ink-600 mb-10">
-          Elegí el día y horario que mejor te convenga. Sin llamadas, sin esperas.
+          Reserva tu cita de forma rápida y sencilla.
         </p>
         <Link href="/reservar" className="btn-primary text-lg px-10 py-5 rounded-2xl shadow-lg hover:shadow-xl transition-all">
           <CalendarDays size={22} />
