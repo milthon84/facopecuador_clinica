@@ -10,33 +10,64 @@ import {
   FileText,
   CalendarCheck,
   TrendingUp,
+  ChevronLeft,
+  ChevronRight,
 } from "lucide-react";
 
 export const dynamic = "force-dynamic";
 
-export default async function AdminDashboard() {
+export default async function AdminDashboard({
+  searchParams,
+}: {
+  searchParams: { date?: string };
+}) {
   const supabase = createAdminClient();
 
-  const today = new Date();
+  // Determinar la fecha objetivo
+  const targetDateParam = searchParams?.date;
+  let targetDate = new Date();
+  
+  if (targetDateParam) {
+    const parsed = new Date(targetDateParam + "T12:00:00");
+    if (!isNaN(parsed.getTime())) {
+      targetDate = parsed;
+    }
+  }
+
   const startOfDay = new Date(
-    today.getFullYear(),
-    today.getMonth(),
-    today.getDate()
+    targetDate.getFullYear(),
+    targetDate.getMonth(),
+    targetDate.getDate()
   ).toISOString();
   const endOfDay = new Date(
-    today.getFullYear(),
-    today.getMonth(),
-    today.getDate(),
+    targetDate.getFullYear(),
+    targetDate.getMonth(),
+    targetDate.getDate(),
     23,
     59,
     59
   ).toISOString();
 
-  // Próximos 7 días (sin incluir hoy)
-  const tomorrow = new Date(today);
-  tomorrow.setDate(tomorrow.getDate() + 1);
-  tomorrow.setHours(0, 0, 0, 0);
-  const weekEnd = new Date(today);
+  // Fechas de navegación
+  const prevDate = new Date(targetDate);
+  prevDate.setDate(prevDate.getDate() - 1);
+  const nextDate = new Date(targetDate);
+  nextDate.setDate(nextDate.getDate() + 1);
+
+  const prevDateStr = `${prevDate.getFullYear()}-${String(prevDate.getMonth() + 1).padStart(2, '0')}-${String(prevDate.getDate()).padStart(2, '0')}`;
+  const nextDateStr = `${nextDate.getFullYear()}-${String(nextDate.getMonth() + 1).padStart(2, '0')}-${String(nextDate.getDate()).padStart(2, '0')}`;
+  
+  const now = new Date();
+  const isTargetToday = now.toDateString() === targetDate.toDateString();
+  const displayTitle = isTargetToday ? "Hoy" : targetDate.toLocaleDateString("es-CO", {
+    weekday: "long",
+  });
+
+  // Próximos 7 días (sin incluir hoy real)
+  const realTomorrow = new Date(now);
+  realTomorrow.setDate(realTomorrow.getDate() + 1);
+  realTomorrow.setHours(0, 0, 0, 0);
+  const weekEnd = new Date(now);
   weekEnd.setDate(weekEnd.getDate() + 7);
 
   // Ejecutar todas las consultas a Supabase en paralelo para optimizar la velocidad drásticamente
@@ -52,7 +83,7 @@ export default async function AdminDashboard() {
     supabase
       .from("appointments")
       .select("id", { count: "exact", head: true })
-      .gte("starts_at", tomorrow.toISOString())
+      .gte("starts_at", realTomorrow.toISOString())
       .lte("starts_at", weekEnd.toISOString())
       .eq("status", "scheduled"),
     supabase
@@ -118,9 +149,35 @@ export default async function AdminDashboard() {
       {/* Encabezado */}
       <div className="flex items-start justify-between mb-6 gap-4">
         <div>
-          <h1 className="text-2xl font-bold mb-1">Hoy</h1>
+          <div className="flex items-center gap-3 mb-1">
+            <h1 className="text-2xl font-bold capitalize">{displayTitle}</h1>
+            <div className="flex items-center bg-white border border-lilac-100 rounded-lg overflow-hidden shadow-sm">
+              <Link
+                href={`/admin?date=${prevDateStr}`}
+                className="p-1.5 hover:bg-lilac-50 text-ink-600 transition"
+                title="Día anterior"
+              >
+                <ChevronLeft size={20} />
+              </Link>
+              {!isTargetToday && (
+                <Link
+                  href="/admin"
+                  className="px-3 py-1.5 text-xs font-medium text-lilac-700 hover:bg-lilac-50 border-x border-lilac-100 transition"
+                >
+                  Hoy
+                </Link>
+              )}
+              <Link
+                href={`/admin?date=${nextDateStr}`}
+                className="p-1.5 hover:bg-lilac-50 text-ink-600 transition"
+                title="Día siguiente"
+              >
+                <ChevronRight size={20} />
+              </Link>
+            </div>
+          </div>
           <p className="text-sm text-ink-600 capitalize">
-            {today.toLocaleDateString("es-CO", {
+            {targetDate.toLocaleDateString("es-CO", {
               weekday: "long",
               day: "numeric",
               month: "long",
@@ -216,7 +273,9 @@ export default async function AdminDashboard() {
       {/* Lista de citas agrupada */}
       <div className="card overflow-hidden">
         <div className="px-5 py-4 border-b border-lilac-100 flex items-center justify-between">
-          <h2 className="font-semibold">Citas de hoy</h2>
+          <h2 className="font-semibold">
+            {isTargetToday ? "Citas de hoy" : `Citas del ${targetDate.toLocaleDateString("es-CO", { day: "numeric", month: "long" })}`}
+          </h2>
           <Link
             href="/admin/calendario"
             className="text-sm text-lilac-700 hover:underline"
@@ -227,7 +286,7 @@ export default async function AdminDashboard() {
 
         {total === 0 ? (
           <div className="p-8 text-center text-sm text-ink-600">
-            No hay citas programadas para hoy.
+            {isTargetToday ? "No hay citas programadas para hoy." : "No hay citas programadas para este día."}
           </div>
         ) : (
           <div>

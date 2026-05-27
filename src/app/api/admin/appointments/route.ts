@@ -2,6 +2,8 @@ import { getSessionUser } from "@/lib/supabase/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { NextResponse } from "next/server";
 import { revalidatePath } from "next/cache";
+import { logAudit, getIpFromRequest } from "@/lib/audit";
+import type { UserRole } from "@/lib/roles";
 
 export async function PATCH(req: Request) {
   const user = await getSessionUser(req);
@@ -19,11 +21,16 @@ export async function PATCH(req: Request) {
     }
 
     const adminClient = createAdminClient();
-    
+
+    // Obtener estado anterior para auditoría
+    const { data: prevAppt } = await adminClient
+      .from("appointments")
+      .select("status, patient_id")
+      .eq("id", id)
+      .single();
+
     const updateData: Record<string, any> = { status };
-    if (extra) {
-      Object.assign(updateData, extra);
-    }
+    if (extra) Object.assign(updateData, extra);
 
     const { data: updatedAppt, error } = await adminClient
       .from("appointments")
@@ -36,7 +43,31 @@ export async function PATCH(req: Request) {
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
 
-    // Invalidar caché de Next.js para reflejar cambios en tiempo real
+    // Registrar auditoría
+    const action = status === "cancelled" ? "cancel" : "update";
+    const actionLabels: Record<string, string> = {
+      cancelled: "Cita cancelada",
+      attended:  "Cita marcada como atendida",
+      no_show:   "Cita marcada como no asistió",
+      scheduled: "Cita reprogramada",
+    };
+    await logAudit({
+      user_id: user.id,
+      user_email: user.email,
+      user_role: (user.app_metadata?.role as UserRole) ?? null,
+      action,
+      resource: "appointment",
+      resource_id: id,
+      description: actionLabels[status] || `Cita actualizada: ${status}`,
+      metadata: {
+        previous_status: prevAppt?.status,
+        new_status: status,
+        ...(extra || {}),
+      },
+      ip_address: getIpFromRequest(req),
+    });
+
+    // Invalidar caché
     try {
       revalidatePath("/admin");
       revalidatePath("/admin/calendario");
@@ -45,13 +76,10 @@ export async function PATCH(req: Request) {
       if (updatedAppt?.patient_id) {
         revalidatePath(`/admin/pacientes/${updatedAppt.patient_id}`);
       }
-    } catch (cacheError) {
-      console.error("Error al revalidar rutas de Next.js:", cacheError);
-    }
+    } catch { /* ignorar */ }
 
     return NextResponse.json({ success: true });
   } catch (error: any) {
     return NextResponse.json({ error: error.message || "Error al procesar la actualización" }, { status: 500 });
   }
 }
-

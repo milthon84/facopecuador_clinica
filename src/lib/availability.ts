@@ -108,19 +108,21 @@ function pushSlotsFromRange(
   }
 }
 
+// Ecuador no usa horario de verano: siempre UTC-5
+const TZ = "America/Guayaquil";
+
 function combineDateTime(date: Date, time: string): Date {
   // time es "HH:MM" o "HH:MM:SS"
+  // Construimos el timestamp como hora Ecuador independiente del servidor
   const [hh, mm] = time.split(":").map((x) => parseInt(x, 10));
-  const d = new Date(date);
-  d.setHours(hh, mm, 0, 0);
-  return d;
+  const dateStr = formatDateLocal(date);
+  // Crear la fecha con offset explícito de Ecuador (-05:00)
+  return new Date(`${dateStr}T${String(hh).padStart(2, "0")}:${String(mm).padStart(2, "0")}:00-05:00`);
 }
 
 export function formatDateLocal(d: Date): string {
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, "0");
-  const day = String(d.getDate()).padStart(2, "0");
-  return `${y}-${m}-${day}`;
+  // Usar siempre zona Ecuador para obtener la fecha correcta
+  return d.toLocaleDateString("en-CA", { timeZone: TZ }); // retorna YYYY-MM-DD
 }
 
 export function canCancel(appointmentStartsAt: string): boolean {
@@ -133,7 +135,10 @@ export function canCancel(appointmentStartsAt: string): boolean {
 
 export function formatTimeLocal(d: Date | string): string {
   const date = typeof d === "string" ? new Date(d) : d;
-  const hours = date.getHours().toString().padStart(2, "0");
-  const minutes = date.getMinutes().toString().padStart(2, "0");
+  // Formatear siempre en zona Ecuador, sin importar la zona del servidor
+  const hh = parseInt(date.toLocaleString("en-US", { timeZone: TZ, hour: "2-digit", hour12: false }));
+  const mm = parseInt(date.toLocaleString("en-US", { timeZone: TZ, minute: "2-digit" }));
+  const hours = String(hh === 24 ? 0 : hh).padStart(2, "0");
+  const minutes = String(mm).padStart(2, "0");
   return minutes === "00" ? `${hours}H` : `${hours}H${minutes}`;
 }

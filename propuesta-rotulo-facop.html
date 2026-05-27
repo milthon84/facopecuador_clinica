@@ -1,0 +1,726 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Propuesta Rótulo – Clínica FACOP</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,'Segoe UI',Roboto,sans-serif;background:#f0ecfb;color:#1a1a1a}
+
+.cover{background:#0f0f0f;color:#fff;padding:52px 48px 44px;position:relative;overflow:hidden}
+.cover::after{content:'';position:absolute;bottom:-80px;right:-80px;width:300px;height:300px;border-radius:50%;background:rgba(201,169,97,.07)}
+.cover-logo{display:flex;align-items:center;gap:14px;margin-bottom:36px}
+.logo-mark{width:50px;height:50px;border-radius:12px;background:#C9A961;display:flex;align-items:center;justify-content:center;font-size:24px;font-weight:900;color:#0f0f0f}
+.logo-name{font-size:17px;font-weight:700;color:#C9A961;letter-spacing:.4px}
+.cover h1{font-size:36px;font-weight:900;line-height:1.15;max-width:640px}
+.cover h1 em{color:#C9A961;font-style:normal}
+.cover-meta{margin-top:28px;display:flex;gap:28px;flex-wrap:wrap}
+.meta-item strong{display:block;color:rgba(255,255,255,.85);font-size:14px;margin-bottom:2px}
+.meta-item span{font-size:12px;color:rgba(255,255,255,.45)}
+
+.page{max-width:980px;margin:0 auto;padding:52px 32px 80px}
+.sec{margin-bottom:60px}
+.sec-tag{font-size:11px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:#7E5DB4;margin-bottom:6px}
+.sec-title{font-size:27px;font-weight:900;color:#0f0f0f;margin-bottom:14px}
+.sec-body{font-size:15px;line-height:1.75;color:#555;max-width:740px}
+
+.card{background:#fff;border-radius:20px;border:1px solid #e4ddf5;padding:32px;box-shadow:0 2px 16px rgba(100,60,160,.07);margin-bottom:24px}
+
+.opt-head{display:flex;align-items:center;gap:16px;margin-bottom:24px;padding-bottom:20px;border-bottom:1.5px solid #f5f1fb}
+.opt-badge{width:46px;height:46px;border-radius:13px;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:20px;color:#fff;flex-shrink:0}
+.badge-a{background:#7E5DB4}
+.badge-b{background:#C9A961}
+.opt-title{font-size:19px;font-weight:800;color:#0f0f0f}
+.opt-sub{font-size:13px;color:#7E5DB4;font-weight:600;margin-top:3px}
+
+.pros-cons{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:20px}
+.pc{border-radius:12px;padding:16px 18px}
+.pc-pro{background:#edf9f2;border:1px solid #b2e5cb}
+.pc-con{background:#fdf4f0;border:1px solid #f4c4b0}
+.pc h4{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;margin-bottom:10px}
+.pc-pro h4{color:#1a6e3f}
+.pc-con h4{color:#9a3015}
+.pc li{font-size:13px;line-height:1.65;list-style:none;padding:2px 0}
+.pc-pro li::before{content:'✓ ';color:#1a6e3f}
+.pc-con li::before{content:'→ ';color:#9a3015}
+
+.scene{border-radius:16px;overflow:hidden;margin:20px 0;position:relative;background:#b8cce0}
+.scene-caption{position:absolute;top:12px;left:12px;background:rgba(0,0,0,.65);color:#fff;font-size:11px;font-weight:700;padding:4px 12px;border-radius:20px;text-transform:uppercase;letter-spacing:.5px;z-index:2}
+.scene-badge{position:absolute;top:12px;right:12px;font-size:11px;font-weight:800;padding:4px 12px;border-radius:20px;text-transform:uppercase;z-index:2}
+.scene-badge-a{background:#7E5DB4;color:#fff}
+.scene-badge-b{background:#C9A961;color:#fff}
+
+/* Sign design preview */
+.sign-shell{background:#0f0f0f;border-radius:16px;overflow:hidden;position:relative}
+.sign-shell::before{content:'';position:absolute;top:0;left:0;right:0;height:5px;background:linear-gradient(90deg,#C9A961,#e8d080,#C9A961)}
+.sign-inner{padding:28px 28px 24px}
+.sign-top{display:flex;gap:24px;align-items:flex-start;justify-content:space-between}
+.sign-brand-col{flex:1}
+.facop-logotype{font-size:40px;font-weight:900;color:#C9A961;letter-spacing:-1px;line-height:1}
+.facop-sub{font-size:11px;color:rgba(255,255,255,.5);text-transform:uppercase;letter-spacing:2px;margin-top:6px}
+.facop-clinic{font-size:16px;font-weight:700;color:#fff;margin-top:10px;line-height:1.35}
+.sign-div{width:100%;height:1px;background:rgba(201,169,97,.25);margin:18px 0}
+.chips{display:flex;flex-wrap:wrap;gap:7px}
+.chip{background:rgba(201,169,97,.14);border:1px solid rgba(201,169,97,.35);color:#e8c870;font-size:12px;font-weight:600;padding:5px 13px;border-radius:20px}
+.sign-bottom-row{display:flex;justify-content:space-between;align-items:flex-end;margin-top:18px;gap:16px;flex-wrap:wrap}
+.sign-phone{font-size:22px;font-weight:900;color:#C9A961}
+.sign-web{font-size:12px;color:rgba(255,255,255,.5);margin-top:4px}
+.qr-wrapper{background:#7E5DB4;border-radius:12px;padding:12px 14px;display:flex;flex-direction:column;align-items:center;gap:7px}
+.qr-inner{background:#fff;border-radius:6px;padding:5px;width:72px;height:72px}
+.qr-cta{font-size:10px;font-weight:700;color:rgba(255,255,255,.9);text-align:center;text-transform:uppercase;letter-spacing:.5px}
+
+.dims-table{width:100%;border-collapse:collapse;font-size:14px;margin-top:16px}
+.dims-table th{background:#f5f1fb;color:#604390;font-size:11px;text-transform:uppercase;letter-spacing:.7px;padding:11px 14px;text-align:left}
+.dims-table td{padding:10px 14px;border-bottom:1px solid #f5f1fb;color:#333}
+.dims-table tr:last-child td{border-bottom:none}
+
+.rec-tag{display:inline-flex;align-items:center;gap:5px;background:#C9A961;color:#0f0f0f;font-size:10px;font-weight:800;padding:3px 10px;border-radius:20px;margin-left:8px;vertical-align:middle;text-transform:uppercase;letter-spacing:.5px}
+
+.footer-bar{background:#0f0f0f;padding:24px 48px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px}
+.footer-bar p{font-size:13px;color:rgba(255,255,255,.4)}
+.footer-bar strong{color:#C9A961}
+
+@media(max-width:640px){
+  .cover{padding:36px 24px 32px}.cover h1{font-size:26px}
+  .page{padding:32px 20px 60px}
+  .pros-cons{grid-template-columns:1fr}
+  .sign-top{flex-direction:column}
+}
+</style>
+</head>
+<body>
+
+<!-- COVER -->
+<div class="cover">
+  <div class="cover-logo">
+    <div class="logo-mark">F</div>
+    <div class="logo-name">FACOP · Clínica de Especialidades</div>
+  </div>
+  <h1>Propuesta de <em>Rótulo Publicitario</em><br>en Vía Pública — Quito</h1>
+  <div class="cover-meta">
+    <div class="meta-item"><strong>Versión</strong><span>1.1 — Mayo 2026</span></div>
+    <div class="meta-item"><strong>Ubicación</strong><span>Isla vial existente · Quito</span></div>
+    <div class="meta-item"><strong>Opciones</strong><span>2 propuestas con mockup real</span></div>
+    <div class="meta-item"><strong>Incluye</strong><span>QR para reservas online</span></div>
+  </div>
+</div>
+
+<div class="page">
+
+<!-- SITUACIÓN ACTUAL -->
+<div class="sec">
+  <div class="sec-tag">Ubicación identificada</div>
+  <div class="sec-title">El sitio: isla vial con poste existente</div>
+  <div class="sec-body">
+    La ubicación es una isla vial en la intersección, con un poste negro doble (estructura en Y) que ya sostiene
+    el rótulo de MULTITONER. La isla tiene borde de hormigón pintado rojo/blanco con vegetación interior.
+    Se proponen dos opciones de colocación del rótulo FACOP en este mismo punto.
+  </div>
+
+  <!-- Scene: estado actual recreado -->
+  <div class="scene" style="margin-top:28px; background:#9ab5cc;">
+    <div class="scene-caption">Estado actual del sitio</div>
+    <svg viewBox="0 0 900 520" xmlns="http://www.w3.org/2000/svg" style="width:100%;display:block;">
+
+      <!-- SKY gradient -->
+      <rect width="900" height="520" fill="#b2cce0"/>
+      <rect width="900" height="180" fill="#c8dce8"/>
+
+      <!-- Tall white building (background) -->
+      <rect x="530" y="20" width="170" height="310" fill="#d8d4cc" rx="2"/>
+      <rect x="530" y="20" width="170" height="310" fill="none" stroke="#c4c0b8" stroke-width="1.5"/>
+      <!-- Building windows grid -->
+      <g fill="#a8b8c8" opacity="0.7">
+        <rect x="540" y="35" width="22" height="14" rx="1"/>
+        <rect x="568" y="35" width="22" height="14" rx="1"/>
+        <rect x="596" y="35" width="22" height="14" rx="1"/>
+        <rect x="624" y="35" width="22" height="14" rx="1"/>
+        <rect x="652" y="35" width="22" height="14" rx="1"/>
+        <rect x="540" y="57" width="22" height="14" rx="1"/>
+        <rect x="568" y="57" width="22" height="14" rx="1"/>
+        <rect x="596" y="57" width="22" height="14" rx="1"/>
+        <rect x="624" y="57" width="22" height="14" rx="1"/>
+        <rect x="652" y="57" width="22" height="14" rx="1"/>
+        <rect x="540" y="79" width="22" height="14" rx="1"/>
+        <rect x="568" y="79" width="22" height="14" rx="1"/>
+        <rect x="596" y="79" width="22" height="14" rx="1"/>
+        <rect x="624" y="79" width="22" height="14" rx="1"/>
+        <rect x="652" y="79" width="22" height="14" rx="1"/>
+        <rect x="540" y="101" width="22" height="14" rx="1"/>
+        <rect x="568" y="101" width="22" height="14" rx="1"/>
+        <rect x="596" y="101" width="22" height="14" rx="1"/>
+        <rect x="624" y="101" width="22" height="14" rx="1"/>
+        <rect x="652" y="101" width="22" height="14" rx="1"/>
+        <rect x="540" y="123" width="22" height="14" rx="1"/>
+        <rect x="568" y="123" width="22" height="14" rx="1"/>
+        <rect x="596" y="123" width="22" height="14" rx="1"/>
+        <rect x="624" y="123" width="22" height="14" rx="1"/>
+        <rect x="652" y="123" width="22" height="14" rx="1"/>
+        <rect x="540" y="145" width="22" height="14" rx="1"/>
+        <rect x="568" y="145" width="22" height="14" rx="1"/>
+        <rect x="596" y="145" width="22" height="14" rx="1"/>
+        <rect x="624" y="145" width="22" height="14" rx="1"/>
+        <rect x="652" y="145" width="22" height="14" rx="1"/>
+      </g>
+      <!-- building facade lines -->
+      <line x1="530" y1="20" x2="700" y2="20" stroke="#bbb" stroke-width="1"/>
+      <line x1="530" y1="170" x2="700" y2="170" stroke="#bbb" stroke-width="0.5"/>
+      <line x1="530" y1="200" x2="700" y2="200" stroke="#bbb" stroke-width="0.5"/>
+      <line x1="585" y1="20" x2="585" y2="330" stroke="#ccc" stroke-width="0.5"/>
+      <line x1="640" y1="20" x2="640" y2="330" stroke="#ccc" stroke-width="0.5"/>
+
+      <!-- Left side buildings (small) -->
+      <rect x="20" y="190" width="70" height="140" fill="#c0b8a8" rx="2"/>
+      <rect x="95" y="200" width="60" height="130" fill="#b8b0a0" rx="2"/>
+      <!-- Letters on walls -->
+      <rect x="22" y="240" width="65" height="35" fill="#d0e0d8" rx="2"/>
+      <text x="54" y="261" text-anchor="middle" font-family="sans-serif" font-size="8" fill="#336" font-weight="700">DELFIN</text>
+      <text x="54" y="270" text-anchor="middle" font-family="sans-serif" font-size="7" fill="#336">AZUL</text>
+
+      <!-- Trees left background -->
+      <ellipse cx="160" cy="170" rx="40" ry="55" fill="#4a7040"/>
+      <ellipse cx="200" cy="155" rx="35" ry="60" fill="#3d6035"/>
+      <rect x="156" y="220" width="8" height="60" fill="#5a4030"/>
+      <rect x="196" y="210" width="8" height="70" fill="#5a4030"/>
+
+      <!-- Trees right behind pole -->
+      <ellipse cx="410" cy="150" rx="55" ry="75" fill="#3d6035"/>
+      <ellipse cx="460" cy="145" rx="45" ry="65" fill="#4a7040"/>
+      <ellipse cx="390" cy="165" rx="35" ry="55" fill="#355530"/>
+      <rect x="405" y="215" width="10" height="65" fill="#5a4030"/>
+
+      <!-- Road surface main -->
+      <rect x="0" y="330" width="900" height="190" fill="#888"/>
+      <!-- Road darker strips -->
+      <rect x="0" y="330" width="900" height="3" fill="#666"/>
+      <!-- Left lane road markings (white lines) -->
+      <!-- Crosswalk lines bottom -->
+      <rect x="50" y="410" width="160" height="12" fill="#fff" opacity="0.7" rx="2"/>
+      <rect x="50" y="430" width="160" height="12" fill="#fff" opacity="0.7" rx="2"/>
+      <rect x="50" y="450" width="160" height="12" fill="#fff" opacity="0.7" rx="2"/>
+      <rect x="50" y="470" width="160" height="12" fill="#fff" opacity="0.7" rx="2"/>
+      <rect x="50" y="490" width="160" height="12" fill="#fff" opacity="0.7" rx="2"/>
+      <!-- Right side crosswalk -->
+      <rect x="680" y="410" width="180" height="12" fill="#fff" opacity="0.7" rx="2"/>
+      <rect x="680" y="430" width="180" height="12" fill="#fff" opacity="0.7" rx="2"/>
+      <rect x="680" y="450" width="180" height="12" fill="#fff" opacity="0.7" rx="2"/>
+      <rect x="680" y="470" width="180" height="12" fill="#fff" opacity="0.7" rx="2"/>
+      <!-- Yellow line right -->
+      <line x1="860" y1="330" x2="860" y2="520" stroke="#f5c800" stroke-width="4"/>
+
+      <!-- Sidewalk top left -->
+      <rect x="0" y="310" width="900" height="22" fill="#c0bab0"/>
+      <rect x="0" y="310" width="900" height="22" fill="none" stroke="#aaa8a0" stroke-width="1"/>
+
+      <!-- ISLAND BASE — curved shape matching photo -->
+      <!-- Main island body -->
+      <path d="M 250,330 L 580,330 Q 600,330 600,350 L 600,430 Q 600,450 580,450 L 420,450 Q 380,450 370,430 L 250,430 Q 230,430 230,410 L 230,350 Q 230,330 250,330 Z" fill="#8a9a80"/>
+      <!-- Island white/red border (like in photo) -->
+      <path d="M 250,330 L 580,330 Q 600,330 600,350 L 600,430 Q 600,450 580,450 L 420,450 Q 380,450 370,430 L 250,430 Q 230,430 230,410 L 230,350 Q 230,330 250,330 Z"
+            fill="none" stroke="#ccc" stroke-width="14"/>
+      <!-- Red/brown lower band -->
+      <path d="M 255,420 L 575,420 Q 590,420 590,430 Q 590,445 580,448 L 420,448 Q 385,448 375,428 L 255,428 Q 240,428 240,420 Z" fill="#8b3a2a" opacity="0.85"/>
+      <!-- White upper band -->
+      <path d="M 252,332 L 578,332 Q 596,332 597,350 L 597,366 L 233,366 L 233,350 Q 234,332 252,332 Z" fill="#e8e4dc" opacity="0.85"/>
+
+      <!-- Island plants (agave/yucca like in photo) -->
+      <!-- Center plant -->
+      <line x1="415" y1="370" x2="415" y2="425" stroke="#2d5020" stroke-width="3"/>
+      <line x1="415" y1="390" x2="390" y2="365" stroke="#3a6828" stroke-width="3" stroke-linecap="round"/>
+      <line x1="415" y1="385" x2="442" y2="362" stroke="#3a6828" stroke-width="3" stroke-linecap="round"/>
+      <line x1="415" y1="395" x2="385" y2="380" stroke="#4a7830" stroke-width="2.5" stroke-linecap="round"/>
+      <line x1="415" y1="395" x2="448" y2="375" stroke="#4a7830" stroke-width="2.5" stroke-linecap="round"/>
+      <line x1="415" y1="400" x2="380" y2="395" stroke="#558035" stroke-width="2" stroke-linecap="round"/>
+      <line x1="415" y1="400" x2="452" y2="392" stroke="#558035" stroke-width="2" stroke-linecap="round"/>
+      <!-- second plant -->
+      <line x1="360" y1="375" x2="360" y2="425" stroke="#2d5020" stroke-width="2.5"/>
+      <line x1="360" y1="390" x2="340" y2="370" stroke="#3a6828" stroke-width="2" stroke-linecap="round"/>
+      <line x1="360" y1="388" x2="382" y2="368" stroke="#3a6828" stroke-width="2" stroke-linecap="round"/>
+      <line x1="360" y1="398" x2="338" y2="385" stroke="#4a7830" stroke-width="1.8" stroke-linecap="round"/>
+      <line x1="360" y1="398" x2="385" y2="382" stroke="#4a7830" stroke-width="1.8" stroke-linecap="round"/>
+
+      <!-- POLE STRUCTURE (Y-shaped black metal) -->
+      <!-- Main vertical pole -->
+      <rect x="404" y="200" width="14" height="230" fill="#222" rx="3"/>
+      <!-- Y fork left arm -->
+      <line x1="411" y1="230" x2="365" y2="175" stroke="#222" stroke-width="13" stroke-linecap="round"/>
+      <!-- Y fork right arm -->
+      <line x1="411" y1="230" x2="455" y2="175" stroke="#222" stroke-width="13" stroke-linecap="round"/>
+      <!-- Cross-bar at top -->
+      <rect x="340" y="158" width="140" height="10" fill="#1a1a1a" rx="4"/>
+
+      <!-- EXISTING MULTITONER SIGN -->
+      <rect x="330" y="38" width="160" height="150" fill="#e8eef8" rx="6"/>
+      <rect x="330" y="38" width="160" height="150" fill="none" stroke="#555" stroke-width="3" rx="6"/>
+      <!-- Sign content simplified -->
+      <rect x="330" y="38" width="160" height="28" fill="#1a2a5a" rx="5"/>
+      <text x="410" y="57" text-anchor="middle" font-family="sans-serif" font-size="9" font-weight="800" fill="#fff">MULTITONER SUPPLIES</text>
+      <rect x="332" y="67" width="155" height="60" fill="#c02020"/>
+      <text x="380" y="87" text-anchor="middle" font-family="sans-serif" font-size="10" font-weight="800" fill="#fff">SERVICIOS</text>
+      <text x="443" y="87" text-anchor="middle" font-family="sans-serif" font-size="10" font-weight="800" fill="#ff0">TINTAS</text>
+      <text x="385" y="103" text-anchor="middle" font-family="sans-serif" font-size="10" font-weight="800" fill="#fff">TÉCNICO</text>
+      <!-- brand logos row -->
+      <rect x="332" y="128" width="155" height="20" fill="#fff"/>
+      <text x="360" y="141" font-family="sans-serif" font-size="8" font-weight="800" fill="#cc0000">Canon</text>
+      <text x="390" y="141" font-family="sans-serif" font-size="8" font-weight="800" fill="#e85020">xerox</text>
+      <text x="420" y="141" font-family="sans-serif" font-size="8" font-weight="800" fill="#0052cc">hp</text>
+      <text x="365" y="155" font-family="sans-serif" font-size="8" font-weight="800" fill="#333">LEXMARK</text>
+      <text x="420" y="155" font-family="sans-serif" font-size="8" font-weight="800" fill="#00408c">EPSON</text>
+      <!-- small parking sign on pole -->
+      <rect x="380" y="285" width="28" height="44" fill="#1a4a9a" rx="4"/>
+      <text x="394" y="302" text-anchor="middle" font-family="sans-serif" font-size="13" font-weight="900" fill="#fff">P</text>
+      <text x="394" y="318" text-anchor="middle" font-family="sans-serif" font-size="6" fill="#fff">PUEL</text>
+
+      <!-- Right side: Parqueadero sign -->
+      <rect x="730" y="250" width="160" height="80" fill="#f5f5f5" rx="4"/>
+      <rect x="730" y="250" width="160" height="26" fill="#1a5080" rx="3"/>
+      <text x="810" y="267" text-anchor="middle" font-family="sans-serif" font-size="10" font-weight="800" fill="#fff">PARQUEADERO</text>
+      <text x="810" y="278" text-anchor="middle" font-family="sans-serif" font-size="9" fill="#fff">PÚBLICO</text>
+      <text x="810" y="305" text-anchor="middle" font-family="sans-serif" font-size="9" fill="#333">EL MANABA</text>
+
+      <!-- Utility poles/wires background -->
+      <line x1="100" y1="200" x2="100" y2="330" stroke="#444" stroke-width="5"/>
+      <line x1="100" y1="220" x2="530" y2="240" stroke="#333" stroke-width="1" opacity="0.6"/>
+      <line x1="100" y1="230" x2="530" y2="250" stroke="#333" stroke-width="1" opacity="0.6"/>
+      <line x1="100" y1="240" x2="530" y2="260" stroke="#333" stroke-width="1" opacity="0.5"/>
+      <line x1="530" y1="240" x2="530" y2="330" stroke="#444" stroke-width="4"/>
+
+    </svg>
+  </div>
+</div>
+
+<!-- OPCIÓN A -->
+<div class="sec">
+  <div class="sec-tag">Primera propuesta</div>
+  <div class="sec-title">Opción A — Debajo del letrero de Multitoner</div>
+
+  <div class="card">
+    <div class="opt-head">
+      <div class="opt-badge badge-a">A</div>
+      <div>
+        <div class="opt-title">Segundo cartel en el mismo poste</div>
+        <div class="opt-sub">El rótulo FACOP va colgado bajo el cartel existente de Multitoner</div>
+      </div>
+    </div>
+
+    <div class="scene" style="background:#9ab5cc;">
+      <div class="scene-caption">Mockup — Vista real Opción A</div>
+      <div class="scene-badge scene-badge-a">OPCIÓN A</div>
+      <svg viewBox="0 0 900 520" xmlns="http://www.w3.org/2000/svg" style="width:100%;display:block;">
+
+        <!-- SKY -->
+        <rect width="900" height="520" fill="#b2cce0"/>
+        <rect width="900" height="180" fill="#c8dce8"/>
+
+        <!-- Building -->
+        <rect x="530" y="20" width="170" height="310" fill="#d8d4cc" rx="2"/>
+        <rect x="530" y="20" width="170" height="310" fill="none" stroke="#c4c0b8" stroke-width="1.5"/>
+        <g fill="#a8b8c8" opacity="0.7">
+          <rect x="540" y="35" width="22" height="14" rx="1"/><rect x="568" y="35" width="22" height="14" rx="1"/>
+          <rect x="596" y="35" width="22" height="14" rx="1"/><rect x="624" y="35" width="22" height="14" rx="1"/>
+          <rect x="652" y="35" width="22" height="14" rx="1"/>
+          <rect x="540" y="57" width="22" height="14" rx="1"/><rect x="568" y="57" width="22" height="14" rx="1"/>
+          <rect x="596" y="57" width="22" height="14" rx="1"/><rect x="624" y="57" width="22" height="14" rx="1"/>
+          <rect x="652" y="57" width="22" height="14" rx="1"/>
+          <rect x="540" y="79" width="22" height="14" rx="1"/><rect x="568" y="79" width="22" height="14" rx="1"/>
+          <rect x="596" y="79" width="22" height="14" rx="1"/><rect x="624" y="79" width="22" height="14" rx="1"/>
+          <rect x="652" y="79" width="22" height="14" rx="1"/>
+          <rect x="540" y="101" width="22" height="14" rx="1"/><rect x="568" y="101" width="22" height="14" rx="1"/>
+          <rect x="596" y="101" width="22" height="14" rx="1"/><rect x="624" y="101" width="22" height="14" rx="1"/>
+          <rect x="652" y="101" width="22" height="14" rx="1"/>
+          <rect x="540" y="123" width="22" height="14" rx="1"/><rect x="568" y="123" width="22" height="14" rx="1"/>
+          <rect x="596" y="123" width="22" height="14" rx="1"/>
+        </g>
+        <line x1="585" y1="20" x2="585" y2="310" stroke="#ccc" stroke-width="0.5"/>
+        <line x1="640" y1="20" x2="640" y2="310" stroke="#ccc" stroke-width="0.5"/>
+
+        <!-- Trees -->
+        <ellipse cx="160" cy="170" rx="40" ry="55" fill="#4a7040"/>
+        <ellipse cx="200" cy="155" rx="35" ry="60" fill="#3d6035"/>
+        <rect x="156" y="222" width="8" height="60" fill="#5a4030"/>
+        <ellipse cx="410" cy="150" rx="55" ry="75" fill="#3d6035"/>
+        <ellipse cx="460" cy="145" rx="45" ry="65" fill="#4a7040"/>
+
+        <!-- Road -->
+        <rect x="0" y="330" width="900" height="190" fill="#888"/>
+        <rect x="0" y="330" width="900" height="3" fill="#666"/>
+        <rect x="50" y="410" width="160" height="12" fill="#fff" opacity="0.7" rx="2"/>
+        <rect x="50" y="430" width="160" height="12" fill="#fff" opacity="0.7" rx="2"/>
+        <rect x="50" y="450" width="160" height="12" fill="#fff" opacity="0.7" rx="2"/>
+        <rect x="50" y="470" width="160" height="12" fill="#fff" opacity="0.7" rx="2"/>
+        <rect x="680" y="410" width="180" height="12" fill="#fff" opacity="0.7" rx="2"/>
+        <rect x="680" y="430" width="180" height="12" fill="#fff" opacity="0.7" rx="2"/>
+        <rect x="680" y="450" width="180" height="12" fill="#fff" opacity="0.7" rx="2"/>
+        <line x1="860" y1="330" x2="860" y2="520" stroke="#f5c800" stroke-width="4"/>
+        <rect x="0" y="310" width="900" height="22" fill="#c0bab0"/>
+
+        <!-- Island -->
+        <path d="M 250,330 L 580,330 Q 600,330 600,350 L 600,430 Q 600,450 580,450 L 420,450 Q 380,450 370,430 L 250,430 Q 230,430 230,410 L 230,350 Q 230,330 250,330 Z" fill="#8a9a80"/>
+        <path d="M 250,330 L 580,330 Q 600,330 600,350 L 600,430 Q 600,450 580,450 L 420,450 Q 380,450 370,430 L 250,430 Q 230,430 230,410 L 230,350 Q 230,330 250,330 Z" fill="none" stroke="#ccc" stroke-width="14"/>
+        <path d="M 255,420 L 575,420 Q 590,420 590,430 Q 590,445 580,448 L 420,448 Q 385,448 375,428 L 255,428 Q 240,428 240,420 Z" fill="#8b3a2a" opacity="0.85"/>
+        <path d="M 252,332 L 578,332 Q 596,332 597,350 L 597,366 L 233,366 L 233,350 Q 234,332 252,332 Z" fill="#e8e4dc" opacity="0.85"/>
+
+        <!-- Plants -->
+        <line x1="415" y1="370" x2="415" y2="425" stroke="#2d5020" stroke-width="3"/>
+        <line x1="415" y1="390" x2="390" y2="365" stroke="#3a6828" stroke-width="3" stroke-linecap="round"/>
+        <line x1="415" y1="385" x2="442" y2="362" stroke="#3a6828" stroke-width="3" stroke-linecap="round"/>
+        <line x1="415" y1="395" x2="385" y2="380" stroke="#4a7830" stroke-width="2.5" stroke-linecap="round"/>
+        <line x1="415" y1="395" x2="448" y2="375" stroke="#4a7830" stroke-width="2.5" stroke-linecap="round"/>
+        <line x1="415" y1="400" x2="380" y2="395" stroke="#558035" stroke-width="2" stroke-linecap="round"/>
+        <line x1="415" y1="400" x2="452" y2="392" stroke="#558035" stroke-width="2" stroke-linecap="round"/>
+        <line x1="360" y1="375" x2="360" y2="425" stroke="#2d5020" stroke-width="2.5"/>
+        <line x1="360" y1="390" x2="340" y2="370" stroke="#3a6828" stroke-width="2" stroke-linecap="round"/>
+        <line x1="360" y1="388" x2="382" y2="368" stroke="#3a6828" stroke-width="2" stroke-linecap="round"/>
+
+        <!-- POLE -->
+        <rect x="404" y="220" width="14" height="210" fill="#222" rx="3"/>
+        <line x1="411" y1="246" x2="365" y2="190" stroke="#222" stroke-width="13" stroke-linecap="round"/>
+        <line x1="411" y1="246" x2="455" y2="190" stroke="#222" stroke-width="13" stroke-linecap="round"/>
+        <rect x="340" y="174" width="140" height="10" fill="#1a1a1a" rx="4"/>
+
+        <!-- EXISTING SIGN (unchanged Multitoner) -->
+        <rect x="330" y="38" width="160" height="148" fill="#e8eef8" rx="6"/>
+        <rect x="330" y="38" width="160" height="148" fill="none" stroke="#555" stroke-width="3" rx="6"/>
+        <rect x="330" y="38" width="160" height="28" fill="#1a2a5a" rx="5"/>
+        <text x="410" y="57" text-anchor="middle" font-family="sans-serif" font-size="9" font-weight="800" fill="#fff">MULTITONER SUPPLIES</text>
+        <rect x="332" y="67" width="155" height="58" fill="#c02020"/>
+        <text x="380" y="87" text-anchor="middle" font-family="sans-serif" font-size="10" font-weight="800" fill="#fff">SERVICIOS</text>
+        <text x="443" y="87" text-anchor="middle" font-family="sans-serif" font-size="10" font-weight="800" fill="#ff0">TINTAS</text>
+        <text x="385" y="103" text-anchor="middle" font-family="sans-serif" font-size="10" font-weight="800" fill="#fff">TÉCNICO</text>
+        <rect x="332" y="126" width="155" height="20" fill="#fff"/>
+        <text x="360" y="140" font-family="sans-serif" font-size="8" font-weight="800" fill="#cc0000">Canon</text>
+        <text x="390" y="140" font-family="sans-serif" font-size="8" font-weight="800" fill="#e85020">xerox</text>
+        <text x="420" y="140" font-family="sans-serif" font-size="8" font-weight="800" fill="#0052cc">hp</text>
+        <text x="365" y="155" font-family="sans-serif" font-size="8" font-weight="800" fill="#333">LEXMARK</text>
+        <text x="420" y="155" font-family="sans-serif" font-size="8" font-weight="800" fill="#00408c">EPSON</text>
+        <!-- JOIN BRACKET -->
+        <rect x="355" y="186" width="110" height="10" fill="#333" rx="3"/>
+        <!-- NEW FACOP SIGN BELOW — same width as existing -->
+        <rect x="330" y="196" width="160" height="110" fill="#0f0f0f" rx="6"/>
+        <rect x="330" y="196" width="160" height="5" fill="#C9A961" rx="3"/>
+        <rect x="330" y="196" width="160" height="110" fill="none" stroke="#C9A961" stroke-width="2.5" rx="6"/>
+        <!-- FACOP sign text -->
+        <text x="390" y="225" text-anchor="middle" font-family="sans-serif" font-size="22" font-weight="900" fill="#C9A961">FACOP</text>
+        <text x="390" y="240" text-anchor="middle" font-family="sans-serif" font-size="8" fill="rgba(255,255,255,.75)" letter-spacing="1">CLÍNICA DE ESPECIALIDADES</text>
+        <line x1="340" y1="246" x2="480" y2="246" stroke="rgba(201,169,97,.35)" stroke-width="1"/>
+        <text x="390" y="258" text-anchor="middle" font-family="sans-serif" font-size="7.5" fill="rgba(255,255,255,.6)">Ortodoncia · Implantes · Estética</text>
+        <text x="375" y="272" text-anchor="middle" font-family="sans-serif" font-size="10" font-weight="700" fill="#e8c870">☎ (02) 000-0000</text>
+        <!-- small QR -->
+        <rect x="457" y="202" width="26" height="26" fill="#fff" rx="3"/>
+        <text x="470" y="212" text-anchor="middle" font-family="sans-serif" font-size="5.5" fill="#333">QR</text>
+        <text x="470" y="220" text-anchor="middle" font-family="sans-serif" font-size="4" fill="#555">▪▪▪▪</text>
+        <text x="470" y="226" text-anchor="middle" font-family="sans-serif" font-size="5" fill="#333">████</text>
+        <text x="470" y="232" text-anchor="middle" font-family="sans-serif" font-size="7.5" fill="rgba(255,255,255,.7)">cita</text>
+
+        <!-- NUEVO label arrow -->
+        <rect x="502" y="240" width="58" height="22" fill="#7E5DB4" rx="11"/>
+        <text x="531" y="255" text-anchor="middle" font-family="sans-serif" font-size="10" font-weight="800" fill="#fff">NUEVO ▲</text>
+        <line x1="502" y1="251" x2="495" y2="251" stroke="#7E5DB4" stroke-width="2"/>
+
+        <!-- Parking sign -->
+        <rect x="380" y="300" width="28" height="44" fill="#1a4a9a" rx="4"/>
+        <text x="394" y="317" text-anchor="middle" font-family="sans-serif" font-size="13" font-weight="900" fill="#fff">P</text>
+        <text x="394" y="333" text-anchor="middle" font-family="sans-serif" font-size="6" fill="#fff">PUEL</text>
+      </svg>
+    </div>
+
+    <div class="pros-cons">
+      <div class="pc pc-pro">
+        <h4>Ventajas</h4>
+        <ul>
+          <li>Usa la estructura metálica existente</li>
+          <li>Instalación rápida, 1–2 días</li>
+          <li>Menor inversión (solo fabricación)</li>
+          <li>Alta visibilidad desde la intersección</li>
+          <li>Sin trámites municipales adicionales</li>
+        </ul>
+      </div>
+      <div class="pc pc-con">
+        <h4>Consideraciones</h4>
+        <ul>
+          <li>Requiere acuerdo con dueño de Multitoner</li>
+          <li>Altura inferior al letrero actual</li>
+          <li>Puede quedar cubierto por buses/camiones</li>
+          <li>Una sola cara (solo sentido frontal)</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- OPCIÓN B -->
+<div class="sec">
+  <div class="sec-tag">Segunda propuesta</div>
+  <div class="sec-title">Opción B — En la esquina de la isla
+    <span class="rec-tag">★ Recomendada</span>
+  </div>
+
+  <div class="card">
+    <div class="opt-head">
+      <div class="opt-badge badge-b">B</div>
+      <div>
+        <div class="opt-title">Nuevo poste propio en la esquina delantera de la isla</div>
+        <div class="opt-sub">Visible desde ambos carriles — mayor impacto y superficie</div>
+      </div>
+    </div>
+
+    <div class="scene" style="background:#9ab5cc;">
+      <div class="scene-caption">Mockup — Vista real Opción B</div>
+      <div class="scene-badge scene-badge-b">★ RECOMENDADA</div>
+      <svg viewBox="0 0 900 520" xmlns="http://www.w3.org/2000/svg" style="width:100%;display:block;">
+
+        <!-- SKY / BG same as always -->
+        <rect width="900" height="520" fill="#b2cce0"/>
+        <rect width="900" height="180" fill="#c8dce8"/>
+        <rect x="530" y="20" width="170" height="310" fill="#d8d4cc" rx="2"/>
+        <rect x="530" y="20" width="170" height="310" fill="none" stroke="#c4c0b8" stroke-width="1.5"/>
+        <g fill="#a8b8c8" opacity="0.7">
+          <rect x="540" y="35" width="22" height="14" rx="1"/><rect x="568" y="35" width="22" height="14" rx="1"/>
+          <rect x="596" y="35" width="22" height="14" rx="1"/><rect x="624" y="35" width="22" height="14" rx="1"/>
+          <rect x="652" y="35" width="22" height="14" rx="1"/>
+          <rect x="540" y="57" width="22" height="14" rx="1"/><rect x="568" y="57" width="22" height="14" rx="1"/>
+          <rect x="596" y="57" width="22" height="14" rx="1"/><rect x="624" y="57" width="22" height="14" rx="1"/>
+          <rect x="540" y="79" width="22" height="14" rx="1"/><rect x="568" y="79" width="22" height="14" rx="1"/>
+          <rect x="596" y="79" width="22" height="14" rx="1"/><rect x="624" y="79" width="22" height="14" rx="1"/>
+          <rect x="540" y="101" width="22" height="14" rx="1"/>
+          <rect x="568" y="101" width="22" height="14" rx="1"/>
+          <rect x="540" y="123" width="22" height="14" rx="1"/>
+        </g>
+        <line x1="585" y1="20" x2="585" y2="310" stroke="#ccc" stroke-width="0.5"/>
+
+        <!-- Trees -->
+        <ellipse cx="160" cy="170" rx="40" ry="55" fill="#4a7040"/>
+        <ellipse cx="200" cy="155" rx="35" ry="60" fill="#3d6035"/>
+        <rect x="156" y="222" width="8" height="60" fill="#5a4030"/>
+        <ellipse cx="410" cy="150" rx="55" ry="75" fill="#3d6035"/>
+        <ellipse cx="460" cy="145" rx="45" ry="65" fill="#4a7040"/>
+
+        <!-- Road -->
+        <rect x="0" y="330" width="900" height="190" fill="#888"/>
+        <rect x="0" y="330" width="900" height="3" fill="#666"/>
+        <rect x="50" y="410" width="160" height="12" fill="#fff" opacity="0.7" rx="2"/>
+        <rect x="50" y="430" width="160" height="12" fill="#fff" opacity="0.7" rx="2"/>
+        <rect x="50" y="450" width="160" height="12" fill="#fff" opacity="0.7" rx="2"/>
+        <rect x="50" y="470" width="160" height="12" fill="#fff" opacity="0.7" rx="2"/>
+        <rect x="680" y="410" width="180" height="12" fill="#fff" opacity="0.7" rx="2"/>
+        <rect x="680" y="430" width="180" height="12" fill="#fff" opacity="0.7" rx="2"/>
+        <rect x="680" y="450" width="180" height="12" fill="#fff" opacity="0.7" rx="2"/>
+        <line x1="860" y1="330" x2="860" y2="520" stroke="#f5c800" stroke-width="4"/>
+        <rect x="0" y="310" width="900" height="22" fill="#c0bab0"/>
+
+        <!-- Island -->
+        <path d="M 250,330 L 580,330 Q 600,330 600,350 L 600,430 Q 600,450 580,450 L 420,450 Q 380,450 370,430 L 250,430 Q 230,430 230,410 L 230,350 Q 230,330 250,330 Z" fill="#8a9a80"/>
+        <path d="M 250,330 L 580,330 Q 600,330 600,350 L 600,430 Q 600,450 580,450 L 420,450 Q 380,450 370,430 L 250,430 Q 230,430 230,410 L 230,350 Q 230,330 250,330 Z" fill="none" stroke="#ccc" stroke-width="14"/>
+        <path d="M 255,420 L 575,420 Q 590,420 590,430 Q 590,445 580,448 L 420,448 Q 385,448 375,428 L 255,428 Q 240,428 240,420 Z" fill="#8b3a2a" opacity="0.85"/>
+        <path d="M 252,332 L 578,332 Q 596,332 597,350 L 597,366 L 233,366 L 233,350 Q 234,332 252,332 Z" fill="#e8e4dc" opacity="0.85"/>
+
+        <!-- Plants -->
+        <line x1="415" y1="370" x2="415" y2="425" stroke="#2d5020" stroke-width="3"/>
+        <line x1="415" y1="390" x2="390" y2="365" stroke="#3a6828" stroke-width="3" stroke-linecap="round"/>
+        <line x1="415" y1="385" x2="442" y2="362" stroke="#3a6828" stroke-width="3" stroke-linecap="round"/>
+        <line x1="415" y1="395" x2="385" y2="380" stroke="#4a7830" stroke-width="2.5" stroke-linecap="round"/>
+        <line x1="415" y1="395" x2="448" y2="375" stroke="#4a7830" stroke-width="2.5" stroke-linecap="round"/>
+        <line x1="360" y1="375" x2="360" y2="425" stroke="#2d5020" stroke-width="2.5"/>
+        <line x1="360" y1="390" x2="340" y2="370" stroke="#3a6828" stroke-width="2" stroke-linecap="round"/>
+        <line x1="360" y1="388" x2="382" y2="368" stroke="#3a6828" stroke-width="2" stroke-linecap="round"/>
+
+        <!-- EXISTING POLE (Multitoner unchanged) -->
+        <rect x="404" y="200" width="14" height="230" fill="#222" rx="3"/>
+        <line x1="411" y1="226" x2="365" y2="170" stroke="#222" stroke-width="13" stroke-linecap="round"/>
+        <line x1="411" y1="226" x2="455" y2="170" stroke="#222" stroke-width="13" stroke-linecap="round"/>
+        <rect x="340" y="154" width="140" height="10" fill="#1a1a1a" rx="4"/>
+        <rect x="330" y="38" width="160" height="148" fill="#e8eef8" rx="6"/>
+        <rect x="330" y="38" width="160" height="28" fill="#1a2a5a" rx="5"/>
+        <text x="410" y="57" text-anchor="middle" font-family="sans-serif" font-size="9" font-weight="800" fill="#fff">MULTITONER SUPPLIES</text>
+        <rect x="332" y="67" width="155" height="58" fill="#c02020"/>
+        <text x="380" y="87" text-anchor="middle" font-family="sans-serif" font-size="10" font-weight="800" fill="#fff">SERVICIOS</text>
+        <text x="443" y="87" text-anchor="middle" font-family="sans-serif" font-size="10" font-weight="800" fill="#ff0">TINTAS</text>
+        <text x="385" y="103" text-anchor="middle" font-family="sans-serif" font-size="10" font-weight="800" fill="#fff">TÉCNICO</text>
+        <rect x="332" y="126" width="155" height="20" fill="#fff"/>
+        <text x="360" y="140" font-family="sans-serif" font-size="8" font-weight="800" fill="#cc0000">Canon</text>
+        <text x="390" y="140" font-family="sans-serif" font-size="8" font-weight="800" fill="#e85020">xerox</text>
+        <text x="420" y="140" font-family="sans-serif" font-size="8" font-weight="800" fill="#0052cc">hp</text>
+        <text x="365" y="155" font-family="sans-serif" font-size="8" font-weight="800" fill="#333">LEXMARK</text>
+        <text x="420" y="155" font-family="sans-serif" font-size="8" font-weight="800" fill="#00408c">EPSON</text>
+        <rect x="380" y="285" width="28" height="44" fill="#1a4a9a" rx="4"/>
+        <text x="394" y="302" text-anchor="middle" font-family="sans-serif" font-size="13" font-weight="900" fill="#fff">P</text>
+        <text x="394" y="318" text-anchor="middle" font-family="sans-serif" font-size="6" fill="#fff">PUEL</text>
+
+        <!-- NEW FACOP POLE — front corner of island (left side) -->
+        <!-- Base/anchor on island corner -->
+        <rect x="248" y="330" width="22" height="20" fill="#555" rx="2"/>
+        <!-- New pole -->
+        <rect x="254" y="145" width="10" height="190" fill="#1a1a1a" rx="3"/>
+        <!-- Horizontal arm -->
+        <rect x="220" y="138" width="78" height="9" fill="#1a1a1a" rx="3"/>
+
+        <!-- NEW FACOP SIGN — larger, prominent -->
+        <rect x="155" y="40" width="190" height="120" fill="#0f0f0f" rx="8"/>
+        <rect x="155" y="40" width="190" height="5" fill="#C9A961" rx="4"/>
+        <rect x="155" y="40" width="190" height="120" fill="none" stroke="#C9A961" stroke-width="3" rx="8"/>
+
+        <!-- sign content -->
+        <text x="250" y="78" text-anchor="middle" font-family="sans-serif" font-size="28" font-weight="900" fill="#C9A961" letter-spacing="-0.5">FACOP</text>
+        <text x="250" y="94" text-anchor="middle" font-family="sans-serif" font-size="9" fill="rgba(255,255,255,.8)" letter-spacing="1.2">CLÍNICA DE ESPECIALIDADES</text>
+        <line x1="170" y1="100" x2="330" y2="100" stroke="rgba(201,169,97,.3)" stroke-width="1"/>
+        <text x="250" y="112" text-anchor="middle" font-family="sans-serif" font-size="8" fill="rgba(255,255,255,.65)">Ortodoncia · Implantes · Estética · Cirugía</text>
+        <text x="240" y="127" text-anchor="middle" font-family="sans-serif" font-size="11" font-weight="800" fill="#e8c870">☎ (02) 000-0000</text>
+        <!-- QR -->
+        <rect x="302" y="48" width="35" height="35" fill="#fff" rx="4"/>
+        <text x="319" y="60" text-anchor="middle" font-family="sans-serif" font-size="7" fill="#333">QR</text>
+        <text x="319" y="69" text-anchor="middle" font-family="sans-serif" font-size="5" fill="#555">▪▪▪▪</text>
+        <text x="319" y="76" text-anchor="middle" font-family="sans-serif" font-size="5" fill="#555">▪ ▪ ▪</text>
+        <text x="319" y="83" text-anchor="middle" font-family="sans-serif" font-size="5" fill="#333">████</text>
+
+        <!-- NUEVO label -->
+        <rect x="100" y="63" width="48" height="22" fill="#C9A961" rx="11"/>
+        <text x="124" y="78" text-anchor="middle" font-family="sans-serif" font-size="10" font-weight="800" fill="#0f0f0f">NUEVO</text>
+        <line x1="148" y1="74" x2="155" y2="74" stroke="#C9A961" stroke-width="2"/>
+
+        <!-- Arrow indicating dual visibility -->
+        <text x="50" y="360" text-anchor="middle" font-family="sans-serif" font-size="10" fill="rgba(255,255,255,.8)">◄ visible</text>
+        <text x="840" y="360" text-anchor="middle" font-family="sans-serif" font-size="10" fill="rgba(255,255,255,.8)">visible ►</text>
+        <line x1="80" y1="355" x2="170" y2="340" stroke="rgba(255,255,255,.4)" stroke-width="1.5" stroke-dasharray="4,3"/>
+        <line x1="820" y1="355" x2="330" y2="340" stroke="rgba(255,255,255,.4)" stroke-width="1.5" stroke-dasharray="4,3"/>
+      </svg>
+    </div>
+
+    <div class="pros-cons">
+      <div class="pc pc-pro">
+        <h4>Ventajas</h4>
+        <ul>
+          <li>Visible desde ambos sentidos de tráfico</li>
+          <li>Altura superior, mayor alcance visual</li>
+          <li>No depende del propietario de Multitoner</li>
+          <li>Posible doble cara (frente y dorso)</li>
+          <li>Iluminación LED nocturna</li>
+          <li>Mayor tamaño de cartel disponible</li>
+        </ul>
+      </div>
+      <div class="pc pc-con">
+        <h4>Consideraciones</h4>
+        <ul>
+          <li>Requiere permiso municipal (EPMMOP)</li>
+          <li>Mayor inversión inicial</li>
+          <li>Instalación de 3–5 días</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- DISEÑO DEL RÓTULO -->
+<div class="sec">
+  <div class="sec-tag">Diseño final del cartel</div>
+  <div class="sec-title">Vista del rótulo FACOP a escala</div>
+  <div class="sign-shell">
+    <div class="sign-inner">
+      <div class="sign-top">
+        <div class="sign-brand-col">
+          <div class="facop-logotype">FACOP</div>
+          <div class="facop-sub">Clínica de Especialidades Odontológicas</div>
+          <div class="facop-clinic">Tu sonrisa en manos de especialistas.<br>Tecnología avanzada · Quito, Ecuador</div>
+        </div>
+        <div class="qr-wrapper">
+          <div class="qr-inner">
+            <svg viewBox="0 0 60 60" width="62" height="62" xmlns="http://www.w3.org/2000/svg">
+              <rect width="60" height="60" fill="#fff"/>
+              <rect x="4" y="4" width="18" height="18" fill="#000" rx="2"/><rect x="7" y="7" width="12" height="12" fill="#fff" rx="1"/><rect x="10" y="10" width="6" height="6" fill="#000"/>
+              <rect x="38" y="4" width="18" height="18" fill="#000" rx="2"/><rect x="41" y="7" width="12" height="12" fill="#fff" rx="1"/><rect x="44" y="10" width="6" height="6" fill="#000"/>
+              <rect x="4" y="38" width="18" height="18" fill="#000" rx="2"/><rect x="7" y="41" width="12" height="12" fill="#fff" rx="1"/><rect x="10" y="44" width="6" height="6" fill="#000"/>
+              <rect x="26" y="4" width="4" height="4" fill="#000"/><rect x="32" y="4" width="4" height="4" fill="#000"/>
+              <rect x="26" y="10" width="4" height="4" fill="#000"/><rect x="26" y="16" width="4" height="4" fill="#000"/>
+              <rect x="4" y="26" width="4" height="4" fill="#000"/><rect x="10" y="26" width="4" height="4" fill="#000"/>
+              <rect x="16" y="26" width="4" height="4" fill="#000"/><rect x="26" y="26" width="4" height="4" fill="#000"/>
+              <rect x="32" y="26" width="4" height="4" fill="#000"/><rect x="38" y="26" width="4" height="4" fill="#000"/>
+              <rect x="44" y="26" width="4" height="4" fill="#000"/><rect x="50" y="26" width="4" height="4" fill="#000"/>
+              <rect x="26" y="32" width="4" height="4" fill="#000"/><rect x="38" y="32" width="4" height="4" fill="#000"/>
+              <rect x="32" y="38" width="4" height="4" fill="#000"/><rect x="44" y="38" width="4" height="4" fill="#000"/>
+              <rect x="50" y="38" width="4" height="4" fill="#000"/><rect x="26" y="44" width="4" height="4" fill="#000"/>
+              <rect x="32" y="44" width="4" height="4" fill="#000"/><rect x="44" y="50" width="4" height="4" fill="#000"/>
+              <rect x="50" y="50" width="4" height="4" fill="#000"/>
+            </svg>
+          </div>
+          <div class="qr-cta">Reservar<br>cita online</div>
+        </div>
+      </div>
+      <div class="sign-div"></div>
+      <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:14px;">
+        <div class="chips">
+          <div class="chip">🦷 Ortodoncia</div>
+          <div class="chip">🔩 Implantes</div>
+          <div class="chip">✨ Estética dental</div>
+          <div class="chip">🔬 Endodoncia</div>
+          <div class="chip">🏥 Cirugía oral</div>
+        </div>
+        <div>
+          <div class="sign-phone">☎ (02) 000-0000</div>
+          <div class="sign-web">🌐 www.facop.com.ec</div>
+          <div class="sign-web">📍 Quito · Ecuador</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- DIMENSIONES -->
+<div class="sec">
+  <div class="sec-tag">Ficha técnica</div>
+  <div class="sec-title">Especificaciones y costos estimados</div>
+  <div class="card">
+    <table class="dims-table">
+      <thead>
+        <tr><th>Parámetro</th><th>Opción A – Bajo Multitoner</th><th>Opción B – Esquina isla ★</th></tr>
+      </thead>
+      <tbody>
+        <tr><td><strong>Dimensiones cartel</strong></td><td>1.60 m × 1.10 m</td><td>3.00 m × 1.50 m</td></tr>
+        <tr><td><strong>Área total</strong></td><td>1.76 m²</td><td>4.50 m² (doble cara = 9 m²)</td></tr>
+        <tr><td><strong>Caras</strong></td><td>1 cara</td><td>2 caras (frente + dorso)</td></tr>
+        <tr><td><strong>Altura desde piso</strong></td><td>~2.60 m</td><td>~3.20 m</td></tr>
+        <tr><td><strong>Soporte</strong></td><td>Herraje a estructura existente</td><td>Poste galvanizado Ø4" nuevo</td></tr>
+        <tr><td><strong>Material impresión</strong></td><td>Lona vinílica 440g + bastidor</td><td>Dibond 3mm + lona vinílica</td></tr>
+        <tr><td><strong>Iluminación</strong></td><td>Opcional – reflector LED</td><td>Caja de luz LED perimetral</td></tr>
+        <tr><td><strong>QR para citas</strong></td><td>30 × 30 cm, impresión UV</td><td>40 × 40 cm, impresión UV</td></tr>
+        <tr><td><strong>Permiso requerido</strong></td><td>Acuerdo verbal propietario</td><td>Permiso EPMMOP / Municipio Quito</td></tr>
+        <tr><td><strong>Tiempo instalación</strong></td><td>1–2 días</td><td>3–5 días</td></tr>
+        <tr><td><strong>Vida útil estimada</strong></td><td>4–6 años</td><td>7–10 años</td></tr>
+        <tr><td><strong>Costo estimado total</strong></td><td>$280 – $480 USD</td><td>$900 – $1,500 USD</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- RECOMENDACIÓN -->
+<div class="sec">
+  <div class="sec-tag">Conclusión</div>
+  <div class="sec-title">Recomendación</div>
+  <div class="card" style="border-left:4px solid #C9A961;border-radius:0 20px 20px 0;">
+    <p style="font-size:15px;line-height:1.8;color:#444;">
+      Habiendo analizado el sitio físico, <strong style="color:#0f0f0f;">se recomienda iniciar con la Opción A</strong> (bajo Multitoner) como
+      solución inmediata de bajo costo para ganar presencia visual rápidamente. En paralelo,
+      tramitar el permiso para la <strong style="color:#0f0f0f;">Opción B</strong> (esquina de isla) que ofrecerá visibilidad en
+      ambos sentidos de circulación y permitirá un rótulo más grande y con iluminación nocturna.
+    </p>
+    <div style="margin-top:20px;padding:18px;background:#f5f1fb;border-radius:14px;">
+      <p style="font-size:13px;font-weight:700;color:#604390;margin-bottom:10px;">Pasos recomendados:</p>
+      <ol style="font-size:14px;color:#444;line-height:2;padding-left:18px;">
+        <li>Contactar al propietario de Multitoner para acuerdo de colocación</li>
+        <li>Cotizar fabricación con empresa de publicidad exterior</li>
+        <li>Preparar el QR dinámico apuntando a <strong>facop.com.ec/citas</strong></li>
+        <li>En paralelo: solicitar permiso EPMMOP para Opción B</li>
+        <li>Confirmar teléfono, web y dirección antes de enviar a impresión</li>
+      </ol>
+    </div>
+  </div>
+</div>
+
+</div><!-- /page -->
+
+<div class="footer-bar">
+  <p>Propuesta elaborada para <strong>Clínica de Especialidades FACOP</strong> · Quito, Ecuador · Mayo 2026</p>
+  <p>Documento confidencial · Uso interno</p>
+</div>
+
+</body>
+</html>

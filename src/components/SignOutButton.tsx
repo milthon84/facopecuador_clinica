@@ -6,19 +6,27 @@ import { LogOut } from "lucide-react";
 export default function SignOutButton() {
   async function logout() {
     const supabase = createClient();
+
+    // Registrar logout antes de invalidar sesión
+    try {
+      await fetch("/api/admin/audit", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "logout" }),
+      });
+    } catch { /* ignorar */ }
+
     await supabase.auth.signOut();
-    // Hard navigation: los cambios de sesion necesitan un ciclo SSR completo.
-    // router.push() ignora que la cookie fue eliminada y sirve paginas del
-    // admin desde el cache del cliente.
     window.location.replace("/admin/login");
   }
 
   return (
     <button
       onClick={logout}
-      className="inline-flex items-center gap-1 text-sm text-white/80 hover:text-gold-500"
+      className="inline-flex items-center gap-1.5 text-sm text-white/70 hover:text-gold-400 transition-colors px-2 py-1 rounded-lg hover:bg-white/10"
     >
-      <LogOut size={14} /> Salir
+      <LogOut size={14} />
+      <span className="hidden sm:inline">Salir</span>
     </button>
   );
 }

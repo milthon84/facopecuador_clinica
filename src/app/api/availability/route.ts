@@ -7,7 +7,9 @@ export async function GET(req: Request) {
   const dateStr = url.searchParams.get("date");
   if (!dateStr) return NextResponse.json({ error: "date required" }, { status: 400 });
 
-  const date = new Date(dateStr + "T00:00:00");
+  // Interpretar la fecha como medianoche en Ecuador (UTC-5) para que
+  // getDay() y formatDateLocal() devuelvan el día correcto en Hostinger (UTC)
+  const date = new Date(dateStr + "T00:00:00-05:00");
   if (isNaN(date.getTime())) return NextResponse.json({ error: "invalid date" }, { status: 400 });
 
   const supabase = createAdminClient();

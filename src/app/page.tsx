@@ -1,5 +1,13 @@
 import Link from "next/link";
-import { CalendarDays, Clock, ShieldCheck } from "lucide-react";
+import { CalendarDays, Clock, ShieldCheck, Facebook, Instagram } from "lucide-react";
+
+function TikTokIcon({ size = 20 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
+      <path d="M19.59 6.69a4.83 4.83 0 0 1-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 0 1-2.88 2.5 2.89 2.89 0 0 1-2.89-2.89 2.89 2.89 0 0 1 2.89-2.89c.28 0 .54.04.79.1V9.01a6.33 6.33 0 0 0-.79-.05 6.34 6.34 0 0 0-6.34 6.34 6.34 6.34 0 0 0 6.34 6.34 6.34 6.34 0 0 0 6.33-6.34V8.69a8.18 8.18 0 0 0 4.78 1.52V6.76a4.85 4.85 0 0 1-1.01-.07z"/>
+    </svg>
+  );
+}
 
 export default function HomePage() {
   const clinicName = process.env.NEXT_PUBLIC_CLINIC_NAME || "Consultorio";
@@ -7,15 +15,38 @@ export default function HomePage() {
   return (
     <main className="min-h-screen bg-gradient-to-br from-lilac-50 via-white to-gold-50">
       <header className="px-6 py-5 flex items-center justify-between max-w-6xl mx-auto">
-        <div className="flex items-center gap-2">
-          <div className="w-9 h-9 rounded-xl bg-ink-900 flex items-center justify-center">
-            <span className="text-gold-500 font-bold">A</span>
-          </div>
-          <span className="font-semibold text-ink-900">{clinicName}</span>
+        <div className="flex items-center">
+          <img src="/logo.png" alt={clinicName} className="h-20 w-auto object-contain" />
         </div>
-        <Link href="/admin" className="text-sm text-lilac-700 hover:text-lilac-900">
-          Acceso administrador
-        </Link>
+        <div className="flex items-center gap-2">
+          <a
+            href="https://facebook.com"
+            target="_blank"
+            rel="noopener noreferrer"
+            aria-label="Facebook"
+            className="w-9 h-9 rounded-lg border border-ink-900/15 flex items-center justify-center text-ink-900/50 hover:text-ink-900 hover:border-ink-900/40 transition-all"
+          >
+            <Facebook size={16} />
+          </a>
+          <a
+            href="https://instagram.com"
+            target="_blank"
+            rel="noopener noreferrer"
+            aria-label="Instagram"
+            className="w-9 h-9 rounded-lg border border-ink-900/15 flex items-center justify-center text-ink-900/50 hover:text-ink-900 hover:border-ink-900/40 transition-all"
+          >
+            <Instagram size={16} />
+          </a>
+          <a
+            href="https://tiktok.com"
+            target="_blank"
+            rel="noopener noreferrer"
+            aria-label="TikTok"
+            className="w-9 h-9 rounded-lg border border-ink-900/15 flex items-center justify-center text-ink-900/50 hover:text-ink-900 hover:border-ink-900/40 transition-all"
+          >
+            <TikTokIcon size={16} />
+          </a>
+        </div>
       </header>
 
       <section className="px-6 py-16 max-w-3xl mx-auto text-center">
@@ -28,8 +59,8 @@ export default function HomePage() {
         <p className="text-lg text-ink-600 mb-10">
           Elegí el día y horario que mejor te convenga. Sin llamadas, sin esperas.
         </p>
-        <Link href="/reservar" className="btn-primary text-base px-7 py-4">
-          <CalendarDays size={18} />
+        <Link href="/reservar" className="btn-primary text-lg px-10 py-5 rounded-2xl shadow-lg hover:shadow-xl transition-all">
+          <CalendarDays size={22} />
           Reservar cita ahora
         </Link>
       </section>

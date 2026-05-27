@@ -25,24 +25,60 @@ function formatES(date: Date): string {
   });
 }
 
+const LOGO_URL = process.env.NEXT_PUBLIC_SITE_URL
+  ? `${process.env.NEXT_PUBLIC_SITE_URL}/logo.jpg`
+  : "";
+
 function baseHtml(title: string, body: string): string {
-  return `
-<!DOCTYPE html>
-<html><head><meta charset="utf-8"><title>${title}</title></head>
-<body style="font-family: -apple-system, Segoe UI, Roboto, sans-serif; background:#f5f1fb; padding:24px; color:#0f0f0f;">
-  <div style="max-width:560px; margin:0 auto; background:#ffffff; border-radius:16px; overflow:hidden; box-shadow:0 4px 12px rgba(0,0,0,0.06);">
-    <div style="background:#0f0f0f; padding:24px; text-align:center;">
-      <h1 style="margin:0; color:#C9A961; font-size:22px; font-weight:600; letter-spacing:0.5px;">${CLINIC}</h1>
-    </div>
-    <div style="padding:32px 28px;">
-      ${body}
-    </div>
-    <div style="background:#f5f1fb; padding:16px; text-align:center; font-size:12px; color:#604390;">
-      ${ADDRESS ? `<div>${ADDRESS}</div>` : ""}
-      ${PHONE ? `<div>${PHONE}</div>` : ""}
-    </div>
-  </div>
-</body></html>`;
+  const headerContent = LOGO_URL
+    ? `<img src="${LOGO_URL}" alt="${CLINIC}" style="max-height:52px; width:auto; display:inline-block; vertical-align:middle; border-radius:6px;" />`
+    : `<span style="color:#C9A961; font-size:22px; font-weight:700; letter-spacing:0.5px; font-family:-apple-system,Segoe UI,Roboto,sans-serif;">${CLINIC}</span>`;
+
+  const footerInfo = [ADDRESS, PHONE].filter(Boolean).join("&nbsp;&nbsp;·&nbsp;&nbsp;");
+
+  return `<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>${title}</title>
+</head>
+<body style="margin:0; padding:0; background:#f0ebf8; font-family:-apple-system,Segoe UI,Roboto,Arial,sans-serif; color:#1a1a1a;">
+  <!-- Wrapper table 100% width -->
+  <table width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#f0ebf8; min-width:100%;">
+    <tr>
+      <td align="center" style="padding:32px 16px;">
+        <!-- Content card 600px max -->
+        <table width="600" cellpadding="0" cellspacing="0" border="0" style="max-width:600px; width:100%; background:#ffffff; border-radius:16px; overflow:hidden; box-shadow:0 4px 24px rgba(100,60,160,0.10);">
+
+          <!-- Header -->
+          <tr>
+            <td style="background:#0f0f0f; padding:22px 32px; text-align:center;">
+              ${headerContent}
+            </td>
+          </tr>
+
+          <!-- Body -->
+          <tr>
+            <td style="padding:36px 36px 28px 36px;">
+              ${body}
+            </td>
+          </tr>
+
+          <!-- Footer -->
+          <tr>
+            <td style="background:#f5f1fb; padding:18px 32px; text-align:center; font-size:12px; color:#7E5DB4; border-top:1px solid #e8e0f5;">
+              ${footerInfo ? `<div style="margin-bottom:4px;">${footerInfo}</div>` : ""}
+              <div style="color:#a89bc4; font-size:11px; margin-top:4px;">${CLINIC} · Todos los derechos reservados</div>
+            </td>
+          </tr>
+
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>`;
 }
 
 interface ApptEmailData {
@@ -60,20 +96,31 @@ export async function sendConfirmationEmail(d: ApptEmailData) {
   }
   const dt = formatES(new Date(d.startsAt));
   const body = `
-    <h2 style="color:#7E5DB4; margin:0 0 12px;">¡Cita confirmada!</h2>
-    <p style="font-size:15px; line-height:1.6;">Hola <strong>${d.patientName}</strong>,</p>
-    <p style="font-size:15px; line-height:1.6;">Tu cita en <strong>${CLINIC}</strong> ha sido confirmada.</p>
-    <div style="background:#fbf7ee; border-left:4px solid #C9A961; padding:16px; margin:20px 0; border-radius:6px;">
-      <div style="font-size:14px; color:#604390; margin-bottom:4px;">FECHA Y HORA</div>
-      <div style="font-size:17px; font-weight:600;">${dt}</div>
-    </div>
-    <div style="background:#f5f1fb; border-left:4px solid #7E5DB4; padding:16px; margin:20px 0; border-radius:6px;">
-      <div style="font-size:14px; color:#604390; margin-bottom:4px;">UBICACIÓN</div>
-      <div style="font-size:15px; font-weight:600; color:#0f0f0f; margin-bottom:8px;">${ADDRESS || "Facop"}</div>
-      <a href="https://maps.app.goo.gl/rG2VKyLm5N4yr7s67" target="_blank" style="display:inline-block; font-size:13px; font-weight:600; color:#ffffff; background:#7E5DB4; padding:8px 16px; border-radius:6px; text-decoration:none; margin-top:4px;">Ver en Google Maps</a>
-    </div>
-    ${d.reason ? `<p style="font-size:14px; color:#3D3D3D;"><strong>Motivo:</strong> ${d.reason}</p>` : ""}
-    <p style="font-size:13px; color:#604390; margin-top:24px;">Si necesitás cancelar o reprogramar, contactanos al menos 24 horas antes de la cita.</p>
+    <h2 style="color:#7E5DB4; margin:0 0 8px; font-size:22px; font-weight:700;">¡Cita confirmada! ✅</h2>
+    <p style="font-size:15px; line-height:1.6; margin:0 0 4px;">Hola <strong>${d.patientName}</strong>,</p>
+    <p style="font-size:15px; line-height:1.6; margin:0 0 24px; color:#444;">Tu cita en <strong>${CLINIC}</strong> ha sido confirmada.</p>
+
+    <table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-bottom:16px;">
+      <tr>
+        <td style="background:#fbf7ee; border-left:4px solid #C9A961; padding:16px 20px; border-radius:0 8px 8px 0;">
+          <div style="font-size:11px; font-weight:700; color:#9e7920; letter-spacing:0.8px; margin-bottom:6px; text-transform:uppercase;">📅 Fecha y Hora</div>
+          <div style="font-size:18px; font-weight:700; color:#1a1a1a;">${dt}</div>
+        </td>
+      </tr>
+    </table>
+
+    <table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-bottom:16px;">
+      <tr>
+        <td style="background:#f5f1fb; border-left:4px solid #7E5DB4; padding:16px 20px; border-radius:0 8px 8px 0;">
+          <div style="font-size:11px; font-weight:700; color:#604390; letter-spacing:0.8px; margin-bottom:6px; text-transform:uppercase;">📍 Ubicación</div>
+          <div style="font-size:15px; font-weight:600; color:#1a1a1a; margin-bottom:12px;">${ADDRESS || CLINIC}</div>
+          <a href="https://maps.app.goo.gl/rG2VKyLm5N4yr7s67" target="_blank" style="display:inline-block; font-size:13px; font-weight:600; color:#ffffff; background:#7E5DB4; padding:9px 18px; border-radius:8px; text-decoration:none;">Ver en Google Maps →</a>
+        </td>
+      </tr>
+    </table>
+
+    ${d.reason ? `<p style="font-size:14px; color:#3D3D3D; background:#f9f9f9; padding:12px 16px; border-radius:8px; margin:0 0 16px;"><strong>Motivo:</strong> ${d.reason}</p>` : ""}
+    <p style="font-size:13px; color:#7E5DB4; margin:24px 0 0; padding-top:16px; border-top:1px solid #f0ebf8;">Si necesitás cancelar o reprogramar, contáctanos al menos 24 horas antes.</p>
   `;
   try {
     console.log(`✉️ Intentando enviar correo de confirmación de cita a: ${d.patientEmail}...`);
@@ -100,19 +147,30 @@ export async function sendReminderEmail(d: ApptEmailData) {
   }
   const dt = formatES(new Date(d.startsAt));
   const body = `
-    <h2 style="color:#7E5DB4; margin:0 0 12px;">Recordatorio de tu cita</h2>
-    <p style="font-size:15px; line-height:1.6;">Hola <strong>${d.patientName}</strong>,</p>
-    <p style="font-size:15px; line-height:1.6;">Te recordamos que mañana tenés tu cita en <strong>${CLINIC}</strong>.</p>
-    <div style="background:#fbf7ee; border-left:4px solid #C9A961; padding:16px; margin:20px 0; border-radius:6px;">
-      <div style="font-size:14px; color:#604390; margin-bottom:4px;">FECHA Y HORA</div>
-      <div style="font-size:17px; font-weight:600;">${dt}</div>
-    </div>
-    <div style="background:#f5f1fb; border-left:4px solid #7E5DB4; padding:16px; margin:20px 0; border-radius:6px;">
-      <div style="font-size:14px; color:#604390; margin-bottom:4px;">UBICACIÓN</div>
-      <div style="font-size:15px; font-weight:600; color:#0f0f0f; margin-bottom:8px;">${ADDRESS || "Facop"}</div>
-      <a href="https://maps.app.goo.gl/rG2VKyLm5N4yr7s67" target="_blank" style="display:inline-block; font-size:13px; font-weight:600; color:#ffffff; background:#7E5DB4; padding:8px 16px; border-radius:6px; text-decoration:none; margin-top:4px;">Ver en Google Maps</a>
-    </div>
-    <p style="font-size:13px; color:#604390;">¡Te esperamos!</p>
+    <h2 style="color:#7E5DB4; margin:0 0 8px; font-size:22px; font-weight:700;">Recordatorio de tu cita 🔔</h2>
+    <p style="font-size:15px; line-height:1.6; margin:0 0 4px;">Hola <strong>${d.patientName}</strong>,</p>
+    <p style="font-size:15px; line-height:1.6; margin:0 0 24px; color:#444;">Te recordamos que mañana tenés tu cita en <strong>${CLINIC}</strong>.</p>
+
+    <table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-bottom:16px;">
+      <tr>
+        <td style="background:#fbf7ee; border-left:4px solid #C9A961; padding:16px 20px; border-radius:0 8px 8px 0;">
+          <div style="font-size:11px; font-weight:700; color:#9e7920; letter-spacing:0.8px; margin-bottom:6px; text-transform:uppercase;">📅 Fecha y Hora</div>
+          <div style="font-size:18px; font-weight:700; color:#1a1a1a;">${dt}</div>
+        </td>
+      </tr>
+    </table>
+
+    <table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-bottom:24px;">
+      <tr>
+        <td style="background:#f5f1fb; border-left:4px solid #7E5DB4; padding:16px 20px; border-radius:0 8px 8px 0;">
+          <div style="font-size:11px; font-weight:700; color:#604390; letter-spacing:0.8px; margin-bottom:6px; text-transform:uppercase;">📍 Ubicación</div>
+          <div style="font-size:15px; font-weight:600; color:#1a1a1a; margin-bottom:12px;">${ADDRESS || CLINIC}</div>
+          <a href="https://maps.app.goo.gl/rG2VKyLm5N4yr7s67" target="_blank" style="display:inline-block; font-size:13px; font-weight:600; color:#ffffff; background:#7E5DB4; padding:9px 18px; border-radius:8px; text-decoration:none;">Ver en Google Maps →</a>
+        </td>
+      </tr>
+    </table>
+
+    <p style="font-size:15px; color:#7E5DB4; text-align:center; font-weight:600; margin:0;">¡Te esperamos! 😊</p>
   `;
   try {
     console.log(`✉️ Intentando enviar recordatorio de cita a: ${d.patientEmail}...`);
@@ -139,11 +197,20 @@ export async function sendCancellationEmail(d: ApptEmailData & { reason?: string
   }
   const dt = formatES(new Date(d.startsAt));
   const body = `
-    <h2 style="color:#7E5DB4; margin:0 0 12px;">Cita cancelada</h2>
-    <p style="font-size:15px; line-height:1.6;">Hola <strong>${d.patientName}</strong>,</p>
-    <p style="font-size:15px; line-height:1.6;">Tu cita del <strong>${dt}</strong> ha sido cancelada.</p>
-    ${d.reason ? `<p style="font-size:14px; color:#3D3D3D;"><strong>Motivo:</strong> ${d.reason}</p>` : ""}
-    <p style="font-size:13px; color:#604390;">Podés reservar una nueva cita en nuestro sitio cuando quieras.</p>
+    <h2 style="color:#c0392b; margin:0 0 8px; font-size:22px; font-weight:700;">Cita cancelada ❌</h2>
+    <p style="font-size:15px; line-height:1.6; margin:0 0 4px;">Hola <strong>${d.patientName}</strong>,</p>
+    <p style="font-size:15px; line-height:1.6; margin:0 0 20px; color:#444;">Tu cita del <strong>${dt}</strong> ha sido cancelada.</p>
+    ${d.reason ? `
+    <table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-bottom:20px;">
+      <tr>
+        <td style="background:#fff5f5; border-left:4px solid #e57373; padding:14px 18px; border-radius:0 8px 8px 0;">
+          <div style="font-size:11px; font-weight:700; color:#c0392b; letter-spacing:0.8px; margin-bottom:4px; text-transform:uppercase;">Motivo</div>
+          <div style="font-size:14px; color:#444;">${d.reason}</div>
+        </td>
+      </tr>
+    </table>
+    ` : ""}
+    <p style="font-size:14px; color:#7E5DB4; margin:0;">Podés reservar una nueva cita en nuestro sitio cuando quieras.</p>
   `;
   try {
     console.log(`✉️ Intentando enviar correo de cancelación a: ${d.patientEmail}...`);
@@ -176,17 +243,32 @@ export async function sendAdminNotification(d: ApptEmailData & { phone?: string;
 
   const dt = formatES(new Date(d.startsAt));
   const body = `
-    <h2 style="color:#7E5DB4; margin:0 0 12px;">Nueva cita reservada</h2>
-    <div style="background:#fbf7ee; border-left:4px solid #C9A961; padding:16px; margin:20px 0; border-radius:6px;">
-      <div style="font-size:17px; font-weight:600; margin-bottom:8px;">${dt}</div>
-      <table style="font-size:14px; width:100%;">
-        <tr><td style="padding:4px 0; color:#604390;">Paciente:</td><td style="padding:4px 0;"><strong>${d.patientName}</strong></td></tr>
-        ${d.document ? `<tr><td style="padding:4px 0; color:#604390;">Cédula:</td><td style="padding:4px 0;">${d.document}</td></tr>` : ""}
-        ${d.phone ? `<tr><td style="padding:4px 0; color:#604390;">Teléfono:</td><td style="padding:4px 0;">${d.phone}</td></tr>` : ""}
-        <tr><td style="padding:4px 0; color:#604390;">Email:</td><td style="padding:4px 0;">${d.patientEmail}</td></tr>
-        ${d.reason ? `<tr><td style="padding:4px 0; color:#604390; vertical-align:top;">Motivo:</td><td style="padding:4px 0;">${d.reason}</td></tr>` : ""}
-      </table>
-    </div>
+    <h2 style="color:#7E5DB4; margin:0 0 8px; font-size:22px; font-weight:700;">Nueva cita reservada 📋</h2>
+    <p style="font-size:14px; color:#888; margin:0 0 20px;">Se ha registrado una nueva solicitud de cita.</p>
+
+    <table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-bottom:16px;">
+      <tr>
+        <td style="background:#fbf7ee; border-left:4px solid #C9A961; padding:16px 20px; border-radius:0 8px 8px 0;">
+          <div style="font-size:11px; font-weight:700; color:#9e7920; letter-spacing:0.8px; margin-bottom:6px; text-transform:uppercase;">📅 Fecha y Hora</div>
+          <div style="font-size:18px; font-weight:700; color:#1a1a1a;">${dt}</div>
+        </td>
+      </tr>
+    </table>
+
+    <table width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#f5f1fb; border-radius:10px; margin-bottom:16px;">
+      <tr>
+        <td style="padding:18px 20px;">
+          <div style="font-size:11px; font-weight:700; color:#604390; letter-spacing:0.8px; margin-bottom:12px; text-transform:uppercase;">👤 Datos del Paciente</div>
+          <table width="100%" cellpadding="0" cellspacing="0" border="0" style="font-size:14px;">
+            <tr><td style="padding:5px 0; color:#604390; width:120px; font-weight:600;">Paciente:</td><td style="padding:5px 0; font-weight:700;">${d.patientName}</td></tr>
+            ${d.document ? `<tr><td style="padding:5px 0; color:#604390; font-weight:600;">Cédula:</td><td style="padding:5px 0;">${d.document}</td></tr>` : ""}
+            ${d.phone ? `<tr><td style="padding:5px 0; color:#604390; font-weight:600;">Teléfono:</td><td style="padding:5px 0;">${d.phone}</td></tr>` : ""}
+            <tr><td style="padding:5px 0; color:#604390; font-weight:600;">Email:</td><td style="padding:5px 0;">${d.patientEmail}</td></tr>
+            ${d.reason ? `<tr><td style="padding:5px 0; color:#604390; font-weight:600; vertical-align:top;">Motivo:</td><td style="padding:5px 0;">${d.reason}</td></tr>` : ""}
+          </table>
+        </td>
+      </tr>
+    </table>
   `;
   try {
     console.log(`✉️ Intentando enviar notificación de admin a: ${adminEmail}...`);
@@ -589,37 +671,55 @@ export async function sendDentalConsultationEmail(d: DentalEmailData) {
     `;
 
   const body = `
-    <h2 style="color:#7E5DB4; margin:0 0 12px; font-family:sans-serif;">Resumen de tu atención odontológica</h2>
-    <p style="font-size:15px; line-height:1.6; font-family:sans-serif;">Hola <strong>${d.patientName}</strong>,</p>
-    <p style="font-size:15px; line-height:1.6; font-family:sans-serif;">Queremos compartirte el resumen y receta de tu última atención en <strong>${CLINIC}</strong>.</p>
-    
-    <div style="background:#f5f1fb; border-radius:10px; padding:16px 20px; margin:20px 0; font-family:sans-serif;">
-      <h3 style="color:#604390; margin:0 0 8px; font-size:15px; font-weight:bold;">Detalles de la Cita</h3>
-      <table style="font-size:14px; width:100%; font-family:sans-serif;">
-        <tr><td style="padding:4px 0; color:#604390; width:100px;">Fecha:</td><td style="padding:4px 0;"><strong>${d.dateStr}</strong></td></tr>
-      </table>
-    </div>
+    <h2 style="color:#7E5DB4; margin:0 0 8px; font-size:22px; font-weight:700; font-family:sans-serif;">Resumen de tu atención odontológica 🦷</h2>
+    <p style="font-size:15px; line-height:1.6; margin:0 0 4px; font-family:sans-serif;">Hola <strong>${d.patientName}</strong>,</p>
+    <p style="font-size:15px; line-height:1.6; margin:0 0 24px; color:#444; font-family:sans-serif;">Queremos compartirte el resumen y receta de tu última atención en <strong>${CLINIC}</strong>.</p>
 
-    <div style="background:#ffffff; border:1px solid #e1d6f2; border-radius:10px; padding:20px; margin:20px 0; font-family:sans-serif;">
-      <h3 style="color:#604390; margin:0 0 10px; font-size:15px; font-weight:bold;">Evolución y Procedimientos Realizados</h3>
-      <p style="font-size:14px; line-height:1.6; margin:0; white-space:pre-line;">${d.treatmentNotes}</p>
-    </div>
+    <!-- Fecha -->
+    <table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-bottom:16px;">
+      <tr>
+        <td style="background:#f5f1fb; border-left:4px solid #7E5DB4; padding:14px 20px; border-radius:0 8px 8px 0; font-family:sans-serif;">
+          <div style="font-size:11px; font-weight:700; color:#604390; letter-spacing:0.8px; margin-bottom:4px; text-transform:uppercase;">📅 Detalles de la Cita</div>
+          <div style="font-size:16px; font-weight:700; color:#1a1a1a;">${d.dateStr}</div>
+        </td>
+      </tr>
+    </table>
+
+    <!-- Evolución -->
+    <table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-bottom:16px;">
+      <tr>
+        <td style="background:#ffffff; border:1px solid #e1d6f2; border-radius:10px; padding:20px; font-family:sans-serif;">
+          <div style="font-size:13px; font-weight:700; color:#604390; letter-spacing:0.5px; margin-bottom:10px; text-transform:uppercase;">Evolución y Procedimientos Realizados</div>
+          <p style="font-size:14px; line-height:1.7; margin:0; white-space:pre-line; color:#333;">${d.treatmentNotes}</p>
+        </td>
+      </tr>
+    </table>
 
     ${d.prescription ? `
-    <div style="background:#fbf7ee; border-left:4px solid #C9A961; border-radius:4px; padding:20px; margin:20px 0; font-family:sans-serif;">
-      <h3 style="color:#9e7920; margin:0 0 10px; font-size:15px; font-weight:bold;">Receta e Indicaciones Médicas</h3>
-      <p style="font-size:14px; line-height:1.6; margin:0; white-space:pre-line;">${d.prescription}</p>
-    </div>
+    <!-- Receta -->
+    <table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-bottom:16px;">
+      <tr>
+        <td style="background:#fbf7ee; border-left:4px solid #C9A961; padding:18px 20px; border-radius:0 8px 8px 0; font-family:sans-serif;">
+          <div style="font-size:13px; font-weight:700; color:#9e7920; letter-spacing:0.5px; margin-bottom:10px; text-transform:uppercase;">💊 Receta e Indicaciones Médicas</div>
+          <p style="font-size:14px; line-height:1.7; margin:0; white-space:pre-line; color:#555;">${d.prescription}</p>
+        </td>
+      </tr>
+    </table>
     ` : ""}
 
-    <div style="background:#ffffff; border:1px solid #e1d6f2; border-radius:10px; padding:20px; margin:20px 0; font-family:sans-serif;">
-      <h3 style="color:#604390; margin:0 0 16px; font-size:15px; font-weight:bold; border-bottom:1.5px solid #f5f1fb; padding-bottom:8px;">Resumen Clínico Dental</h3>
-      ${medicalHistorySection}
-      ${stomatognathicSection}
-      ${odontogramSection}
-    </div>
+    <!-- Resumen clínico -->
+    <table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-bottom:20px;">
+      <tr>
+        <td style="background:#ffffff; border:1px solid #e1d6f2; border-radius:10px; padding:20px; font-family:sans-serif;">
+          <div style="font-size:13px; font-weight:700; color:#604390; letter-spacing:0.5px; margin-bottom:16px; padding-bottom:10px; border-bottom:1.5px solid #f5f1fb; text-transform:uppercase;">Resumen Clínico Dental</div>
+          ${medicalHistorySection}
+          ${stomatognathicSection}
+          ${odontogramSection}
+        </td>
+      </tr>
+    </table>
 
-    <p style="font-size:13px; color:#604390; margin-top:24px; text-align:center; font-family:sans-serif;">¡Gracias por confiar en nosotros para cuidar tu sonrisa!</p>
+    <p style="font-size:14px; color:#7E5DB4; text-align:center; font-weight:600; margin:0; font-family:sans-serif;">¡Gracias por confiar en nosotros para cuidar tu sonrisa! 😊</p>
   `;
 
   try {
