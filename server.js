@@ -1,58 +1,22 @@
-const { createServer } = require("http");
-const { parse } = require("url");
-const next = require("next");
+// server.js — punto de entrada para Hostinger
+// Next.js en modo "standalone" genera su propio servidor en .next/standalone/server.js
+// Este archivo lo lanza y le pasa el puerto/socket correcto de Hostinger.
+
+const path = require("path");
 const fs = require("fs");
 
-const dev = false; // siempre producción en Hostinger
-const app = next({ dev });
-const handle = app.getRequestHandler();
+const standaloneServer = path.join(__dirname, ".next", "standalone", "server.js");
 
-app.prepare().then(() => {
-  const server = createServer((req, res) => {
-    try {
-      const parsedUrl = parse(req.url, true);
-      handle(req, res, parsedUrl);
-    } catch (err) {
-      console.error("Error al manejar solicitud:", err);
-      res.statusCode = 500;
-      res.end("Error interno del servidor");
-    }
-  });
-
-  // Hostinger LiteSpeed usa un socket Unix — detectarlo automáticamente
-  const port = process.env.PORT;
-
-  if (port && isNaN(Number(port))) {
-    // PORT es una ruta de socket Unix (ej. /usr/local/lsws/extapp-sock/...)
-    const socketPath = port;
-
-    // Eliminar socket anterior si existe para evitar errores EADDRINUSE
-    if (fs.existsSync(socketPath)) {
-      fs.unlinkSync(socketPath);
-    }
-
-    server.listen(socketPath, () => {
-      // Dar permisos al socket para que LiteSpeed pueda acceder
-      fs.chmodSync(socketPath, "777");
-      console.log(`> Servidor listo en socket: ${socketPath}`);
-    });
-  } else {
-    // Fallback: puerto TCP normal (desarrollo local)
-    const tcpPort = parseInt(port || "3000", 10);
-    server.listen(tcpPort, "0.0.0.0", () => {
-      console.log(`> Servidor listo en http://0.0.0.0:${tcpPort}`);
-    });
-  }
-
-  // Manejo limpio de señales de apagado
-  process.on("SIGTERM", () => {
-    server.close(() => {
-      console.log("Servidor cerrado correctamente");
-      process.exit(0);
-    });
-  });
-
-}).catch((err) => {
-  console.error("Error fatal al iniciar Next.js:", err);
+if (!fs.existsSync(standaloneServer)) {
+  console.error("ERROR: No se encontró .next/standalone/server.js");
+  console.error("Asegúrate de haber ejecutado 'npm run build' con output: 'standalone' en next.config.js");
   process.exit(1);
-});
+}
+
+// Pasar el puerto/socket de Hostinger al servidor standalone
+const port = process.env.PORT || "3000";
+process.env.PORT = port;
+process.env.HOSTNAME = "0.0.0.0";
+
+// Iniciar el servidor standalone de Next.js
+require(standaloneServer);
