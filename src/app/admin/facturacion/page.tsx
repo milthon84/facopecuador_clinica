@@ -83,7 +83,7 @@ export default async function BillingDashboard() {
               ) : (
                 items.map((inv) => {
                   const style = getStatusStyle(inv.sri_status);
-                  const dateStr = new Date(inv.created_at).toLocaleDateString('es-CO');
+                  const dateStr = new Date(inv.created_at).toLocaleDateString('es-EC');
                   
                   return (
                     <tr key={inv.id} className="hover:bg-lilac-50/30 transition-colors">

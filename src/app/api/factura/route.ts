@@ -3,6 +3,28 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { generarClaveAcceso, generarXMLFactura, SRIInvoiceData } from "@/lib/sri";
 import crypto from "crypto";
 
+/** Redondea un número a 2 decimales para evitar errores de punto flotante */
+const round2 = (n: number) => Math.round(n * 100) / 100;
+
+/**
+ * Determina el tipo de identificación del comprador según las reglas del SRI Ecuador:
+ *  04 = RUC (13 dígitos terminados en 001)
+ *  05 = Cédula de identidad (10 dígitos)
+ *  06 = Pasaporte
+ *  07 = Consumidor Final (9999999999999)
+ *  08 = Identificación del exterior
+ */
+function getTipoIdentificacion(doc: string): string {
+  const d = doc.trim();
+  if (d === "9999999999999") return "07"; // Consumidor Final
+  if (d.length === 13) return "04";       // RUC
+  if (d.length === 10 && /^\d+$/.test(d)) return "05"; // Cédula ecuatoriana
+  if (/^\d{10}$/.test(d)) return "05";   // Cédula
+  // Si no es numérico puro o tiene formato distinto → pasaporte/exterior
+  if (/^[A-Za-z]/.test(d)) return "06";  // Empieza con letra → Pasaporte
+  return "08";                            // Cualquier otro → Identificación del Exterior
+}
+
 export async function POST(req: Request) {
   try {
     const body = await req.json();
@@ -17,31 +39,35 @@ export async function POST(req: Request) {
     // 2. Extraer datos del body
     const { patient_id, client_name, client_document, client_email, client_phone, client_address, items } = body;
 
-    // Calcular totales
+    if (!client_name || !client_document || !items || items.length === 0) {
+      return NextResponse.json({ error: "Faltan datos obligatorios: nombre, documento o ítems" }, { status: 400 });
+    }
+
+    // 3. Calcular totales con redondeo para evitar errores de punto flotante
     let subtotal15 = 0;
     let subtotal0 = 0;
-    
+
     const detalles: SRIInvoiceData["detalles"] = items.map((item: any, index: number) => {
       const q = Number(item.quantity);
       const pu = Number(item.unit_price);
-      const desc = Number(item.discount || 0);
-      const st = (q * pu) - desc;
-      
+      const desc = round2(Number(item.discount || 0));
+      const st = round2((q * pu) - desc);
+
       let ivaValor = 0;
       let tarifa = 0;
       let codigoPorcentaje = "0";
 
       if (item.iva_code === "4") { // 15% IVA
         tarifa = 15;
-        ivaValor = st * 0.15;
-        subtotal15 += st;
+        ivaValor = round2(st * 0.15);
+        subtotal15 = round2(subtotal15 + st);
         codigoPorcentaje = "4";
       } else { // 0% IVA
-        subtotal0 += st;
+        subtotal0 = round2(subtotal0 + st);
       }
 
       return {
-        codigoPrincipal: `ITEM-${index + 1}`,
+        codigoPrincipal: item.code || `ITEM-${index + 1}`,
         descripcion: item.description,
         cantidad: q,
         precioUnitario: pu,
@@ -49,33 +75,29 @@ export async function POST(req: Request) {
         precioTotalSinImpuesto: st,
         ivaCodigoPorcentaje: codigoPorcentaje,
         ivaTarifa: tarifa,
-        ivaValor: ivaValor
+        ivaValor,
       };
     });
 
-    const totalSinImpuestos = subtotal15 + subtotal0;
-    const iva15 = subtotal15 * 0.15;
-    const importeTotal = totalSinImpuestos + iva15;
+    const totalSinImpuestos = round2(subtotal15 + subtotal0);
+    const iva15 = round2(subtotal15 * 0.15);
+    const importeTotal = round2(totalSinImpuestos + iva15);
+    const totalDescuento = round2(items.reduce((acc: number, i: any) => acc + round2(Number(i.discount || 0)), 0));
 
-    // 3. Generar Secuencial
-    // Para simplificar, buscamos el max secuencial actual
-    const { data: maxInv } = await supabase
-      .from("invoices")
-      .select("secuencial")
-      .order("secuencial", { ascending: false })
-      .limit(1)
-      .single();
-    
-    const secuencial = (maxInv?.secuencial || 0) + 1;
+    // 4. Generar Secuencial ATÓMICO usando la función de PostgreSQL (sin race condition)
+    const { data: secData, error: secError } = await supabase.rpc("next_invoice_secuencial");
+    if (secError) throw new Error(`Error generando secuencial: ${secError.message}`);
+
+    const secuencial: number = secData;
     const secString = secuencial.toString().padStart(9, "0");
     const invoiceNumber = `${config.establecimiento}-${config.punto_emision}-${secString}`;
 
-    // 4. Fechas y Códigos
+    // 5. Fechas y Códigos
     const now = new Date();
     const fechaEmision = `${now.getDate().toString().padStart(2, "0")}/${(now.getMonth() + 1).toString().padStart(2, "0")}/${now.getFullYear()}`;
     const codigoNumerico = crypto.randomInt(10000000, 99999999).toString();
 
-    // 5. Generar Clave de Acceso
+    // 6. Generar Clave de Acceso
     const claveAcceso = generarClaveAcceso({
       fechaEmision,
       tipoComprobante: "01",
@@ -88,7 +110,10 @@ export async function POST(req: Request) {
       tipoEmision: "1",
     });
 
-    // 6. Generar XML Base
+    // 7. Determinar tipo de identificación correctamente
+    const tipoIdentificacionComprador = getTipoIdentificacion(client_document);
+
+    // 8. Generar XML Base
     const invoiceData: SRIInvoiceData = {
       ambiente: config.ambiente as "1" | "2",
       tipoEmision: "1",
@@ -103,15 +128,15 @@ export async function POST(req: Request) {
       dirMatriz: config.direccion_matriz,
       fechaEmision,
       obligadoContabilidad: config.obligado_contabilidad ? "SI" : "NO",
-      
-      tipoIdentificacionComprador: client_document.length === 10 ? "05" : "04", // Simplificación
+
+      tipoIdentificacionComprador,
       razonSocialComprador: client_name,
       identificacionComprador: client_document,
       direccionComprador: client_address || "S/N",
-      
+
       totalSinImpuestos,
-      totalDescuento: items.reduce((acc: number, i: any) => acc + Number(i.discount || 0), 0),
-      
+      totalDescuento,
+
       subtotal15,
       iva15,
       subtotal0,
@@ -120,33 +145,35 @@ export async function POST(req: Request) {
       propina: 0,
       importeTotal,
       moneda: "DOLAR",
-      
-      pagos: [{ formaPago: "01", total: importeTotal }], // 01 = Sin uso del sist financiero
+
+      pagos: [{ formaPago: body.forma_pago || "01", total: importeTotal }],
       detalles,
-      infoAdicional: client_email ? { Email: client_email, Teléfono: client_phone || "" } : undefined
+      infoAdicional: client_email
+        ? { Email: client_email, ...(client_phone ? { Teléfono: client_phone } : {}) }
+        : undefined,
     };
 
     const xmlFactura = generarXMLFactura(invoiceData);
 
-    // 7. Guardar Factura en Base de Datos (MOCK DE AUTORIZACIÓN PARA SIMULADOR)
-    // En un entorno real, aquí se firmaría el XML y se enviaría al WSDL del SRI.
-    // Nosotros lo marcaremos como 'authorized' directamente en el simulador.
-    
+    // 9. Guardar Factura en Base de Datos
+    // NOTA: En modo simulador el sri_status se marca como 'authorized' internamente.
+    // En producción real, aquí se firmaría el XML con el .p12 y se enviaría al WSDL del SRI.
     const { data: invoice, error: invoiceError } = await supabase.from("invoices").insert({
       patient_id: patient_id || null,
       client_name,
       client_document,
-      client_email,
-      client_phone,
-      client_address,
+      client_email: client_email || null,
+      client_phone: client_phone || null,
+      client_address: client_address || null,
       invoice_number: invoiceNumber,
       secuencial,
       subtotal_15: subtotal15,
       subtotal_0: subtotal0,
       iva_amount: iva15,
       total: importeTotal,
+      total_discount: totalDescuento,
       sri_access_key: claveAcceso,
-      sri_status: "authorized", // Simulación exitosa
+      sri_status: "authorized", // Simulador: en producción cambia a 'signed' → 'submitted' → 'authorized'
       sri_authorization_number: claveAcceso,
       sri_authorization_date: new Date().toISOString(),
       sri_environment: config.ambiente,
@@ -154,27 +181,25 @@ export async function POST(req: Request) {
 
     if (invoiceError) throw invoiceError;
 
-    // Guardar Ítems
-    const itemsToInsert = detalles.map(d => ({
+    // 10. Guardar Ítems
+    const itemsToInsert = detalles.map((d) => ({
       invoice_id: invoice.id,
       description: d.descripcion,
       quantity: d.cantidad,
       unit_price: d.precioUnitario,
       discount: d.descuento,
       iva_code: d.ivaCodigoPorcentaje,
-      total: d.precioTotalSinImpuesto + d.ivaValor,
+      total: round2(d.precioTotalSinImpuesto + d.ivaValor),
     }));
 
     await supabase.from("invoice_items").insert(itemsToInsert);
 
-    // NOTA: El PDF y el Correo se generarían/enviarían asíncronamente aquí usando Resend.
-    // Para simplificar la prueba, retornamos éxito.
-
-    return NextResponse.json({ 
-      success: true, 
+    return NextResponse.json({
+      success: true,
       invoice_id: invoice.id,
+      invoice_number: invoiceNumber,
       clave_acceso: claveAcceso,
-      xml: xmlFactura // Retornamos el XML generado para propósitos de demostración
+      xml: xmlFactura,
     });
 
   } catch (error: any) {

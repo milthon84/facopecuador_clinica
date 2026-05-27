@@ -167,6 +167,22 @@ export function generarXMLFactura(data: SRIInvoiceData): string {
     xml += `        <valor>0.00</valor>\n`;
     xml += `      </totalImpuesto>\n`;
   }
+  if (data.subtotalNoObjeto > 0) {
+    xml += `      <totalImpuesto>\n`;
+    xml += `        <codigo>2</codigo>\n`;
+    xml += `        <codigoPorcentaje>6</codigoPorcentaje>\n`; // 6 = No objeto de IVA
+    xml += `        <baseImponible>${formatNum(data.subtotalNoObjeto)}</baseImponible>\n`;
+    xml += `        <valor>0.00</valor>\n`;
+    xml += `      </totalImpuesto>\n`;
+  }
+  if (data.subtotalExento > 0) {
+    xml += `      <totalImpuesto>\n`;
+    xml += `        <codigo>2</codigo>\n`;
+    xml += `        <codigoPorcentaje>7</codigoPorcentaje>\n`; // 7 = Exento de IVA
+    xml += `        <baseImponible>${formatNum(data.subtotalExento)}</baseImponible>\n`;
+    xml += `        <valor>0.00</valor>\n`;
+    xml += `      </totalImpuesto>\n`;
+  }
   xml += `    </totalConImpuestos>\n`;
   
   xml += `    <propina>${formatNum(data.propina)}</propina>\n`;
