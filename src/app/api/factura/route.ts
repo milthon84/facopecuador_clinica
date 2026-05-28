@@ -1,6 +1,9 @@
 import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { generarClaveAcceso, generarXMLFactura, SRIInvoiceData } from "@/lib/sri";
+import { signXMLWithP12 } from "@/lib/sri-sign";
+import { enviarYAutorizar } from "@/lib/sri-wsdl";
+import { createInvoiceJournalEntry } from "@/lib/accounting";
 import crypto from "crypto";
 
 /** Redondea un número a 2 decimales para evitar errores de punto flotante */
@@ -155,9 +158,60 @@ export async function POST(req: Request) {
 
     const xmlFactura = generarXMLFactura(invoiceData);
 
-    // 9. Guardar Factura en Base de Datos
-    // NOTA: En modo simulador el sri_status se marca como 'authorized' internamente.
-    // En producción real, aquí se firmaría el XML con el .p12 y se enviaría al WSDL del SRI.
+    // 9. Firmar y enviar al SRI (producción) o simular (pruebas)
+    const esProduccion = config.ambiente === "2";
+    let sri_status: string = "authorized";
+    let sri_authorization_number: string = claveAcceso;
+    let sri_authorization_date: string   = new Date().toISOString();
+    let sri_error_messages: object | null = null;
+
+    if (esProduccion) {
+      // Verificar que el certificado está configurado
+      if (!config.p12_storage_path || !config.signature_password) {
+        return NextResponse.json(
+          { error: "Modo Producción requiere certificado .p12 configurado en Configuración SRI." },
+          { status: 400 }
+        );
+      }
+
+      // Descargar .p12 desde Supabase Storage
+      const { data: p12Data, error: p12Error } = await supabase.storage
+        .from("sri-certificates")
+        .download(config.p12_storage_path);
+
+      if (p12Error || !p12Data) {
+        return NextResponse.json({ error: "No se pudo cargar el certificado .p12 desde storage." }, { status: 500 });
+      }
+
+      const p12Buffer = Buffer.from(await p12Data.arrayBuffer());
+
+      // Firmar XML con XAdES-BES
+      const xmlFirmado = signXMLWithP12(xmlFactura, p12Buffer, config.signature_password);
+
+      // Enviar al SRI y esperar autorización
+      const { recepcion, autorizacion } = await enviarYAutorizar(
+        xmlFirmado,
+        claveAcceso,
+        config.ambiente as "1" | "2"
+      );
+
+      if (recepcion.estado === "DEVUELTA") {
+        sri_status = "rejected";
+        sri_error_messages = recepcion.comprobantes?.[0]?.mensajes ?? null;
+      } else if (autorizacion.estado === "AUTORIZADO") {
+        sri_status = "authorized";
+        sri_authorization_number = autorizacion.numeroAutorizacion ?? claveAcceso;
+        sri_authorization_date   = autorizacion.fechaAutorizacion  ?? new Date().toISOString();
+      } else if (autorizacion.estado === "NO AUTORIZADO") {
+        sri_status = "rejected";
+        sri_error_messages = autorizacion.mensajes ?? null;
+      } else {
+        // EN PROCESO — guardar como submitted para reintentar después
+        sri_status = "submitted";
+      }
+    }
+
+    // 10. Guardar Factura en Base de Datos
     const { data: invoice, error: invoiceError } = await supabase.from("invoices").insert({
       patient_id: patient_id || null,
       client_name,
@@ -173,10 +227,11 @@ export async function POST(req: Request) {
       total: importeTotal,
       total_discount: totalDescuento,
       sri_access_key: claveAcceso,
-      sri_status: "authorized", // Simulador: en producción cambia a 'signed' → 'submitted' → 'authorized'
-      sri_authorization_number: claveAcceso,
-      sri_authorization_date: new Date().toISOString(),
+      sri_status,
+      sri_authorization_number,
+      sri_authorization_date,
       sri_environment: config.ambiente,
+      ...(sri_error_messages ? { sri_error_messages } : {}),
     }).select().single();
 
     if (invoiceError) throw invoiceError;
@@ -193,6 +248,21 @@ export async function POST(req: Request) {
     }));
 
     await supabase.from("invoice_items").insert(itemsToInsert);
+
+    // 11. Generar asiento contable automático
+    try {
+      await createInvoiceJournalEntry({
+        invoice_id:   invoice.id,
+        invoice_date: new Date().toISOString().split("T")[0],
+        client_name,
+        subtotal_0:   subtotal0,
+        subtotal_15:  subtotal15,
+        iva_amount:   iva15,
+        total:        importeTotal,
+      });
+    } catch (accErr) {
+      console.error("Asiento contable no generado:", accErr);
+    }
 
     return NextResponse.json({
       success: true,

@@ -4,25 +4,11 @@ import * as XLSX from "xlsx";
 
 export const dynamic = "force-dynamic";
 
-const VALID_CATEGORIES = ["Consumibles", "Restauración", "Instrumentos", "Equipos", "Desinfección", "Medicamentos", "Otros"];
-const VALID_UNITS = ["Unidades", "Cajas", "Paquetes", "Tubos", "Mililitros (ml)", "Gramos (g)"];
-
-const CATEGORY_PREFIXES: Record<string, string> = {
-  Consumibles: "CON",
-  Restauración: "RES",
-  Instrumentos: "INS",
-  Equipos: "EQU",
-  Desinfección: "DES",
-  Medicamentos: "MED",
-  Otros: "OTR",
-};
-
 async function getNextSkuForCategory(
   supabase: ReturnType<typeof createAdminClient>,
-  category: string,
+  prefix: string,
   used: Set<string>
 ): Promise<string> {
-  const prefix = CATEGORY_PREFIXES[category] || "OTR";
   const { data } = await supabase
     .from("inventory_products")
     .select("sku")
@@ -37,7 +23,6 @@ async function getNextSkuForCategory(
     }
   });
 
-  // También considerar los ya asignados en este lote
   let candidate = maxNum + 1;
   let sku = `${prefix}-${String(candidate).padStart(3, "0")}`;
   while (used.has(sku)) {
@@ -52,55 +37,58 @@ export async function POST(req: NextRequest) {
   try {
     const formData = await req.formData();
     const file = formData.get("file") as File | null;
+    if (!file) return NextResponse.json({ error: "No se recibió archivo" }, { status: 400 });
 
-    if (!file) {
-      return NextResponse.json({ error: "No se recibió archivo" }, { status: 400 });
-    }
+    const supabase = createAdminClient();
+
+    // Cargar categorías y unidades válidas desde BD
+    const [{ data: categoriesData }, { data: unitsData }] = await Promise.all([
+      supabase.from("inventory_categories").select("name, prefix").eq("active", true),
+      supabase.from("inventory_units").select("name").eq("active", true),
+    ]);
+
+    const categoryMap: Record<string, string> = {};
+    (categoriesData || []).forEach((c) => { categoryMap[c.name] = c.prefix; });
+    const validCategories = Object.keys(categoryMap);
+    const validUnits = (unitsData || []).map((u) => u.name);
 
     const buffer = Buffer.from(await file.arrayBuffer());
     const wb = XLSX.read(buffer, { type: "buffer" });
-
-    // Usar la primera hoja
-    const sheetName = wb.SheetNames[0];
-    const ws = wb.Sheets[sheetName];
+    const ws = wb.Sheets[wb.SheetNames[0]];
     const rows: any[] = XLSX.utils.sheet_to_json(ws, { defval: "" });
 
-    if (rows.length === 0) {
-      return NextResponse.json({ error: "El archivo está vacío" }, { status: 400 });
-    }
+    if (rows.length === 0) return NextResponse.json({ error: "El archivo está vacío" }, { status: 400 });
 
-    const supabase = createAdminClient();
     const usedSkus = new Set<string>();
     const errors: string[] = [];
     const toInsert: any[] = [];
 
     for (let i = 0; i < rows.length; i++) {
       const row = rows[i];
-      const rowNum = i + 2; // +2 porque fila 1 = encabezados
+      const rowNum = i + 2;
 
-      const name = String(row["Nombre"] || "").trim();
+      const name     = String(row["Nombre"] || "").trim();
       const category = String(row["Categoría"] || row["Categoria"] || "").trim();
-      const unit = String(row["Unidad"] || "").trim();
+      const unit     = String(row["Unidad"] || "").trim();
       const minStock = Number(row["Stock Mínimo"] ?? row["Stock Minimo"] ?? 5);
       const initStock = Number(row["Stock Inicial"] ?? 0);
 
       if (!name) { errors.push(`Fila ${rowNum}: El nombre es obligatorio.`); continue; }
-      if (!VALID_CATEGORIES.includes(category)) {
-        errors.push(`Fila ${rowNum}: Categoría "${category}" no válida. Use: ${VALID_CATEGORIES.join(", ")}.`);
+      if (!validCategories.includes(category)) {
+        errors.push(`Fila ${rowNum}: Categoría "${category}" no válida. Use: ${validCategories.join(", ")}.`);
         continue;
       }
-      if (unit && !VALID_UNITS.includes(unit)) {
-        errors.push(`Fila ${rowNum}: Unidad "${unit}" no válida. Use: ${VALID_UNITS.join(", ")}.`);
+      if (unit && !validUnits.includes(unit)) {
+        errors.push(`Fila ${rowNum}: Unidad "${unit}" no válida. Use: ${validUnits.join(", ")}.`);
         continue;
       }
 
-      const sku = await getNextSkuForCategory(supabase, category, usedSkus);
+      const prefix = categoryMap[category];
+      const sku = await getNextSkuForCategory(supabase, prefix, usedSkus);
 
       toInsert.push({
-        sku,
-        name,
-        category,
-        unit_of_measure: unit || "Unidades",
+        sku, name, category,
+        unit_of_measure: unit || validUnits[0] || "Unidades",
         minimum_stock: isNaN(minStock) ? 5 : minStock,
         current_stock: 0,
         _init_stock: isNaN(initStock) ? 0 : initStock,
@@ -111,7 +99,6 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "No se pudo procesar ninguna fila.", details: errors }, { status: 422 });
     }
 
-    // Insertar productos válidos
     let inserted = 0;
     for (const item of toInsert) {
       const { _init_stock, ...productData } = item;
@@ -121,10 +108,7 @@ export async function POST(req: NextRequest) {
         .select()
         .single();
 
-      if (insertError) {
-        errors.push(`Error al insertar "${productData.name}": ${insertError.message}`);
-        continue;
-      }
+      if (insertError) { errors.push(`Error al insertar "${productData.name}": ${insertError.message}`); continue; }
 
       if (_init_stock > 0 && product) {
         await supabase.from("inventory_transactions").insert({

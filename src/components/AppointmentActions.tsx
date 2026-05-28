@@ -38,10 +38,10 @@ export default function AppointmentActions({ appointment }: Props) {
 
       if (status === "attended") {
         isRedirecting = true;
-        router.push(`/admin/citas/${appointment.id}/atencion`);
+        router.push(`/gestion/citas/${appointment.id}/atencion`);
       } else if (status === "no_show" || status === "cancelled") {
         isRedirecting = true;
-        router.push("/admin");
+        router.push("/gestion");
       }
     } catch (err: any) {
       alert(err.message);

@@ -68,7 +68,7 @@ export default function InventoryImportExport() {
   }
 
   return (
-    <div className="flex flex-col gap-3">
+    <div className="flex flex-col gap-2">
       {/* Botones */}
       <div className="flex gap-2">
         {/* Exportar */}
@@ -131,10 +131,6 @@ export default function InventoryImportExport() {
         </div>
       )}
 
-      {/* Hint */}
-      <p className="text-xs text-ink-400">
-        Descarga el Excel para ver el inventario actual. La segunda pestaña contiene la plantilla para importar nuevos insumos.
-      </p>
     </div>
   );
 }
