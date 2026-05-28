@@ -26,7 +26,7 @@ function formatES(date: Date): string {
 }
 
 const LOGO_URL = process.env.NEXT_PUBLIC_SITE_URL
-  ? `${process.env.NEXT_PUBLIC_SITE_URL}/logo.jpg`
+  ? `${process.env.NEXT_PUBLIC_SITE_URL}/logo.png`
   : "";
 
 function baseHtml(title: string, body: string): string {

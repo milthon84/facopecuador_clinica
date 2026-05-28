@@ -53,7 +53,7 @@ export default function LoginPage() {
     <main className="min-h-screen flex items-center justify-center bg-gradient-to-br from-lilac-50 via-white to-gold-50 px-4">
       <div className="card w-full max-w-md p-8">
         <div className="flex justify-center mb-6">
-          <img src="/logo.jpg" alt="Logo" className="h-14 w-auto object-contain rounded-md" />
+          <img src="/logo.png" alt="Logo" className="h-14 w-auto object-contain rounded-md" />
         </div>
         <h1 className="text-xl font-bold text-center mb-1">Gestión Clínica</h1>
         <p className="text-sm text-ink-600 text-center mb-6">Ingresa tus credenciales para acceder</p>

@@ -61,7 +61,7 @@ export default async function ConfirmacionPage({ params }: { params: { id: strin
 
           <div className="border-t border-lilac-100 pt-5 text-sm text-left space-y-2">
             <div className="mb-3">
-              <img src="/logo.jpg" alt={clinicName} className="h-8 w-auto object-contain rounded" />
+              <img src="/logo.png" alt={clinicName} className="h-8 w-auto object-contain rounded" />
             </div>
             {address && (
               <div className="flex items-center gap-2 text-ink-600">
