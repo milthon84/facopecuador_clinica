@@ -136,7 +136,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
 
 function NavGroup({ label, children }: { label: string; children: React.ReactNode }) {
   return (
-    <div className="mb-1 md:mb-2">
+    <div className="flex flex-row md:flex-col gap-1 mb-0 md:mb-2">
       <p className="hidden md:block text-[10px] font-bold text-ink-400 uppercase tracking-wider px-3 mb-1 mt-2">
         {label}
       </p>
@@ -149,11 +149,11 @@ function NavItem({ href, icon, children }: { href: string; icon: React.ReactNode
   return (
     <Link
       href={href}
-      className="flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm text-ink-800 hover:bg-lilac-50 hover:text-lilac-700 whitespace-nowrap transition-colors group"
+      className="flex flex-shrink-0 items-center gap-2.5 px-3 py-2 rounded-lg text-sm text-ink-800 hover:bg-lilac-50 hover:text-lilac-700 whitespace-nowrap transition-colors group"
     >
       <span className="text-ink-400 group-hover:text-lilac-600 transition-colors">{icon}</span>
       <span className="flex-1">{children}</span>
-      <ChevronRight size={12} className="opacity-0 group-hover:opacity-40 transition-opacity" />
+      <ChevronRight size={12} className="hidden md:block opacity-0 group-hover:opacity-40 transition-opacity" />
     </Link>
   );
 }
