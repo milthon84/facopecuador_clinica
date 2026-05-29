@@ -97,6 +97,9 @@ export default async function ContabilidadPage({
   const quickLinks = [
     { href: `/gestion/contabilidad/ats?period=${period}`,         label: "ATS — Anexo Transaccional",      icon: <FileSpreadsheet size={14} className="text-lilac-600" />,  desc: "Compras y ventas para SRI" },
     { href: "/gestion/contabilidad/dividendos",                    label: "ADI — Dividendos y Utilidades",  icon: <DollarSign size={14} className="text-green-600" />,        desc: "Registro de distribución" },
+    { href: `/gestion/contabilidad/balance`,                       label: "Balance General",                icon: <Scale size={14} className="text-blue-600" />,              desc: "Situación financiera (Activos / Pasivos / Patrimonio)" },
+    { href: `/gestion/contabilidad/resultados?period=${period}`,   label: "Estado de Resultados",           icon: <TrendingUp size={14} className="text-green-600" />,         desc: "Ingresos vs Gastos — Utilidad neta" },
+    { href: `/gestion/contabilidad/iva?period=${period}`,          label: "Resumen IVA — Form. 104",        icon: <Receipt size={14} className="text-amber-600" />,            desc: "IVA ventas, compras y neto a pagar" },
   ];
 
   return (
