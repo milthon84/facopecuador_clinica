@@ -40,7 +40,7 @@ interface JournalLine {
 async function insertJournalEntry(params: {
   entry_date:      string;
   description:     string;
-  reference_type:  "invoice" | "expense" | "manual";
+  reference_type:  "invoice" | "expense" | "manual" | "asset_purchase" | "depreciation" | "disposal";
   reference_id:    string;
   lines:           JournalLine[];
   user_id?:        string | null;
@@ -200,5 +200,75 @@ export async function createExpenseJournalEntry(params: {
     lines,
     user_id:        params.user_id,
     user_email:     params.user_email,
+  });
+}
+
+// ── Mapeo: categoría de activo → cuentas contables ────────────────────────
+const ASSET_ACCOUNTS: Record<string, { asset: string; assetName: string; dep: string; depName: string; depExp: string; depExpName: string }> = {
+  "Inmuebles":                  { asset: "1.2.01.01", assetName: "Edificios e Inmuebles",      dep: "1.2.02.01", depName: "Dep. Acum. Edificios",      depExp: "5.2.03.01", depExpName: "Gasto Dep. Edificios" },
+  "Equipos odontológicos":      { asset: "1.2.01.02", assetName: "Equipos Odontológicos",      dep: "1.2.02.02", depName: "Dep. Acum. Equipos Odont.", depExp: "5.2.03.02", depExpName: "Gasto Dep. Equipos Odont." },
+  "Equipos de computación":     { asset: "1.2.01.03", assetName: "Equipos de Computación",    dep: "1.2.02.03", depName: "Dep. Acum. Computación",    depExp: "5.2.03.03", depExpName: "Gasto Dep. Computación" },
+  "Muebles y enseres":          { asset: "1.2.01.04", assetName: "Muebles y Enseres",          dep: "1.2.02.04", depName: "Dep. Acum. Muebles",        depExp: "5.2.03.04", depExpName: "Gasto Dep. Muebles" },
+  "Vehículos":                  { asset: "1.2.01.05", assetName: "Vehículos",                  dep: "1.2.02.05", depName: "Dep. Acum. Vehículos",      depExp: "5.2.03.05", depExpName: "Gasto Dep. Vehículos" },
+  "Otros equipos y maquinaria": { asset: "1.2.01.09", assetName: "Otros Activos Fijos",        dep: "1.2.02.09", depName: "Dep. Acum. Otros Activos",  depExp: "5.2.03.09", depExpName: "Gasto Dep. Otros Activos" },
+};
+
+function assetAccounts(category: string) {
+  return ASSET_ACCOUNTS[category] ?? ASSET_ACCOUNTS["Otros equipos y maquinaria"];
+}
+
+// ── Asiento: Compra de Activo Fijo ────────────────────────────────────────
+export async function createAssetPurchaseJournalEntry(params: {
+  asset_id:       string;
+  purchase_date:  string;
+  asset_name:     string;
+  category:       string;
+  purchase_value: number;
+  on_credit:      boolean;
+  user_id?:       string | null;
+  user_email?:    string | null;
+}) {
+  const accts = assetAccounts(params.category);
+  const creditAcct = params.on_credit
+    ? { code: "2.1.01.02", name: "Cuentas por Pagar (Activos)" }
+    : { code: "1.1.01.02", name: "Bancos" };
+
+  return insertJournalEntry({
+    entry_date:     params.purchase_date,
+    description:    `Compra Activo Fijo — ${params.asset_name}`,
+    reference_type: "asset_purchase",
+    reference_id:   params.asset_id,
+    lines: [
+      { account_code: accts.asset,   account_name: accts.assetName, debit: r2(params.purchase_value), credit: 0, description: params.asset_name },
+      { account_code: creditAcct.code, account_name: creditAcct.name, debit: 0, credit: r2(params.purchase_value) },
+    ],
+    user_id:    params.user_id,
+    user_email: params.user_email,
+  });
+}
+
+// ── Asiento: Depreciación Mensual ─────────────────────────────────────────
+export async function createDepreciationJournalEntry(params: {
+  asset_id:       string;
+  asset_name:     string;
+  category:       string;
+  period:         string;   // 'YYYY-MM'
+  monthly_amount: number;
+  user_id?:       string | null;
+  user_email?:    string | null;
+}) {
+  const accts = assetAccounts(params.category);
+
+  return insertJournalEntry({
+    entry_date:     `${params.period}-01`,
+    description:    `Depreciación ${params.period} — ${params.asset_name}`,
+    reference_type: "depreciation",
+    reference_id:   params.asset_id,
+    lines: [
+      { account_code: accts.depExp, account_name: accts.depExpName, debit: r2(params.monthly_amount), credit: 0, description: `Dep. ${params.period}` },
+      { account_code: accts.dep,    account_name: accts.depName,    debit: 0, credit: r2(params.monthly_amount) },
+    ],
+    user_id:    params.user_id,
+    user_email: params.user_email,
   });
 }

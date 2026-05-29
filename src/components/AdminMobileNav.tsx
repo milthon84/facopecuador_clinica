@@ -6,7 +6,7 @@ import { usePathname } from "next/navigation";
 import {
   LayoutDashboard, CalendarDays, Users, Clock, Ban,
   Package, FileText, UserCog, ShieldCheck, X, Menu,
-  LogOut, Settings, ShoppingCart, FileBarChart2, Shield, Tag, Ruler, Stethoscope, Building2,
+  LogOut, Settings, ShoppingCart, FileBarChart2, Shield, Tag, Ruler, Stethoscope, Building2, Landmark,
 } from "lucide-react";
 import { NAV_ITEMS } from "@/lib/roles";
 import { createClient } from "@/lib/supabase/client";
@@ -14,7 +14,7 @@ import { createClient } from "@/lib/supabase/client";
 const ICON_MAP: Record<string, React.ElementType> = {
   LayoutDashboard, CalendarDays, Users, Clock, Ban,
   Package, FileText, UserCog, ShieldCheck, Settings,
-  ShoppingCart, FileBarChart2, Shield, Tag, Ruler, Stethoscope, Building2,
+  ShoppingCart, FileBarChart2, Shield, Tag, Ruler, Stethoscope, Building2, Landmark,
 };
 
 interface Props {
