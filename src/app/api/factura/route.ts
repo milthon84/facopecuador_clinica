@@ -237,6 +237,7 @@ export async function POST(req: Request) {
       payment_method,
       bank_account_id: bank_account_id || null,
       payment_reference: payment_reference || null,
+      payment_status: bank_account_id ? "paid" : "pending",
       ...(sri_error_messages ? { sri_error_messages } : {}),
     }).select().single();
 

@@ -2,7 +2,8 @@ import Link from "next/link";
 import {
   CalendarDays, LayoutDashboard, Users, Clock, Ban,
   Package, FileText, UserCog, ShieldCheck, ChevronRight,
-  Settings, ShoppingCart, FileBarChart2, Shield, Tag, Ruler, Stethoscope, Building2, Landmark, Wallet,
+  Settings, ShoppingCart, FileBarChart2, Shield, Tag, Ruler, Stethoscope,
+  Building2, Landmark, Wallet, CircleDollarSign, CreditCard,
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -32,7 +33,9 @@ const ICONS: Record<string, React.ReactNode> = {
   Stethoscope:     <Stethoscope size={16} />,
   Building2:       <Building2 size={16} />,
   Landmark:        <Landmark size={16} />,
-  Wallet:          <Wallet size={16} />,
+  Wallet:            <Wallet size={16} />,
+  CircleDollarSign:  <CircleDollarSign size={16} />,
+  CreditCard:        <CreditCard size={16} />,
 };
 
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
