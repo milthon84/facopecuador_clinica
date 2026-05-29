@@ -3,26 +3,19 @@ import { NextResponse, type NextRequest } from "next/server";
 import { canAccess } from "@/lib/roles";
 import type { UserRole } from "@/lib/roles";
 
-// ── Cabeceras de seguridad aplicadas a TODAS las respuestas ───────────────
 function addSecurityHeaders(res: NextResponse): NextResponse {
-  // Evitar que el sitio se incruste en iframes (clickjacking)
   res.headers.set("X-Frame-Options", "DENY");
-  // Evitar que el navegador infiera el tipo de contenido
   res.headers.set("X-Content-Type-Options", "nosniff");
-  // Controlar información del referrer
   res.headers.set("Referrer-Policy", "strict-origin-when-cross-origin");
-  // Deshabilitar funciones del navegador no necesarias
   res.headers.set("Permissions-Policy", "camera=(), microphone=(), geolocation=()");
-  // Forzar HTTPS en producción
   if (process.env.NODE_ENV === "production") {
     res.headers.set("Strict-Transport-Security", "max-age=63072000; includeSubDomains; preload");
   }
   return res;
 }
 
-// ── Verificación de sesión Supabase ───────────────────────────────────────
-async function getAuthUser(req: NextRequest, res: NextResponse) {
-  const supabase = createServerClient(
+function buildSupabaseClient(req: NextRequest, res: NextResponse) {
+  return createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     {
@@ -36,20 +29,44 @@ async function getAuthUser(req: NextRequest, res: NextResponse) {
       },
     }
   );
-  const { data: { user } } = await supabase.auth.getUser();
-  return user;
+}
+
+// Verifica acceso usando permisos almacenados en DB.
+// Si la tabla no existe aún, hace fallback al canAccess hardcodeado.
+async function checkAccess(
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  supabase: any,
+  role: string,
+  pathname: string
+): Promise<boolean> {
+  if (role === "admin") return true;
+
+  try {
+    const { data, error } = await supabase
+      .from("role_permissions")
+      .select("path")
+      .eq("role_name", role);
+
+    if (error) throw error;
+
+    const paths: string[] = (data || []).map((p: { path: string }) => p.path);
+    return paths.some(p => pathname === p || pathname.startsWith(p + "/"));
+  } catch {
+    // Fallback: usa la función hardcodeada si la DB no está disponible
+    return canAccess(role as UserRole, pathname);
+  }
 }
 
 export async function middleware(req: NextRequest) {
   const res = NextResponse.next();
   const { pathname } = req.nextUrl;
 
-  // Aplicar headers de seguridad a todas las rutas
   addSecurityHeaders(res);
 
   // ── Proteger rutas del panel de administración ─────────────────────────
   if (pathname.startsWith("/gestion") && pathname !== "/gestion/login") {
-    const user = await getAuthUser(req, res);
+    const supabase = buildSupabaseClient(req, res);
+    const { data: { user } } = await supabase.auth.getUser();
 
     if (!user) {
       const url = req.nextUrl.clone();
@@ -60,9 +77,9 @@ export async function middleware(req: NextRequest) {
       return redirect;
     }
 
-    const role = (user.app_metadata?.role as UserRole | undefined) ?? "admin";
+    const role = (user.app_metadata?.role as string) ?? "recepcionista";
 
-    if (!canAccess(role, pathname)) {
+    if (!(await checkAccess(supabase, role, pathname))) {
       const url = req.nextUrl.clone();
       url.pathname = "/gestion";
       url.searchParams.set("denied", "1");
@@ -74,7 +91,8 @@ export async function middleware(req: NextRequest) {
 
   // ── Proteger rutas API del panel admin ─────────────────────────────────
   if (pathname.startsWith("/api/admin")) {
-    const user = await getAuthUser(req, res);
+    const supabase = buildSupabaseClient(req, res);
+    const { data: { user } } = await supabase.auth.getUser();
 
     if (!user) {
       return NextResponse.json(
@@ -83,11 +101,9 @@ export async function middleware(req: NextRequest) {
       );
     }
 
-    // Bloquear acceso a rutas admin-only de API si el rol no lo permite
-    const role = (user.app_metadata?.role as UserRole | undefined) ?? "admin";
+    const role = (user.app_metadata?.role as string) ?? "recepcionista";
     const adminOnlyApis = [
       "/api/admin/usuarios",
-      "/api/admin/parametros",
       "/api/admin/auditoria",
     ];
     if (adminOnlyApis.some(r => pathname.startsWith(r)) && role !== "admin") {
@@ -103,10 +119,8 @@ export async function middleware(req: NextRequest) {
 
 export const config = {
   matcher: [
-    // Proteger panel admin y sus APIs
     "/gestion/:path*",
     "/api/admin/:path*",
-    // Aplicar headers de seguridad a páginas públicas también
     "/((?!_next/static|_next/image|favicon.ico|logo.png).*)",
   ],
 };

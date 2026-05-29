@@ -20,7 +20,7 @@ export default function HomePage() {
         </div>
         <div className="flex items-center gap-2">
           <a
-            href="https://facebook.com"
+            href="https://www.facebook.com/profile.php?id=61589831153563"
             target="_blank"
             rel="noopener noreferrer"
             aria-label="Facebook"
@@ -29,7 +29,7 @@ export default function HomePage() {
             <Facebook size={16} />
           </a>
           <a
-            href="https://instagram.com"
+            href="https://www.instagram.com/clinicaodontologicafacop_uio/"
             target="_blank"
             rel="noopener noreferrer"
             aria-label="Instagram"
@@ -38,7 +38,7 @@ export default function HomePage() {
             <Instagram size={16} />
           </a>
           <a
-            href="https://tiktok.com"
+            href="https://www.tiktok.com/@facopquito"
             target="_blank"
             rel="noopener noreferrer"
             aria-label="TikTok"

@@ -94,13 +94,23 @@ async function changeRole(formData: FormData) {
   const userId  = formData.get("userId") as string;
   const newRole = formData.get("newRole") as UserRole;
 
+  const validRoles: UserRole[] = ["admin", "recepcionista", "contador"];
+  if (!validRoles.includes(newRole)) throw new Error("Rol inválido");
+
   // Actualizar en user_profiles
-  await supabase.from("user_profiles").update({ role: newRole }).eq("id", userId);
+  const { error: profileError } = await supabase
+    .from("user_profiles")
+    .update({ role: newRole })
+    .eq("id", userId);
+
+  if (profileError) throw new Error(`Error al actualizar perfil: ${profileError.message}`);
 
   // Actualizar app_metadata en Auth
-  await supabase.auth.admin.updateUserById(userId, {
+  const { error: authError } = await supabase.auth.admin.updateUserById(userId, {
     app_metadata: { role: newRole },
   });
+
+  if (authError) throw new Error(`Error al actualizar auth: ${authError.message}`);
 
   await logAudit({
     user_id: sessionUser?.id,
@@ -234,14 +244,20 @@ export default async function UsuariosPage() {
                       <div className="flex items-center justify-end gap-2">
                         {/* Cambiar rol */}
                         {!isCurrentUser && u.profile && (
-                          <form action={changeRole}>
+                          <form action={changeRole} className="flex items-center gap-1">
                             <input type="hidden" name="userId" value={u.id} />
-                            <input type="hidden" name="newRole" value={role === "admin" ? "recepcionista" : "admin"} />
-                            <button
-                              type="submit"
-                              className="text-xs text-lilac-600 hover:text-lilac-800 border border-lilac-200 hover:bg-lilac-50 px-2.5 py-1 rounded-lg transition-colors font-medium"
+                            <select
+                              name="newRole"
+                              defaultValue={role ?? "recepcionista"}
+                              className="text-xs border border-lilac-200 rounded-lg px-2 py-1 focus:outline-none focus:ring-1 focus:ring-lilac-400 bg-white"
                             >
-                              {role === "admin" ? "→ Recepcionista" : "→ Admin"}
+                              <option value="admin">Admin</option>
+                              <option value="recepcionista">Recepcionista</option>
+                              <option value="contador">Contador</option>
+                            </select>
+                            <button type="submit"
+                              className="text-xs text-lilac-600 hover:text-lilac-800 border border-lilac-200 hover:bg-lilac-50 px-2 py-1 rounded-lg transition-colors font-medium">
+                              ✓
                             </button>
                           </form>
                         )}
@@ -311,6 +327,7 @@ export default async function UsuariosPage() {
               className="w-full bg-lilac-50/50 border border-lilac-100 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-lilac-500"
             >
               <option value="recepcionista">Recepcionista</option>
+              <option value="contador">Contador</option>
               <option value="admin">Administrador</option>
             </select>
           </div>

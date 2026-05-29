@@ -1,18 +1,18 @@
 import Link from "next/link";
 import {
   CalendarDays, LayoutDashboard, Users, Clock, Ban,
-  Package, FileText, UserCog, ShieldCheck, ChevronRight, Settings, ShoppingCart, FileBarChart2,
+  Package, FileText, UserCog, ShieldCheck, ChevronRight,
+  Settings, ShoppingCart, FileBarChart2, Shield, Tag, Ruler, Stethoscope,
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import SignOutButton from "@/components/SignOutButton";
 import AdminMobileNav from "@/components/AdminMobileNav";
 import type { UserRole } from "@/lib/roles";
-import { ROLE_LABELS, ROLE_COLORS, NAV_ITEMS } from "@/lib/roles";
+import { ROLE_LABELS, ROLE_COLORS, NAV_ITEMS, NAV_SECTIONS } from "@/lib/roles";
 
 export const dynamic = "force-dynamic";
 
-// Mapa de iconos Lucide
 const ICONS: Record<string, React.ReactNode> = {
   LayoutDashboard: <LayoutDashboard size={16} />,
   CalendarDays:    <CalendarDays size={16} />,
@@ -26,6 +26,10 @@ const ICONS: Record<string, React.ReactNode> = {
   Settings:        <Settings size={16} />,
   ShoppingCart:    <ShoppingCart size={16} />,
   FileBarChart2:   <FileBarChart2 size={16} />,
+  Shield:          <Shield size={16} />,
+  Tag:             <Tag size={16} />,
+  Ruler:           <Ruler size={16} />,
+  Stethoscope:     <Stethoscope size={16} />,
 };
 
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
@@ -34,23 +38,48 @@ export default async function AdminLayout({ children }: { children: React.ReactN
 
   if (!user) return <>{children}</>;
 
-  // Rol del usuario (desde app_metadata, con fallback a 'admin' para retrocompatibilidad)
-  const role = (user.app_metadata?.role as UserRole | undefined) ?? "admin";
+  const role = (user.app_metadata?.role as string | undefined) ?? "admin";
 
-  // Perfil del usuario
+  // Datos del rol y permisos desde DB (con fallback a valores hardcodeados)
   let profileName: string | null = null;
+  let roleLabel = ROLE_LABELS[role as UserRole] ?? role;
+  let roleColor = ROLE_COLORS[role as UserRole] ?? "bg-gray-100 text-gray-800 border-gray-200";
+  let allowedPaths: string[] | null = null; // null = admin (acceso total)
+
   try {
     const adminClient = createAdminClient();
-    const { data } = await adminClient
-      .from("user_profiles")
-      .select("full_name")
-      .eq("id", user.id)
-      .single();
-    profileName = data?.full_name ?? null;
-  } catch { /* ignorar si tabla no existe aún */ }
+
+    const [profileRes, roleRes, permsRes] = await Promise.all([
+      adminClient.from("user_profiles").select("full_name").eq("id", user.id).single()
+        .then(r => r as { data: { full_name: string } | null }),
+      adminClient.from("system_roles").select("label, color").eq("name", role).single()
+        .then(r => r as { data: { label: string; color: string } | null }),
+      role !== "admin"
+        ? adminClient.from("role_permissions").select("path").eq("role_name", role)
+            .then(r => r as { data: { path: string }[] | null })
+        : Promise.resolve(null),
+    ]);
+
+    profileName = profileRes.data?.full_name ?? null;
+
+    if (roleRes.data) {
+      roleLabel = roleRes.data.label;
+      roleColor = roleRes.data.color;
+    }
+
+    if (role !== "admin" && permsRes?.data) {
+      allowedPaths = permsRes.data.map(p => p.path);
+    }
+  } catch { /* usa fallbacks hardcodeados */ }
 
   const displayName = profileName || user.email?.split("@")[0] || "Usuario";
-  const visibleNav = NAV_ITEMS.filter((item) => item.roles.includes(role));
+
+  // Filtrar nav: admin ve todo, otros solo lo que tienen permiso en DB
+  const visibleNav = NAV_ITEMS.filter(item => {
+    if (role === "admin") return true;
+    if (allowedPaths !== null) return allowedPaths.includes(item.href);
+    return item.roles.includes(role as UserRole); // fallback
+  });
 
   return (
     <div className="min-h-screen bg-lilac-50/30 text-ink-900">
@@ -84,8 +113,8 @@ export default async function AdminLayout({ children }: { children: React.ReactN
             <div className="flex items-center gap-3">
               <div className="flex flex-col items-end">
                 <span className="text-sm font-medium text-white/90">{displayName}</span>
-                <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${ROLE_COLORS[role]}`}>
-                  {ROLE_LABELS[role]}
+                <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${roleColor}`}>
+                  {roleLabel}
                 </span>
               </div>
               <SignOutButton />
@@ -98,43 +127,19 @@ export default async function AdminLayout({ children }: { children: React.ReactN
         {/* Sidebar — solo desktop */}
         <nav className="hidden md:block md:w-60 md:min-h-[calc(100vh-52px)] border-r border-lilac-100 bg-white shadow-sm">
           <div className="p-3 flex flex-col gap-1">
-            <NavGroup label="Principal">
-              {visibleNav.filter(i => ["/gestion", "/gestion/calendario", "/gestion/pacientes"].includes(i.href)).map((item) => (
-                <NavItem key={item.href} href={item.href} icon={ICONS[item.icon]}>
-                  {item.label}
-                </NavItem>
-              ))}
-            </NavGroup>
-
-            {role === "admin" && visibleNav.some(i => ["/gestion/horarios", "/gestion/bloqueos"].includes(i.href)) && (
-              <NavGroup label="Configuración">
-                {visibleNav.filter(i => ["/gestion/horarios", "/gestion/bloqueos"].includes(i.href)).map((item) => (
-                  <NavItem key={item.href} href={item.href} icon={ICONS[item.icon]}>
-                    {item.label}
-                  </NavItem>
-                ))}
-              </NavGroup>
-            )}
-
-            {role === "admin" && (
-              <NavGroup label="Clínica">
-                {visibleNav.filter(i => ["/gestion/inventario", "/gestion/facturacion"].includes(i.href)).map((item) => (
-                  <NavItem key={item.href} href={item.href} icon={ICONS[item.icon]}>
-                    {item.label}
-                  </NavItem>
-                ))}
-              </NavGroup>
-            )}
-
-            {role === "admin" && (
-              <NavGroup label="Sistema">
-                {visibleNav.filter(i => ["/gestion/usuarios", "/gestion/auditoria"].includes(i.href)).map((item) => (
-                  <NavItem key={item.href} href={item.href} icon={ICONS[item.icon]}>
-                    {item.label}
-                  </NavItem>
-                ))}
-              </NavGroup>
-            )}
+            {NAV_SECTIONS.map(section => {
+              const items = visibleNav.filter(i => i.section === section);
+              if (!items.length) return null;
+              return (
+                <NavGroup key={section} label={section}>
+                  {items.map(item => (
+                    <NavItem key={item.href} href={item.href} icon={ICONS[item.icon]}>
+                      {item.label}
+                    </NavItem>
+                  ))}
+                </NavGroup>
+              );
+            })}
           </div>
         </nav>
 
@@ -142,15 +147,21 @@ export default async function AdminLayout({ children }: { children: React.ReactN
       </div>
 
       {/* Navegación inferior — solo móvil */}
-      <AdminMobileNav role={role} displayName={displayName} />
+      <AdminMobileNav
+        role={role}
+        roleLabel={roleLabel}
+        roleColor={roleColor}
+        displayName={displayName}
+        allowedPaths={allowedPaths}
+      />
     </div>
   );
 }
 
 function NavGroup({ label, children }: { label: string; children: React.ReactNode }) {
   return (
-    <div className="flex flex-row md:flex-col gap-1 mb-0 md:mb-2">
-      <p className="hidden md:block text-[10px] font-bold text-ink-400 uppercase tracking-wider px-3 mb-1 mt-2">
+    <div className="flex flex-col gap-1 mb-2">
+      <p className="text-[10px] font-bold text-ink-400 uppercase tracking-wider px-3 mb-1 mt-2">
         {label}
       </p>
       {children}
@@ -162,11 +173,11 @@ function NavItem({ href, icon, children }: { href: string; icon: React.ReactNode
   return (
     <Link
       href={href}
-      className="flex flex-shrink-0 items-center gap-2.5 px-3 py-2 rounded-lg text-sm text-ink-800 hover:bg-lilac-50 hover:text-lilac-700 whitespace-nowrap transition-colors group"
+      className="flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm text-ink-800 hover:bg-lilac-50 hover:text-lilac-700 whitespace-nowrap transition-colors group"
     >
       <span className="text-ink-400 group-hover:text-lilac-600 transition-colors">{icon}</span>
       <span className="flex-1">{children}</span>
-      <ChevronRight size={12} className="hidden md:block opacity-0 group-hover:opacity-40 transition-opacity" />
+      <ChevronRight size={12} className="opacity-0 group-hover:opacity-40 transition-opacity" />
     </Link>
   );
 }

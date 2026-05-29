@@ -14,7 +14,8 @@ export interface AuditEntry {
     | "dental_consultation"
     | "invoice"
     | "user_profile"
-    | "inventory_product";
+    | "inventory_product"
+    | "system_role";
   resource_id?: string | null;
   description: string;
   metadata?: Record<string, any> | null;

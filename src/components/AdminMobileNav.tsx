@@ -5,27 +5,35 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
   LayoutDashboard, CalendarDays, Users, Clock, Ban,
-  Package, FileText, UserCog, ShieldCheck, X, Menu, LogOut, Settings, ShoppingCart, FileBarChart2,
+  Package, FileText, UserCog, ShieldCheck, X, Menu,
+  LogOut, Settings, ShoppingCart, FileBarChart2, Shield, Tag, Ruler, Stethoscope,
 } from "lucide-react";
-import type { UserRole } from "@/lib/roles";
-import { NAV_ITEMS, ROLE_LABELS, ROLE_COLORS } from "@/lib/roles";
+import { NAV_ITEMS } from "@/lib/roles";
 import { createClient } from "@/lib/supabase/client";
 
 const ICON_MAP: Record<string, React.ElementType> = {
   LayoutDashboard, CalendarDays, Users, Clock, Ban,
-  Package, FileText, UserCog, ShieldCheck, Settings, ShoppingCart, FileBarChart2,
+  Package, FileText, UserCog, ShieldCheck, Settings,
+  ShoppingCart, FileBarChart2, Shield, Tag, Ruler, Stethoscope,
 };
 
 interface Props {
-  role: UserRole;
+  role: string;
+  roleLabel: string;
+  roleColor: string;
   displayName: string;
+  allowedPaths: string[] | null; // null = admin (acceso total)
 }
 
-export default function AdminMobileNav({ role, displayName }: Props) {
+export default function AdminMobileNav({ role, roleLabel, roleColor, displayName, allowedPaths }: Props) {
   const [open, setOpen] = useState(false);
   const pathname = usePathname();
 
-  const visibleNav = NAV_ITEMS.filter((item) => item.roles.includes(role));
+  const visibleNav = NAV_ITEMS.filter(item => {
+    if (role === "admin" || allowedPaths === null) return true;
+    return allowedPaths.includes(item.href);
+  });
+
   const bottomItems = visibleNav.slice(0, 2);
 
   function isActive(href: string) {
@@ -63,8 +71,8 @@ export default function AdminMobileNav({ role, displayName }: Props) {
         <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
           <div>
             <p className="font-semibold text-sm">{displayName}</p>
-            <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${ROLE_COLORS[role]}`}>
-              {ROLE_LABELS[role]}
+            <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${roleColor}`}>
+              {roleLabel}
             </span>
           </div>
           <button
@@ -85,10 +93,10 @@ export default function AdminMobileNav({ role, displayName }: Props) {
                 href={item.href}
                 onClick={() => setOpen(false)}
                 className={`flex items-center gap-3 px-4 py-3.5 rounded-xl mb-1 transition-colors ${
-                  active ? "bg-red-50 text-red-600" : "text-gray-700 hover:bg-gray-50"
+                  active ? "bg-lilac-50 text-lilac-700" : "text-gray-700 hover:bg-gray-50"
                 }`}
               >
-                <Icon size={20} className={active ? "text-red-500" : "text-gray-400"} />
+                {Icon && <Icon size={20} className={active ? "text-lilac-500" : "text-gray-400"} />}
                 <span className="font-medium">{item.label}</span>
               </Link>
             );
@@ -117,10 +125,10 @@ export default function AdminMobileNav({ role, displayName }: Props) {
                 key={item.href}
                 href={item.href}
                 className={`flex-1 flex flex-col items-center justify-center py-3 gap-0.5 transition-colors ${
-                  active ? "text-red-500" : "text-gray-400"
+                  active ? "text-lilac-600" : "text-gray-400"
                 }`}
               >
-                <Icon size={22} />
+                {Icon && <Icon size={22} />}
                 <span className="text-[10px] font-medium">{item.label}</span>
               </Link>
             );

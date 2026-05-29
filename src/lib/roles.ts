@@ -16,72 +16,89 @@ export const ROLE_COLORS: Record<UserRole, string> = {
   contador:      "bg-green-50 text-green-800 border-green-300",
 };
 
-// Rutas accesibles solo por admin
+// Rutas accesibles solo por admin (fallback cuando DB no está disponible)
 const ADMIN_ONLY_ROUTES = [
   "/gestion/horarios",
   "/gestion/bloqueos",
   "/gestion/inventario",
+  "/gestion/categorias",
+  "/gestion/unidades",
+  "/gestion/servicios",
   "/gestion/usuarios",
+  "/gestion/roles",
   "/gestion/auditoria",
-  "/gestion/parametros",
 ];
 
-// Rutas accesibles por admin y contador (solo lectura contable)
+// Rutas accesibles por admin y contador (fallback)
 const CONTADOR_ROUTES = [
   "/gestion/facturacion",
   "/gestion/gastos",
   "/gestion/contabilidad",
 ];
 
+// Fallback: usado cuando la DB no está disponible (p.ej. durante desarrollo)
 export function canAccess(role: UserRole | undefined, pathname: string): boolean {
   const r = role ?? "recepcionista";
   if (r === "admin") return true;
   if (r === "contador") {
-    // Contador: solo rutas contables + dashboard
     const allowed = ["/gestion", ...CONTADOR_ROUTES];
     return allowed.some(p => pathname === p || pathname.startsWith(p + "/"));
   }
-  // Recepcionista: bloquear rutas admin-only y contables
   const blocked = [...ADMIN_ONLY_ROUTES, ...CONTADOR_ROUTES];
   return !blocked.some(r => pathname.startsWith(r));
 }
 
-// Navegación por rol
-export interface NavSection {
-  label?: string;
-  items: NavItemDef[];
-}
+// ── Recursos configurables por rol ────────────────────────────────────────
+// Lista de todas las rutas que se pueden asignar a un rol desde el panel
+export const ALL_RESOURCES = [
+  { section: "Principal",     path: "/gestion",              label: "Dashboard (Hoy)" },
+  { section: "Principal",     path: "/gestion/calendario",   label: "Calendario" },
+  { section: "Principal",     path: "/gestion/pacientes",    label: "Pacientes" },
+  { section: "Configuración", path: "/gestion/horarios",    label: "Horarios" },
+  { section: "Configuración", path: "/gestion/bloqueos",    label: "Bloqueos" },
+  { section: "Configuración", path: "/gestion/categorias",  label: "Categorías de Insumos" },
+  { section: "Configuración", path: "/gestion/unidades",    label: "Unidades de Medida" },
+  { section: "Configuración", path: "/gestion/servicios",   label: "Catálogo de Servicios" },
+  { section: "Clínica",       path: "/gestion/inventario",   label: "Inventario" },
+  { section: "Clínica",       path: "/gestion/facturacion",  label: "Facturación SRI" },
+  { section: "Clínica",       path: "/gestion/gastos",       label: "Gastos" },
+  { section: "Clínica",       path: "/gestion/contabilidad", label: "Contabilidad" },
+  { section: "Sistema",       path: "/gestion/usuarios",     label: "Usuarios" },
+  { section: "Sistema",       path: "/gestion/auditoria",    label: "Auditoría" },
+] as const;
 
+export const RESOURCE_SECTIONS = ["Principal", "Configuración", "Clínica", "Sistema"] as const;
+
+// ── Navegación ────────────────────────────────────────────────────────────
 export interface NavItemDef {
   href: string;
   label: string;
   icon: string;
-  roles: UserRole[];
+  section: "Principal" | "Configuración" | "Clínica" | "Sistema";
+  roles: UserRole[]; // usado como fallback cuando DB no está disponible
 }
 
+export const NAV_SECTIONS = ["Principal", "Configuración", "Clínica", "Sistema"] as const;
+
 export const NAV_ITEMS: NavItemDef[] = [
-  // Todos los roles autenticados
-  { href: "/gestion",             label: "Hoy",             icon: "LayoutDashboard", roles: ["admin", "recepcionista"] },
-  { href: "/gestion/calendario",  label: "Calendario",      icon: "CalendarDays",    roles: ["admin", "recepcionista"] },
-  { href: "/gestion/pacientes",   label: "Pacientes",       icon: "Users",           roles: ["admin", "recepcionista"] },
-
-  // Admin únicamente
-  { href: "/gestion/horarios",    label: "Horarios",        icon: "Clock",           roles: ["admin"] },
-  { href: "/gestion/bloqueos",    label: "Bloqueos",        icon: "Ban",             roles: ["admin"] },
-  { href: "/gestion/inventario",  label: "Inventario",      icon: "Package",         roles: ["admin"] },
-
-  // Admin y contador
-  { href: "/gestion/facturacion", label: "Facturación SRI", icon: "FileText",        roles: ["admin", "contador"] },
-  { href: "/gestion/gastos",      label: "Gastos",          icon: "ShoppingCart",    roles: ["admin", "contador"] },
-  { href: "/gestion/contabilidad",label: "Contabilidad",    icon: "FileBarChart2",   roles: ["admin", "contador"] },
-
-  // Solo admin
-  { href: "/gestion/usuarios",    label: "Usuarios",        icon: "UserCog",         roles: ["admin"] },
-  { href: "/gestion/auditoria",   label: "Auditoría",       icon: "ShieldCheck",     roles: ["admin"] },
-  { href: "/gestion/parametros",  label: "Parámetros",      icon: "Settings",        roles: ["admin"] },
+  { href: "/gestion",              label: "Hoy",             icon: "LayoutDashboard", section: "Principal",     roles: ["admin", "recepcionista"] },
+  { href: "/gestion/calendario",   label: "Calendario",      icon: "CalendarDays",    section: "Principal",     roles: ["admin", "recepcionista"] },
+  { href: "/gestion/pacientes",    label: "Pacientes",       icon: "Users",           section: "Principal",     roles: ["admin", "recepcionista"] },
+  { href: "/gestion/horarios",     label: "Horarios",            icon: "Clock",        section: "Configuración", roles: ["admin"] },
+  { href: "/gestion/bloqueos",     label: "Bloqueos",            icon: "Ban",          section: "Configuración", roles: ["admin"] },
+  { href: "/gestion/categorias",   label: "Categorías de Insumos", icon: "Tag",        section: "Configuración", roles: ["admin"] },
+  { href: "/gestion/unidades",     label: "Unidades de Medida",  icon: "Ruler",        section: "Configuración", roles: ["admin"] },
+  { href: "/gestion/servicios",    label: "Catálogo de Servicios", icon: "Stethoscope", section: "Configuración", roles: ["admin"] },
+  { href: "/gestion/inventario",   label: "Inventario",      icon: "Package",         section: "Clínica",       roles: ["admin"] },
+  { href: "/gestion/facturacion",  label: "Facturación SRI", icon: "FileText",        section: "Clínica",       roles: ["admin", "contador"] },
+  { href: "/gestion/gastos",       label: "Gastos",          icon: "ShoppingCart",    section: "Clínica",       roles: ["admin", "contador"] },
+  { href: "/gestion/contabilidad", label: "Contabilidad",    icon: "FileBarChart2",   section: "Clínica",       roles: ["admin", "contador"] },
+  { href: "/gestion/usuarios",     label: "Usuarios",        icon: "UserCog",         section: "Sistema",       roles: ["admin"] },
+  { href: "/gestion/roles",        label: "Roles",           icon: "Shield",          section: "Sistema",       roles: ["admin"] },
+  { href: "/gestion/auditoria",    label: "Auditoría",       icon: "ShieldCheck",     section: "Sistema",       roles: ["admin"] },
 ];
 
-// Dashboard de bienvenida para el contador
+// Dashboard de bienvenida para el contador (sin cambios)
 export const CONTADOR_DASHBOARD_ITEMS = [
   { href: "/gestion/facturacion", label: "Facturación SRI", desc: "Facturas emitidas y autorizadas",  icon: "FileText" },
   { href: "/gestion/gastos",      label: "Gastos",          desc: "Registro de gastos y compras",     icon: "ShoppingCart" },
