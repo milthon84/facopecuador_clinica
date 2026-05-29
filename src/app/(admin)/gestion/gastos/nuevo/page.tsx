@@ -37,7 +37,7 @@ async function saveExpense(formData: FormData) {
   const bank_account_id  = (formData.get("bank_account_id") as string) || null;
   const payment_reference = (formData.get("payment_reference") as string)?.trim() || null;
 
-  const { data: expense } = await supabase.from("expenses").insert({
+  const { data: expense, error: expenseError } = await supabase.from("expenses").insert({
     supplier_name,
     supplier_ruc:      (formData.get("supplier_ruc") as string)?.trim() || null,
     document_number:   (formData.get("document_number") as string)?.trim() || null,
@@ -55,6 +55,8 @@ async function saveExpense(formData: FormData) {
     created_by_id:     user?.id ?? null,
     created_by_email:  user?.email ?? null,
   }).select().single();
+
+  if (expenseError || !expense) throw new Error(expenseError?.message ?? "Error al guardar la compra");
 
   // Crear transacción bancaria automática (egreso) — no aplica a crédito
   if (expense && bank_account_id && payment_method !== "credito") {
@@ -122,7 +124,7 @@ export default async function NuevoGastoPage() {
           className="w-9 h-9 flex items-center justify-center rounded-xl bg-white border border-lilac-200 text-ink-600 hover:bg-lilac-50 transition-colors shrink-0">
           <ArrowLeft size={18} />
         </Link>
-        <h1 className="text-xl font-bold text-ink-900">Registrar Gasto</h1>
+        <h1 className="text-xl font-bold text-ink-900">Registrar Compra</h1>
       </div>
 
       <div className="bg-white border border-lilac-100 rounded-2xl shadow-sm p-4 sm:p-6">
@@ -254,7 +256,7 @@ export default async function NuevoGastoPage() {
           <div className="flex justify-end pt-1">
             <button type="submit"
               className="flex items-center gap-2 bg-lilac-600 hover:bg-lilac-700 text-white px-6 py-2.5 rounded-xl transition-colors font-semibold text-sm shadow-md shadow-lilac-200">
-              <Save size={16} /> Guardar Gasto
+              <Save size={16} /> Guardar Compra
             </button>
           </div>
         </form>

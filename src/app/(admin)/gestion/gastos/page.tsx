@@ -75,13 +75,13 @@ export default async function GastosPage({
       <div className="flex items-center justify-between gap-3 mb-5">
         <div className="flex items-center gap-2">
           <ShoppingCart size={20} className="text-lilac-600 shrink-0" />
-          <h1 className="text-xl font-bold text-ink-900">Gastos</h1>
+          <h1 className="text-xl font-bold text-ink-900">Compras</h1>
         </div>
         <Link
           href="/gestion/gastos/nuevo"
           className="flex items-center gap-1.5 text-sm bg-lilac-600 hover:bg-lilac-700 text-white px-3 py-1.5 rounded-xl transition-colors font-medium shadow-sm"
         >
-          <Plus size={15} /> Registrar gasto
+          <Plus size={15} /> Registrar compra
         </Link>
       </div>
 

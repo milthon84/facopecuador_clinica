@@ -3,8 +3,9 @@ import { notFound } from "next/navigation";
 import Link from "next/link";
 import {
   ArrowLeft, CheckCircle2, XCircle, AlertCircle, Clock,
-  User, FileText, Hash, Calendar, Building2, Copy,
+  User, FileText, Hash, CreditCard,
 } from "lucide-react";
+import CopyButton from "@/components/CopyButton";
 
 export const dynamic = "force-dynamic";
 
@@ -23,6 +24,28 @@ function StatusBadge({ status }: { status: string }) {
     </span>
   );
 }
+
+function PaymentBadge({ status }: { status: string }) {
+  const map: Record<string, { bg: string; icon: React.ReactNode; label: string }> = {
+    paid:    { bg: "bg-green-100 text-green-700 border-green-200", icon: <CheckCircle2 size={14} />, label: "Cobrado" },
+    partial: { bg: "bg-blue-100 text-blue-700 border-blue-200",   icon: <Clock size={14} />,        label: "Cobro Parcial" },
+    pending: { bg: "bg-amber-100 text-amber-700 border-amber-200",icon: <Clock size={14} />,        label: "Por Cobrar" },
+  };
+  const s = map[status] ?? map.pending;
+  return (
+    <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-sm font-semibold border ${s.bg}`}>
+      {s.icon}{s.label}
+    </span>
+  );
+}
+
+const PAYMENT_METHOD_LABELS: Record<string, string> = {
+  efectivo:        "Efectivo",
+  transferencia:   "Transferencia",
+  cheque:          "Cheque",
+  tarjeta_debito:  "Tarjeta Débito",
+  tarjeta_credito: "Tarjeta Crédito",
+};
 
 export default async function InvoiceDetailPage({ params }: { params: { id: string } }) {
   const supabase = createAdminClient();
@@ -57,6 +80,7 @@ export default async function InvoiceDetailPage({ params }: { params: { id: stri
               Factura {invoice.invoice_number || "Borrador"}
             </h1>
             <StatusBadge status={invoice.sri_status} />
+            {invoice.payment_status && <PaymentBadge status={invoice.payment_status} />}
           </div>
           <p className="text-xs text-ink-500 mt-0.5">{issuedAt}</p>
         </div>
@@ -76,13 +100,7 @@ export default async function InvoiceDetailPage({ params }: { params: { id: stri
                 <code className="text-xs font-mono bg-lilac-50 border border-lilac-100 rounded-lg px-3 py-1.5 break-all flex-1">
                   {invoice.sri_access_key}
                 </code>
-                <button
-                  title="Copiar clave"
-                  onClick={undefined}
-                  className="shrink-0 p-1.5 rounded-lg hover:bg-lilac-50 text-ink-400 hover:text-lilac-600 transition"
-                >
-                  <Copy size={14} />
-                </button>
+                <CopyButton text={invoice.sri_access_key} label="Copiar clave de acceso" />
               </div>
             </div>
 
@@ -146,6 +164,24 @@ export default async function InvoiceDetailPage({ params }: { params: { id: stri
               <div>
                 <span className="text-[11px] text-ink-400 uppercase tracking-wide">Dirección</span>
                 <p className="text-sm text-ink-800">{invoice.client_address}</p>
+              </div>
+            )}
+            {invoice.payment_method && (
+              <div>
+                <span className="text-[11px] text-ink-400 uppercase tracking-wide">Forma de pago</span>
+                <p className="text-sm text-ink-800 flex items-center gap-1.5">
+                  <CreditCard size={13} className="text-ink-400" />
+                  {PAYMENT_METHOD_LABELS[invoice.payment_method] ?? invoice.payment_method}
+                  {invoice.payment_reference && <span className="text-ink-400 font-mono text-xs">· {invoice.payment_reference}</span>}
+                </p>
+              </div>
+            )}
+            {invoice.payment_status === "pending" && (
+              <div className="col-span-2">
+                <Link href={`/gestion/cuentas-por-cobrar?pay=${invoice.id}`}
+                  className="inline-flex items-center gap-1.5 text-xs bg-amber-100 text-amber-800 border border-amber-300 hover:bg-amber-200 px-3 py-1 rounded-lg transition-colors font-medium">
+                  <Clock size={12} /> Registrar cobro →
+                </Link>
               </div>
             )}
           </div>
