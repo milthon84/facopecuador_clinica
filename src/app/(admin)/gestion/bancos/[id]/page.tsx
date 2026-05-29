@@ -55,7 +55,9 @@ type Transaction = {
   payment_method: string;
   status: string;
   invoice_id: string | null;
+  expense_id: string | null;
   invoices: { invoice_number: string } | null;
+  expenses: { supplier_name: string; document_number: string | null } | null;
 };
 
 export default async function BancoDetailPage({ params }: { params: { id: string } }) {
@@ -64,7 +66,7 @@ export default async function BancoDetailPage({ params }: { params: { id: string
   const [{ data: account }, { data: rawTransactions }] = await Promise.all([
     supabase.from("bank_accounts").select("*").eq("id", params.id).single(),
     supabase.from("bank_transactions")
-      .select("*, invoices(invoice_number)")
+      .select("*, invoices(invoice_number), expenses(supplier_name, document_number)")
       .eq("account_id", params.id)
       .order("date", { ascending: false })
       .order("created_at", { ascending: false }),
@@ -160,6 +162,13 @@ export default async function BancoDetailPage({ params }: { params: { id: string
                         <Link href={`/gestion/facturacion/${tx.invoice_id}`}
                           className="text-[11px] text-lilac-600 hover:underline">
                           Factura {tx.invoices.invoice_number}
+                        </Link>
+                      )}
+                      {tx.expenses && (
+                        <Link href={`/gestion/gastos/${tx.expense_id}`}
+                          className="text-[11px] text-red-500 hover:underline">
+                          Gasto: {tx.expenses.supplier_name}
+                          {tx.expenses.document_number && ` · ${tx.expenses.document_number}`}
                         </Link>
                       )}
                     </td>
