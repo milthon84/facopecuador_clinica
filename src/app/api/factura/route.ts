@@ -40,7 +40,10 @@ export async function POST(req: Request) {
     }
 
     // 2. Extraer datos del body
-    const { patient_id, client_name, client_document, client_email, client_phone, client_address, items } = body;
+    const {
+      patient_id, client_name, client_document, client_email, client_phone, client_address, items,
+      payment_method = "efectivo", bank_account_id, payment_reference,
+    } = body;
 
     if (!client_name || !client_document || !items || items.length === 0) {
       return NextResponse.json({ error: "Faltan datos obligatorios: nombre, documento o ítems" }, { status: 400 });
@@ -231,6 +234,9 @@ export async function POST(req: Request) {
       sri_authorization_number,
       sri_authorization_date,
       sri_environment: config.ambiente,
+      payment_method,
+      bank_account_id: bank_account_id || null,
+      payment_reference: payment_reference || null,
       ...(sri_error_messages ? { sri_error_messages } : {}),
     }).select().single();
 
@@ -249,7 +255,26 @@ export async function POST(req: Request) {
 
     await supabase.from("invoice_items").insert(itemsToInsert);
 
-    // 11. Generar asiento contable automático
+    // 11. Crear transacción bancaria automática si hay cuenta seleccionada
+    if (bank_account_id) {
+      try {
+        await supabase.from("bank_transactions").insert({
+          account_id:     bank_account_id,
+          type:           "ingreso",
+          amount:         importeTotal,
+          date:           new Date().toISOString().split("T")[0],
+          description:    `Factura ${invoiceNumber} — ${client_name}`,
+          reference:      payment_reference || claveAcceso.slice(-8),
+          payment_method,
+          invoice_id:     invoice.id,
+          status:         "confirmado",
+        });
+      } catch (bankErr) {
+        console.error("Transacción bancaria no registrada:", bankErr);
+      }
+    }
+
+    // 12. Generar asiento contable automático
     try {
       await createInvoiceJournalEntry({
         invoice_id:   invoice.id,

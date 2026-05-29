@@ -4,6 +4,7 @@ import { useState, FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { ArrowLeft, Plus, Trash2, Send, FileText, User, Search, X, BookOpen, ChevronDown } from "lucide-react";
+import { validateDocumento, validateEmail, validateTelefono } from "@/lib/validators";
 
 interface InvoiceItem {
   id: string;
@@ -31,18 +32,40 @@ interface Service {
   category: string;
 }
 
+interface BankAccount {
+  id: string;
+  bank_name: string;
+  account_number: string | null;
+  account_type: string;
+}
+
+const PAYMENT_METHODS = [
+  { value: "efectivo",        label: "Efectivo",         sriCode: "01" },
+  { value: "transferencia",   label: "Transferencia",    sriCode: "20" },
+  { value: "cheque",          label: "Cheque",           sriCode: "20" },
+  { value: "tarjeta_debito",  label: "Tarjeta Débito",   sriCode: "16" },
+  { value: "tarjeta_credito", label: "Tarjeta Crédito",  sriCode: "19" },
+];
+
 export default function NewInvoiceForm({
   patients,
   initialPatient,
   services = [],
+  bankAccounts = [],
 }: {
   patients: Patient[];
   initialPatient: Patient | null;
   services?: Service[];
+  bankAccounts?: BankAccount[];
 }) {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [showCatalog, setShowCatalog] = useState(false);
+  const [formErrors, setFormErrors] = useState<Record<string, string>>({});
+
+  const [paymentMethod,    setPaymentMethod]    = useState("efectivo");
+  const [bankAccountId,    setBankAccountId]    = useState("");
+  const [paymentReference, setPaymentReference] = useState("");
 
   const [items, setItems] = useState<InvoiceItem[]>([]);
 
@@ -96,7 +119,7 @@ export default function NewInvoiceForm({
   }
 
   const addItem = () => {
-    setItems([...items, { id: Math.random().toString(), description: "", quantity: 1, unit_price: 0, discount: 0, iva_code: "0" }]);
+    setItems([...items, { id: Math.random().toString(), description: "", quantity: 1, unit_price: 0, discount: 0, iva_code: "4" }]);
   };
 
   const removeItem = (id: string) => {
@@ -113,21 +136,40 @@ export default function NewInvoiceForm({
   const ivaAmount      = subtotal15 * 0.15;
   const totalFactura   = subtotal15 + subtotal0 + ivaAmount;
 
+  function validateForm(): boolean {
+    const e: Record<string, string> = {};
+    if (!clientName.trim() || clientName.trim().length < 2) e.clientName = "Razón social / nombre requerido";
+    const docErr = validateDocumento(clientDocument);
+    if (docErr) e.clientDocument = docErr;
+    const emailErr = validateEmail(clientEmail);
+    if (emailErr) e.clientEmail = emailErr;
+    const telErr = validateTelefono(clientPhone, true);
+    if (telErr) e.clientPhone = telErr;
+    if (items.length === 0) e.items = "Agrega al menos un ítem a la factura";
+    setFormErrors(e);
+    return Object.keys(e).length === 0;
+  }
+
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
+    if (!validateForm()) return;
     setLoading(true);
     try {
       const res = await fetch("/api/factura", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          patient_id:      patientId || undefined,
-          client_name:     clientName,
-          client_document: clientDocument,
-          client_email:    clientEmail,
-          client_phone:    clientPhone,
-          client_address:  clientAddress,
+          patient_id:        patientId || undefined,
+          client_name:       clientName,
+          client_document:   clientDocument,
+          client_email:      clientEmail,
+          client_phone:      clientPhone,
+          client_address:    clientAddress,
           items,
+          payment_method:    paymentMethod,
+          bank_account_id:   bankAccountId || undefined,
+          payment_reference: paymentReference || undefined,
+          forma_pago:        PAYMENT_METHODS.find(m => m.value === paymentMethod)?.sriCode ?? "01",
         }),
       });
       const result = await res.json();
@@ -224,33 +266,91 @@ export default function NewInvoiceForm({
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-1">
               <label className="text-xs font-semibold text-ink-700">Razón Social / Nombres *</label>
-              <input type="text" required value={clientName} onChange={e => setClientName(e.target.value)}
-                className="w-full bg-white border border-lilac-200 rounded-xl px-3 py-2 text-sm focus:ring-2 focus:ring-lilac-500 focus:outline-none"
+              <input type="text" required value={clientName}
+                onChange={e => { setClientName(e.target.value); setFormErrors(p => ({ ...p, clientName: "" })); }}
+                className={`w-full bg-white border rounded-xl px-3 py-2 text-sm focus:ring-2 focus:ring-lilac-500 focus:outline-none ${formErrors.clientName ? "border-red-400" : "border-lilac-200"}`}
                 placeholder="Juan Pérez" />
+              {formErrors.clientName && <p className="text-xs text-red-500">{formErrors.clientName}</p>}
             </div>
             <div className="space-y-1">
               <label className="text-xs font-semibold text-ink-700">RUC o Cédula *</label>
-              <input type="text" required value={clientDocument} onChange={e => setClientDocument(e.target.value)} maxLength={13}
-                className="w-full bg-white border border-lilac-200 rounded-xl px-3 py-2 text-sm focus:ring-2 focus:ring-lilac-500 focus:outline-none font-mono"
+              <input type="text" required value={clientDocument} maxLength={13}
+                onChange={e => { setClientDocument(e.target.value); setFormErrors(p => ({ ...p, clientDocument: "" })); }}
+                onBlur={e => { const err = validateDocumento(e.target.value); if (err) setFormErrors(p => ({ ...p, clientDocument: err })); }}
+                className={`w-full bg-white border rounded-xl px-3 py-2 text-sm focus:ring-2 focus:ring-lilac-500 focus:outline-none font-mono ${formErrors.clientDocument ? "border-red-400" : "border-lilac-200"}`}
                 placeholder="1700000000" />
+              {formErrors.clientDocument && <p className="text-xs text-red-500">{formErrors.clientDocument}</p>}
             </div>
             <div className="space-y-1">
               <label className="text-xs font-semibold text-ink-700">Correo Electrónico *</label>
-              <input type="email" required value={clientEmail} onChange={e => setClientEmail(e.target.value)}
-                className="w-full bg-white border border-lilac-200 rounded-xl px-3 py-2 text-sm focus:ring-2 focus:ring-lilac-500 focus:outline-none"
+              <input type="email" required value={clientEmail}
+                onChange={e => { setClientEmail(e.target.value); setFormErrors(p => ({ ...p, clientEmail: "" })); }}
+                onBlur={e => { const err = validateEmail(e.target.value); if (err) setFormErrors(p => ({ ...p, clientEmail: err })); }}
+                className={`w-full bg-white border rounded-xl px-3 py-2 text-sm focus:ring-2 focus:ring-lilac-500 focus:outline-none ${formErrors.clientEmail ? "border-red-400" : "border-lilac-200"}`}
                 placeholder="correo@ejemplo.com" />
+              {formErrors.clientEmail && <p className="text-xs text-red-500">{formErrors.clientEmail}</p>}
             </div>
             <div className="space-y-1">
               <label className="text-xs font-semibold text-ink-700">Teléfono</label>
-              <input type="text" value={clientPhone} onChange={e => setClientPhone(e.target.value)}
-                className="w-full bg-white border border-lilac-200 rounded-xl px-3 py-2 text-sm focus:ring-2 focus:ring-lilac-500 focus:outline-none"
+              <input type="text" value={clientPhone}
+                onChange={e => { setClientPhone(e.target.value); setFormErrors(p => ({ ...p, clientPhone: "" })); }}
+                onBlur={e => { const err = validateTelefono(e.target.value, true); if (err) setFormErrors(p => ({ ...p, clientPhone: err })); }}
+                className={`w-full bg-white border rounded-xl px-3 py-2 text-sm focus:ring-2 focus:ring-lilac-500 focus:outline-none ${formErrors.clientPhone ? "border-red-400" : "border-lilac-200"}`}
                 placeholder="0999999999" />
+              {formErrors.clientPhone && <p className="text-xs text-red-500">{formErrors.clientPhone}</p>}
             </div>
             <div className="md:col-span-2 space-y-1">
               <label className="text-xs font-semibold text-ink-700">Dirección</label>
               <input type="text" value={clientAddress} onChange={e => setClientAddress(e.target.value)}
                 className="w-full bg-white border border-lilac-200 rounded-xl px-3 py-2 text-sm focus:ring-2 focus:ring-lilac-500 focus:outline-none"
                 placeholder="Av. Principal y Secundaria" />
+            </div>
+          </div>
+        </div>
+
+        {/* ── Método de Pago ──────────────────────────────── */}
+        <div className="bg-white border border-lilac-100 rounded-2xl shadow-sm p-4 sm:p-5">
+          <h3 className="font-semibold text-sm text-ink-700 flex items-center gap-2 mb-4 border-b border-lilac-50 pb-2">
+            <span className="text-lilac-600">💳</span>
+            Forma de Pago
+          </h3>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <div className="space-y-1">
+              <label className="text-xs font-semibold text-ink-700">Método *</label>
+              <select value={paymentMethod} onChange={e => { setPaymentMethod(e.target.value); setBankAccountId(""); }}
+                className="w-full bg-white border border-lilac-200 rounded-xl px-3 py-2 text-sm focus:ring-2 focus:ring-lilac-500 focus:outline-none">
+                {PAYMENT_METHODS.map(m => (
+                  <option key={m.value} value={m.value}>{m.label}</option>
+                ))}
+              </select>
+            </div>
+
+            {paymentMethod !== "efectivo" && (
+              <div className="space-y-1">
+                <label className="text-xs font-semibold text-ink-700">
+                  Cuenta bancaria{(paymentMethod === "transferencia" || paymentMethod === "cheque") ? " *" : ""}
+                </label>
+                <select value={bankAccountId} onChange={e => setBankAccountId(e.target.value)}
+                  required={paymentMethod === "transferencia" || paymentMethod === "cheque"}
+                  className="w-full bg-white border border-lilac-200 rounded-xl px-3 py-2 text-sm focus:ring-2 focus:ring-lilac-500 focus:outline-none">
+                  <option value="">— Seleccionar cuenta —</option>
+                  {bankAccounts.map(b => (
+                    <option key={b.id} value={b.id}>
+                      {b.bank_name}{b.account_number ? ` · ${b.account_number}` : ""}
+                    </option>
+                  ))}
+                </select>
+                {bankAccounts.length === 0 && (
+                  <p className="text-[11px] text-amber-600">No hay cuentas registradas. <a href="/gestion/bancos" className="underline">Agregar cuenta</a></p>
+                )}
+              </div>
+            )}
+
+            <div className="space-y-1">
+              <label className="text-xs font-semibold text-ink-700">N° Referencia / Comprobante</label>
+              <input type="text" value={paymentReference} onChange={e => setPaymentReference(e.target.value)}
+                placeholder="Ej. TRF-001234"
+                className="w-full bg-white border border-lilac-200 rounded-xl px-3 py-2 text-sm focus:ring-2 focus:ring-lilac-500 focus:outline-none font-mono" />
             </div>
           </div>
         </div>

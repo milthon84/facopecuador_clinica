@@ -1,5 +1,6 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
+import { validateDocumento } from "@/lib/validators";
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import { ArrowLeft, Save } from "lucide-react";
@@ -25,7 +26,12 @@ async function saveDividend(formData: FormData) {
     resolution_date:   formData.get("resolution_date") as string,
     resolution_number: (formData.get("resolution_number") as string)?.trim() || null,
     beneficiary_name:  (formData.get("beneficiary_name") as string).trim(),
-    beneficiary_ruc:   (formData.get("beneficiary_ruc")  as string).trim(),
+    beneficiary_ruc:   (() => {
+      const ruc = (formData.get("beneficiary_ruc") as string).trim();
+      const err = validateDocumento(ruc);
+      if (err) throw new Error(`RUC/Cédula inválido: ${err}`);
+      return ruc;
+    })(),
     beneficiary_type:  formData.get("beneficiary_type") as string,
     percentage,
     utility_amount,
@@ -85,6 +91,8 @@ export default function NuevoDividendoPage({
             <div className="space-y-1">
               <label className="text-xs font-semibold text-ink-700">RUC / Cédula *</label>
               <input type="text" name="beneficiary_ruc" required placeholder="1793235116001"
+                pattern="\d{10}|\d{13}" title="Ingrese cédula (10 dígitos) o RUC (13 dígitos)"
+                maxLength={13}
                 className="w-full border border-lilac-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-lilac-400 bg-white font-mono" />
             </div>
           </div>

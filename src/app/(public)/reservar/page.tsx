@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { ChevronLeft, ChevronRight, Calendar, ArrowLeft, ArrowRight, CheckCircle2 } from "lucide-react";
 import { formatDateLocal, formatTimeLocal } from "@/lib/availability";
+import { validateDocumento, validateEmail, validateTelefono } from "@/lib/validators";
 import type { TimeSlot } from "@/lib/types";
 
 type Step = "date" | "slot" | "data" | "submitting";
@@ -59,10 +60,13 @@ export default function ReservarPage() {
 
   function validate(): boolean {
     const e: Record<string, string> = {};
-    if (!document.trim()) e.document = "Ingresá tu cédula";
+    const docErr = validateDocumento(document);
+    if (docErr) e.document = docErr;
     if (!fullName.trim() || fullName.trim().length < 3) e.fullName = "Nombre completo requerido";
-    if (!phone.trim() || phone.replace(/\D/g, "").length < 7) e.phone = "Teléfono inválido";
-    if (!email.trim() || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) e.email = "Email inválido";
+    const telErr = validateTelefono(phone);
+    if (telErr) e.phone = telErr;
+    const emailErr = validateEmail(email);
+    if (emailErr) e.email = emailErr;
     setErrors(e);
     return Object.keys(e).length === 0;
   }

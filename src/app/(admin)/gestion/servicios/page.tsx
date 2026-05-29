@@ -182,8 +182,8 @@ export default async function ServiciosPage() {
             name="iva_code"
             className="text-sm border border-lilac-200 rounded-xl px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-lilac-400 bg-white"
           >
-            <option value="0">IVA 0%</option>
             <option value="4">IVA 15%</option>
+            <option value="0">IVA 0%</option>
           </select>
           <button
             type="submit"
