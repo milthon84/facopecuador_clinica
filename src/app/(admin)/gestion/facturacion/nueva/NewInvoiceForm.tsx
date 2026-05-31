@@ -243,57 +243,13 @@ export default function NewInvoiceForm({
 
         {/* ── Datos del Cliente ───────────────────────────── */}
         <div className="bg-white border border-lilac-100 rounded-2xl shadow-sm p-4 sm:p-5">
-          <div className="flex items-center justify-between mb-4 border-b border-lilac-50 pb-2">
+          <div className="mb-4 border-b border-lilac-50 pb-2">
             <h3 className="font-semibold text-sm text-ink-700 flex items-center gap-2">
               <User size={15} className="text-lilac-600" />
               Datos del Adquirente
             </h3>
-            <button
-              type="button"
-              onClick={() => { setShowSearch(!showSearch); setSearch(""); }}
-              className="flex items-center gap-1.5 text-xs text-lilac-600 hover:text-lilac-800 font-medium border border-lilac-200 rounded-lg px-2.5 py-1 hover:bg-lilac-50 transition-colors"
-            >
-              <Search size={12} />
-              {showSearch ? "Cerrar búsqueda" : "Buscar paciente"}
-            </button>
+            <p className="text-[11px] text-ink-400 mt-0.5">Ingresa la cédula o RUC — los datos se cargan automáticamente si existe en el sistema.</p>
           </div>
-
-          {/* Buscador opcional de paciente */}
-          {showSearch && (
-            <div className="mb-4 relative">
-              <div className="relative">
-                <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-ink-400" />
-                <input
-                  type="text"
-                  value={search}
-                  onChange={e => setSearch(e.target.value)}
-                  placeholder="Buscar por nombre o cédula…"
-                  autoFocus
-                  className="w-full pl-9 pr-4 py-2 text-sm border border-lilac-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-lilac-400 bg-white"
-                />
-              </div>
-              {filteredPatients.length > 0 && (
-                <div className="absolute z-20 left-0 right-0 mt-1 bg-white border border-lilac-200 rounded-xl shadow-lg overflow-hidden">
-                  {filteredPatients.map(p => (
-                    <button
-                      key={p.id}
-                      type="button"
-                      onClick={() => selectPatient(p)}
-                      className="w-full flex items-center gap-3 px-4 py-2.5 hover:bg-lilac-50 text-left transition-colors border-b border-lilac-50 last:border-0"
-                    >
-                      <div>
-                        <p className="text-sm font-medium text-ink-900">{p.full_name}</p>
-                        <p className="text-xs text-ink-400">{p.document_number ?? "Sin cédula"} {p.email ? `· ${p.email}` : ""}</p>
-                      </div>
-                    </button>
-                  ))}
-                </div>
-              )}
-              {search.length >= 2 && filteredPatients.length === 0 && (
-                <p className="text-xs text-ink-400 mt-2 px-1">No se encontraron pacientes con ese nombre o cédula.</p>
-              )}
-            </div>
-          )}
 
           {/* Indicador de paciente seleccionado */}
           {patientId && (
