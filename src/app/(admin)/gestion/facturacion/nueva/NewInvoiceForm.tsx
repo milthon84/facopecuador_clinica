@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, FormEvent, useRef } from "react";
+import { useState, FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { ArrowLeft, Plus, Trash2, Send, FileText, User, Search, X, BookOpen, ChevronDown, Loader2, CheckCircle2, AlertCircle } from "lucide-react";
@@ -67,10 +67,9 @@ export default function NewInvoiceForm({
   const [bankAccountId,    setBankAccountId]    = useState("");
   const [paymentReference, setPaymentReference] = useState("");
 
-  // Lookup SRI
-  const [sriStatus, setSriStatus]   = useState<"idle" | "loading" | "found" | "not_found" | "error">("idle");
-  const [sriMessage, setSriMessage] = useState("");
-  const lookupRef = useRef<AbortController | null>(null);
+  // Lookup local (pacientes + facturas previas)
+  const [lookupStatus, setLookupStatus] = useState<"idle" | "loading" | "found" | "not_found">("idle");
+  const [lookupSource, setLookupSource] = useState<"patient" | "invoice" | null>(null);
 
   const [items, setItems] = useState<InvoiceItem[]>([]);
 
@@ -109,43 +108,36 @@ export default function NewInvoiceForm({
     setClientEmail("");
     setClientPhone("");
     setSearch("");
-    setSriStatus("idle");
-    setSriMessage("");
+    setLookupStatus("idle");
+    setLookupSource(null);
   }
 
-  async function lookupSRI(doc: string) {
+  async function lookupByDocument(doc: string) {
     const clean = doc.replace(/[\s\-]/g, "");
     if (!/^\d{10}$/.test(clean) && !/^\d{13}$/.test(clean)) return;
 
-    // Cancelar request anterior si hay uno en curso
-    if (lookupRef.current) lookupRef.current.abort();
-    lookupRef.current = new AbortController();
-
-    setSriStatus("loading");
-    setSriMessage("");
+    setLookupStatus("loading");
+    setLookupSource(null);
     try {
-      const res = await fetch(`/api/sri/contribuyente?ruc=${clean}`, {
-        signal: lookupRef.current.signal,
-      });
+      const res  = await fetch(`/api/admin/client-lookup?document=${clean}`);
       const data = await res.json();
 
-      if (!res.ok) {
-        setSriStatus("not_found");
-        setSriMessage(data.error ?? "No encontrado en el SRI");
+      if (!data.found) {
+        setLookupStatus("not_found");
         return;
       }
 
-      // Auto-completar nombre con razón social del SRI
-      if (data.razonSocial) {
-        setClientName(data.razonSocial);
-      }
-      setSriStatus("found");
-      const estadoBadge = data.estado ? ` · ${data.estado}` : "";
-      setSriMessage(`${data.razonSocial ?? ""}${estadoBadge}`);
-    } catch (err: any) {
-      if (err?.name === "AbortError") return;
-      setSriStatus("error");
-      setSriMessage("Sin conexión al SRI — ingresa el nombre manualmente");
+      // Auto-completar campos con los datos encontrados
+      if (data.patient_id) setPatientId(data.patient_id);
+      if (data.name)    setClientName(data.name);
+      if (data.email)   setClientEmail(data.email);
+      if (data.phone)   setClientPhone(data.phone);
+      if (data.address) setClientAddress(data.address);
+
+      setLookupStatus("found");
+      setLookupSource(data.source);
+    } catch {
+      setLookupStatus("idle");
     }
   }
 
@@ -316,38 +308,38 @@ export default function NewInvoiceForm({
                     const val = e.target.value.replace(/\D/g, "");
                     setClientDocument(val);
                     setFormErrors(p => ({ ...p, clientDocument: "" }));
-                    setSriStatus("idle");
-                    setSriMessage("");
-                    // Disparar lookup automático al completar 10 (cédula) o 13 (RUC) dígitos
+                    if (lookupStatus !== "idle") { setLookupStatus("idle"); setLookupSource(null); }
+                    // Buscar automáticamente al completar 10 (cédula) o 13 (RUC) dígitos
                     if (val.length === 10 || val.length === 13) {
-                      lookupSRI(val);
+                      const docErr = validateDocumento(val);
+                      if (!docErr) lookupByDocument(val);
+                      else setFormErrors(p => ({ ...p, clientDocument: docErr }));
                     }
                   }}
-                  className={`w-full bg-white border rounded-xl px-3 py-2 text-sm focus:ring-2 focus:ring-lilac-500 focus:outline-none font-mono pr-9 ${formErrors.clientDocument ? "border-red-400" : "border-lilac-200"}`}
+                  className={`w-full bg-white border rounded-xl px-3 py-2 text-sm focus:ring-2 focus:ring-lilac-500 focus:outline-none font-mono pr-9 ${formErrors.clientDocument ? "border-red-400" : lookupStatus === "found" ? "border-green-300" : "border-lilac-200"}`}
                   placeholder="Cédula (10 dígitos) o RUC (13 dígitos)" />
                 <span className="absolute right-3 top-1/2 -translate-y-1/2">
-                  {sriStatus === "loading"   && <Loader2 size={14} className="animate-spin text-lilac-500" />}
-                  {sriStatus === "found"     && <CheckCircle2 size={14} className="text-green-500" />}
-                  {sriStatus === "not_found" && <AlertCircle size={14} className="text-amber-500" />}
-                  {sriStatus === "error"     && <AlertCircle size={14} className="text-red-400" />}
+                  {lookupStatus === "loading"   && <Loader2 size={14} className="animate-spin text-lilac-500" />}
+                  {lookupStatus === "found"     && <CheckCircle2 size={14} className="text-green-500" />}
+                  {lookupStatus === "not_found" && <AlertCircle size={14} className="text-ink-300" />}
                 </span>
               </div>
               {formErrors.clientDocument && <p className="text-xs text-red-500">{formErrors.clientDocument}</p>}
-              {sriStatus === "loading"   && <p className="text-xs text-lilac-500 flex items-center gap-1"><Loader2 size={11} className="animate-spin" /> Consultando SRI…</p>}
-              {sriStatus === "found"     && <p className="text-xs text-green-600 font-medium flex items-center gap-1"><CheckCircle2 size={11} /> SRI: {sriMessage}</p>}
-              {sriStatus === "not_found" && <p className="text-xs text-amber-600 flex items-center gap-1"><AlertCircle size={11} /> {sriMessage}</p>}
-              {sriStatus === "error"     && <p className="text-xs text-red-400 flex items-center gap-1"><AlertCircle size={11} /> {sriMessage}</p>}
+              {lookupStatus === "loading"   && <p className="text-xs text-lilac-500 flex items-center gap-1"><Loader2 size={11} className="animate-spin" /> Buscando en el sistema…</p>}
+              {lookupStatus === "found" && lookupSource === "patient"  && <p className="text-xs text-green-600 font-medium flex items-center gap-1"><CheckCircle2 size={11} /> Datos cargados desde pacientes registrados</p>}
+              {lookupStatus === "found" && lookupSource === "invoice"  && <p className="text-xs text-green-600 font-medium flex items-center gap-1"><CheckCircle2 size={11} /> Datos cargados desde facturación previa</p>}
+              {lookupStatus === "not_found" && <p className="text-xs text-ink-400 flex items-center gap-1"><AlertCircle size={11} /> No encontrado — ingresa los datos manualmente</p>}
             </div>
 
-            {/* Razón social — auto-completado desde SRI */}
+            {/* Razón social — auto-completado si existe en el sistema */}
             <div className="space-y-1 md:col-span-2">
               <label className="text-xs font-semibold text-ink-700">
                 Razón Social / Nombres *
-                {sriStatus === "found" && <span className="ml-1 text-green-600 font-normal">(cargado desde SRI)</span>}
+                {lookupStatus === "found" && <span className="ml-1 text-green-600 font-normal">(auto-completado)</span>}
               </label>
               <input type="text" required value={clientName}
                 onChange={e => { setClientName(e.target.value); setFormErrors(p => ({ ...p, clientName: "" })); }}
-                className={`w-full bg-white border rounded-xl px-3 py-2 text-sm focus:ring-2 focus:ring-lilac-500 focus:outline-none ${sriStatus === "found" ? "border-green-300 bg-green-50/30" : formErrors.clientName ? "border-red-400" : "border-lilac-200"}`}
+                className={`w-full bg-white border rounded-xl px-3 py-2 text-sm focus:ring-2 focus:ring-lilac-500 focus:outline-none ${lookupStatus === "found" ? "border-green-300 bg-green-50/30" : formErrors.clientName ? "border-red-400" : "border-lilac-200"}`}
                 placeholder="Nombre completo o razón social" />
               {formErrors.clientName && <p className="text-xs text-red-500">{formErrors.clientName}</p>}
             </div>

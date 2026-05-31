@@ -3,7 +3,10 @@
     "allow": [
       "Bash(curl -s --max-time 8 \"https://srienlinea.sri.gob.ec/movil-servicios/api/2.0/ruc/porIdentificacion/1793235116001\")",
       "Bash(echo \"EXIT:$?\")",
-      "Bash(curl -s -v \"http://localhost:3001/api/sri/contribuyente?ruc=1793235116001\")"
+      "Bash(curl -s -v \"http://localhost:3001/api/sri/contribuyente?ruc=1793235116001\")",
+      "Bash(git add *)",
+      "Bash(git commit *)",
+      "Bash(git push *)"
     ]
   }
 }
