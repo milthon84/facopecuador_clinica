@@ -484,13 +484,13 @@ export default function NewInvoiceForm({
             <table className="w-full text-left text-sm">
               <thead className="bg-lilac-50/50 text-ink-500 text-xs uppercase">
                 <tr>
-                  <th className="px-4 py-2.5">Descripción</th>
-                  <th className="px-4 py-2.5 w-20 text-center">Cant.</th>
-                  <th className="px-4 py-2.5 w-32">P. Unit.</th>
-                  <th className="px-4 py-2.5 w-28">Descuento</th>
-                  <th className="px-4 py-2.5 w-32">IVA</th>
-                  <th className="px-4 py-2.5 w-32 text-right">Total</th>
-                  <th className="px-4 py-2.5 w-10"></th>
+                  <th className="px-3 py-2.5">Descripción</th>
+                  <th className="px-3 py-2.5 w-16 text-center">Cant.</th>
+                  <th className="px-3 py-2.5 w-28">P. Unit.</th>
+                  <th className="px-3 py-2.5 w-24">Desc.</th>
+                  <th className="px-3 py-2.5 w-16 text-center">%IVA</th>
+                  <th className="px-3 py-2.5 w-28 text-right">Total</th>
+                  <th className="px-3 py-2.5 w-8"></th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-lilac-50">
@@ -498,48 +498,53 @@ export default function NewInvoiceForm({
                   const lineTotal = (item.quantity * item.unit_price) - item.discount;
                   return (
                     <tr key={item.id} className="hover:bg-lilac-50/20">
-                      <td className="px-4 py-2.5">
+                      <td className="px-3 py-2">
                         <input type="text" required value={item.description}
                           onChange={e => updateItem(item.id, "description", e.target.value)}
                           placeholder="Descripción del servicio"
-                          className="w-full bg-transparent border-b border-dashed border-lilac-200 focus:border-lilac-500 focus:outline-none py-1" />
+                          className="w-full bg-transparent border-b border-dashed border-lilac-200 focus:border-lilac-500 focus:outline-none py-1 text-sm" />
                       </td>
-                      <td className="px-4 py-2.5 text-center">
+                      <td className="px-3 py-2 text-center">
                         <input type="number" required min="1" step="0.01" value={item.quantity}
                           onChange={e => updateItem(item.id, "quantity", Number(e.target.value))}
-                          className="w-16 bg-transparent border-b border-dashed border-lilac-200 focus:border-lilac-500 focus:outline-none py-1 text-center font-medium" />
+                          className="w-14 bg-transparent border-b border-dashed border-lilac-200 focus:border-lilac-500 focus:outline-none py-1 text-center font-medium text-sm" />
                       </td>
-                      <td className="px-4 py-2.5">
+                      <td className="px-3 py-2">
                         <div className="relative">
                           <span className="absolute left-0 top-1/2 -translate-y-1/2 text-ink-400 text-xs">$</span>
                           <input type="number" required min="0" step="0.01" value={item.unit_price}
                             onChange={e => updateItem(item.id, "unit_price", Number(e.target.value))}
-                            className="w-full bg-transparent border-b border-dashed border-lilac-200 focus:border-lilac-500 focus:outline-none py-1 pl-4 font-medium" />
+                            className="w-full bg-transparent border-b border-dashed border-lilac-200 focus:border-lilac-500 focus:outline-none py-1 pl-4 font-medium text-sm" />
                         </div>
                       </td>
-                      <td className="px-4 py-2.5">
+                      <td className="px-3 py-2">
                         <div className="relative">
                           <span className="absolute left-0 top-1/2 -translate-y-1/2 text-ink-400 text-xs">$</span>
                           <input type="number" min="0" step="0.01" value={item.discount}
                             onChange={e => updateItem(item.id, "discount", Number(e.target.value))}
-                            className="w-full bg-transparent border-b border-dashed border-lilac-200 focus:border-lilac-500 focus:outline-none py-1 pl-4 text-red-600" />
+                            className="w-full bg-transparent border-b border-dashed border-lilac-200 focus:border-lilac-500 focus:outline-none py-1 pl-4 text-red-600 text-sm" />
                         </div>
                       </td>
-                      <td className="px-4 py-2.5">
-                        <select value={item.iva_code}
-                          onChange={e => updateItem(item.id, "iva_code", e.target.value)}
-                          className="w-full bg-lilac-50 border border-lilac-200 rounded-lg text-xs p-1.5 focus:outline-none focus:ring-1 focus:ring-lilac-500">
-                          <option value="4">IVA 15%</option>
-                          <option value="0">IVA 0%</option>
-                        </select>
+                      <td className="px-3 py-2 text-center">
+                        <button
+                          type="button"
+                          onClick={() => updateItem(item.id, "iva_code", item.iva_code === "4" ? "0" : "4")}
+                          className={`w-14 text-xs font-bold py-1 px-2 rounded-lg border transition-colors ${
+                            item.iva_code === "4"
+                              ? "bg-orange-50 border-orange-200 text-orange-700"
+                              : "bg-gray-50 border-gray-200 text-gray-500"
+                          }`}
+                        >
+                          {item.iva_code === "4" ? "15%" : "0%"}
+                        </button>
                       </td>
-                      <td className="px-4 py-2.5 text-right font-bold text-ink-900">
+                      <td className="px-3 py-2 text-right font-bold text-ink-900 text-sm">
                         ${lineTotal > 0 ? lineTotal.toFixed(2) : "0.00"}
                       </td>
-                      <td className="px-4 py-2.5 text-center">
+                      <td className="px-3 py-2 text-center">
                         <button type="button" onClick={() => removeItem(item.id)} disabled={items.length === 1}
-                          className="text-ink-400 hover:text-red-500 transition-colors disabled:opacity-30 p-1">
-                          <Trash2 size={15} />
+                          className="text-ink-300 hover:text-red-500 transition-colors disabled:opacity-30">
+                          <Trash2 size={14} />
                         </button>
                       </td>
                     </tr>
