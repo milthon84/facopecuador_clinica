@@ -307,40 +307,33 @@ export default function NewInvoiceForm({
           )}
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {/* ── RUC / Cédula PRIMERO — con lookup SRI automático ── */}
+            {/* ── RUC / Cédula PRIMERO — lookup automático al completar ── */}
             <div className="space-y-1 md:col-span-2">
               <label className="text-xs font-semibold text-ink-700">RUC o Cédula *</label>
-              <div className="flex gap-2">
-                <div className="relative flex-1">
-                  <input type="text" required value={clientDocument} maxLength={13}
-                    onChange={e => {
-                      setClientDocument(e.target.value);
-                      setFormErrors(p => ({ ...p, clientDocument: "" }));
-                      setSriStatus("idle");
-                      setSriMessage("");
-                    }}
-                    onBlur={e => {
-                      const err = validateDocumento(e.target.value);
-                      if (err) { setFormErrors(p => ({ ...p, clientDocument: err })); return; }
-                      lookupSRI(e.target.value);
-                    }}
-                    className={`w-full bg-white border rounded-xl px-3 py-2 text-sm focus:ring-2 focus:ring-lilac-500 focus:outline-none font-mono pr-9 ${formErrors.clientDocument ? "border-red-400" : "border-lilac-200"}`}
-                    placeholder="Ej: 1793235116001 (RUC) o 1720304050 (cédula)" />
-                  {/* Indicador de estado SRI */}
-                  <span className="absolute right-3 top-1/2 -translate-y-1/2">
-                    {sriStatus === "loading"   && <Loader2 size={14} className="animate-spin text-lilac-500" />}
-                    {sriStatus === "found"     && <CheckCircle2 size={14} className="text-green-500" />}
-                    {sriStatus === "not_found" && <AlertCircle size={14} className="text-amber-500" />}
-                    {sriStatus === "error"     && <AlertCircle size={14} className="text-red-400" />}
-                  </span>
-                </div>
-                <button type="button" onClick={() => lookupSRI(clientDocument)}
-                  disabled={sriStatus === "loading"}
-                  className="shrink-0 px-3 py-2 text-xs font-semibold rounded-xl border border-lilac-200 bg-lilac-50 hover:bg-lilac-100 text-lilac-700 transition-colors disabled:opacity-50">
-                  {sriStatus === "loading" ? "Buscando…" : "Consultar SRI"}
-                </button>
+              <div className="relative">
+                <input type="text" required value={clientDocument} maxLength={13}
+                  onChange={e => {
+                    const val = e.target.value.replace(/\D/g, "");
+                    setClientDocument(val);
+                    setFormErrors(p => ({ ...p, clientDocument: "" }));
+                    setSriStatus("idle");
+                    setSriMessage("");
+                    // Disparar lookup automático al completar 10 (cédula) o 13 (RUC) dígitos
+                    if (val.length === 10 || val.length === 13) {
+                      lookupSRI(val);
+                    }
+                  }}
+                  className={`w-full bg-white border rounded-xl px-3 py-2 text-sm focus:ring-2 focus:ring-lilac-500 focus:outline-none font-mono pr-9 ${formErrors.clientDocument ? "border-red-400" : "border-lilac-200"}`}
+                  placeholder="Cédula (10 dígitos) o RUC (13 dígitos)" />
+                <span className="absolute right-3 top-1/2 -translate-y-1/2">
+                  {sriStatus === "loading"   && <Loader2 size={14} className="animate-spin text-lilac-500" />}
+                  {sriStatus === "found"     && <CheckCircle2 size={14} className="text-green-500" />}
+                  {sriStatus === "not_found" && <AlertCircle size={14} className="text-amber-500" />}
+                  {sriStatus === "error"     && <AlertCircle size={14} className="text-red-400" />}
+                </span>
               </div>
               {formErrors.clientDocument && <p className="text-xs text-red-500">{formErrors.clientDocument}</p>}
+              {sriStatus === "loading"   && <p className="text-xs text-lilac-500 flex items-center gap-1"><Loader2 size={11} className="animate-spin" /> Consultando SRI…</p>}
               {sriStatus === "found"     && <p className="text-xs text-green-600 font-medium flex items-center gap-1"><CheckCircle2 size={11} /> SRI: {sriMessage}</p>}
               {sriStatus === "not_found" && <p className="text-xs text-amber-600 flex items-center gap-1"><AlertCircle size={11} /> {sriMessage}</p>}
               {sriStatus === "error"     && <p className="text-xs text-red-400 flex items-center gap-1"><AlertCircle size={11} /> {sriMessage}</p>}
