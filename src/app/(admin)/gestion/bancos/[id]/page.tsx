@@ -30,20 +30,37 @@ async function addTransaction(formData: FormData) {
   const type           = formData.get("type") as string;
   const amount         = Number(formData.get("amount"));
   const date           = formData.get("date") as string;
-  const description    = (formData.get("description") as string).trim();
+  const categoria      = formData.get("categoria") as string;
+  const description    = (formData.get("description") as string)?.trim() || categoria;
   const reference      = (formData.get("reference") as string)?.trim() || null;
   const payment_method = formData.get("payment_method") as string;
   const status         = formData.get("status") as string;
 
-  if (!description || amount <= 0) throw new Error("Datos inválidos");
+  if (!categoria || amount <= 0) throw new Error("Datos inválidos");
 
   const supabase = createAdminClient();
   await supabase.from("bank_transactions").insert({
-    account_id, type, amount, date, description, reference, payment_method, status,
+    account_id, type, amount, date,
+    description: description || categoria,
+    reference, payment_method, status,
+    origin: "manual",
+    categoria,
   });
 
   redirect(`/gestion/bancos/${account_id}`);
 }
+
+const CATEGORIAS_MANUAL = [
+  "Comisión bancaria",
+  "Ajuste de saldo",
+  "Transferencia interna",
+  "Reposición caja chica",
+  "Depósito en efectivo",
+  "Retiro en efectivo",
+  "Pago a proveedor",
+  "Cobro a cliente",
+  "Otros",
+];
 
 type Transaction = {
   id: string;
@@ -54,6 +71,8 @@ type Transaction = {
   reference: string | null;
   payment_method: string;
   status: string;
+  origin: string | null;
+  categoria: string | null;
   invoice_id: string | null;
   expense_id: string | null;
   invoices: { invoice_number: string } | null;
@@ -143,7 +162,8 @@ export default async function BancoDetailPage({ params }: { params: { id: string
               <thead className="bg-lilac-50/50 text-xs text-ink-500 uppercase font-semibold">
                 <tr>
                   <th className="px-4 py-3 text-left">Fecha</th>
-                  <th className="px-4 py-3 text-left">Descripción</th>
+                  <th className="px-4 py-3 text-left">Descripción / Motivo</th>
+                  <th className="px-4 py-3 text-left">Origen</th>
                   <th className="px-4 py-3 text-left">Método</th>
                   <th className="px-4 py-3 text-left">Referencia</th>
                   <th className="px-4 py-3 text-center">Estado</th>
@@ -151,13 +171,18 @@ export default async function BancoDetailPage({ params }: { params: { id: string
                 </tr>
               </thead>
               <tbody className="divide-y divide-lilac-50">
-                {transactions.map(tx => (
+                {transactions.map(tx => {
+                  const isAuto = tx.origin === "automatico" || (!tx.origin && (tx.invoice_id || tx.expense_id));
+                  return (
                   <tr key={tx.id} className="hover:bg-lilac-50/20 transition-colors">
                     <td className="px-4 py-3 text-xs text-ink-500 whitespace-nowrap">
                       {new Date(tx.date + "T12:00:00").toLocaleDateString("es-EC")}
                     </td>
                     <td className="px-4 py-3">
-                      <p className="font-medium text-ink-800 leading-tight">{tx.description}</p>
+                      <p className="font-medium text-ink-800 leading-tight text-sm">{tx.description}</p>
+                      {tx.categoria && !tx.invoices && !tx.expenses && (
+                        <span className="text-[11px] text-ink-400">{tx.categoria}</span>
+                      )}
                       {tx.invoices && (
                         <Link href={`/gestion/facturacion/${tx.invoice_id}`}
                           className="text-[11px] text-lilac-600 hover:underline">
@@ -167,10 +192,19 @@ export default async function BancoDetailPage({ params }: { params: { id: string
                       {tx.expenses && (
                         <Link href={`/gestion/gastos/${tx.expense_id}`}
                           className="text-[11px] text-red-500 hover:underline">
-                          Gasto: {tx.expenses.supplier_name}
+                          Compra: {tx.expenses.supplier_name}
                           {tx.expenses.document_number && ` · ${tx.expenses.document_number}`}
                         </Link>
                       )}
+                    </td>
+                    <td className="px-4 py-3">
+                      <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full border ${
+                        isAuto
+                          ? "bg-lilac-50 text-lilac-700 border-lilac-200"
+                          : "bg-amber-50 text-amber-700 border-amber-200"
+                      }`}>
+                        {isAuto ? "⚡ Automático" : "✏ Manual"}
+                      </span>
                     </td>
                     <td className="px-4 py-3 text-xs text-ink-500">
                       {PAYMENT_LABELS[tx.payment_method] ?? tx.payment_method}
@@ -193,7 +227,8 @@ export default async function BancoDetailPage({ params }: { params: { id: string
                       </span>
                     </td>
                   </tr>
-                ))}
+                  );
+                })}
               </tbody>
             </table>
           </div>
@@ -205,8 +240,9 @@ export default async function BancoDetailPage({ params }: { params: { id: string
         <h2 className="font-semibold text-ink-900 mb-1 flex items-center gap-2">
           <Plus size={18} className="text-lilac-600" />
           Registrar movimiento manual
+          <span className="text-[10px] bg-amber-100 text-amber-700 border border-amber-200 px-2 py-0.5 rounded-full font-semibold">✏ Manual</span>
         </h2>
-        <p className="text-sm text-ink-500 mb-5">Para ajustes, comisiones u operaciones no vinculadas a facturas.</p>
+        <p className="text-sm text-ink-500 mb-5">Para ajustes, comisiones u operaciones no vinculadas a facturas ni compras.</p>
 
         <form action={addTransaction} className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <input type="hidden" name="account_id" value={account.id} />
@@ -217,6 +253,15 @@ export default async function BancoDetailPage({ params }: { params: { id: string
               className="w-full bg-lilac-50/50 border border-lilac-100 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-lilac-500">
               <option value="ingreso">Ingreso (depósito)</option>
               <option value="egreso">Egreso (pago)</option>
+            </select>
+          </div>
+
+          <div className="space-y-1">
+            <label className="text-sm font-semibold text-ink-700">Categoría / Motivo *</label>
+            <select name="categoria" required
+              className="w-full bg-lilac-50/50 border border-lilac-100 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-lilac-500">
+              <option value="">— Seleccionar motivo —</option>
+              {CATEGORIAS_MANUAL.map(c => <option key={c} value={c}>{c}</option>)}
             </select>
           </div>
 
@@ -248,8 +293,8 @@ export default async function BancoDetailPage({ params }: { params: { id: string
           </div>
 
           <div className="sm:col-span-2 space-y-1">
-            <label className="text-sm font-semibold text-ink-700">Descripción *</label>
-            <input name="description" required placeholder="Ej. Comisión bancaria mensual"
+            <label className="text-sm font-semibold text-ink-700">Descripción adicional</label>
+            <input name="description" placeholder="Ej. Comisión enero 2026, detalle adicional..."
               className="w-full bg-lilac-50/50 border border-lilac-100 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-lilac-500" />
           </div>
 

@@ -77,6 +77,7 @@ async function saveExpense(formData: FormData) {
         payment_method: pmMap[payment_method] ?? "transferencia",
         expense_id:     expense.id,
         status:         "confirmado",
+        origin:         "automatico",
       });
     } catch (err) {
       console.error("Transacción bancaria de gasto no registrada:", err);

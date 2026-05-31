@@ -274,6 +274,7 @@ export async function POST(req: Request) {
           payment_method,
           invoice_id:     invoice.id,
           status:         "confirmado",
+          origin:         "automatico",
         });
       } catch (bankErr) {
         console.error("Transacción bancaria no registrada:", bankErr);

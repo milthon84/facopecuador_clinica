@@ -49,6 +49,7 @@ async function addCashExpense(formData: FormData) {
     account_id, type: "egreso", amount, date,
     description, reference,
     payment_method: "efectivo", status: "confirmado",
+    origin: "manual", categoria: "Retiro en efectivo",
   });
   redirect("/gestion/caja-chica");
 }
@@ -70,12 +71,14 @@ async function replenishCajaChica(formData: FormData) {
     account_id: bank_id, type: "egreso", amount, date,
     description: "Reposición caja chica",
     payment_method: "transferencia", status: "confirmado",
+    origin: "manual", categoria: "Reposición caja chica",
   });
   // Ingreso en caja chica
   await supabase.from("bank_transactions").insert({
     account_id: caja_id, type: "ingreso", amount, date,
     description: "Reposición desde banco",
     payment_method: "efectivo", status: "confirmado",
+    origin: "manual", categoria: "Reposición caja chica",
   });
   redirect("/gestion/caja-chica");
 }
