@@ -190,8 +190,28 @@ export default async function BancosPage() {
         <form action={createAccount} className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div className="space-y-1">
             <label className="text-sm font-semibold text-ink-700">Banco / Entidad *</label>
-            <input name="bank_name" required placeholder="Ej. Banco Pichincha"
+            {/* datalist: permite elegir de la lista O escribir uno diferente */}
+            <input name="bank_name" required list="bancos-ecuador"
+              placeholder="Selecciona o escribe el banco"
               className="w-full bg-lilac-50/50 border border-lilac-100 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-lilac-500" />
+            <datalist id="bancos-ecuador">
+              <option value="Banco Pichincha" />
+              <option value="Banco Guayaquil" />
+              <option value="Produbanco" />
+              <option value="Banco del Pacífico" />
+              <option value="Banco Internacional" />
+              <option value="Banco Bolivariano" />
+              <option value="Banco de la Producción (Produbanco)" />
+              <option value="Banco Solidario" />
+              <option value="Banco General Rumiñahui" />
+              <option value="Banco del Austro" />
+              <option value="Banco Citybank" />
+              <option value="Banco Diners Club" />
+              <option value="Cooperativa JEP" />
+              <option value="Cooperativa 29 de Octubre" />
+              <option value="Mutualista Pichincha" />
+              <option value="Caja / Efectivo" />
+            </datalist>
           </div>
           <div className="space-y-1">
             <label className="text-sm font-semibold text-ink-700">N° de Cuenta</label>
