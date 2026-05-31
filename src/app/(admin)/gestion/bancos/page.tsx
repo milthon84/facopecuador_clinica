@@ -60,7 +60,10 @@ type BankTransaction = {
   status: string;
 };
 
-export default async function BancosPage() {
+export default async function BancosPage({
+  searchParams,
+}: { searchParams: { nueva?: string } }) {
+  const showForm = searchParams.nueva === "1";
   const supabase = createAdminClient();
 
   const [{ data: accounts }, { data: transactions }] = await Promise.all([
@@ -85,13 +88,20 @@ export default async function BancosPage() {
     <div className="max-w-4xl mx-auto">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
-        <div>
-          <h1 className="text-2xl font-bold text-ink-900 flex items-center gap-2">
-            <Building2 className="text-lilac-600" />
-            Cuentas Bancarias
-          </h1>
-          <p className="text-sm text-ink-600">Controla saldos, depósitos y pagos por cuenta.</p>
-        </div>
+        <h1 className="text-2xl font-bold text-ink-900 flex items-center gap-2">
+          <Building2 className="text-lilac-600" />
+          Cuentas Bancarias
+        </h1>
+        <Link
+          href={showForm ? "/gestion/bancos" : "/gestion/bancos?nueva=1"}
+          className={`flex items-center gap-2 px-4 py-2 rounded-xl font-semibold text-sm transition-colors ${
+            showForm
+              ? "bg-ink-100 text-ink-700 border border-ink-200 hover:bg-ink-200"
+              : "bg-lilac-600 hover:bg-lilac-700 text-white shadow-md shadow-lilac-200"
+          }`}>
+          <Plus size={16} />
+          {showForm ? "Cancelar" : "Agregar cuenta"}
+        </Link>
       </div>
 
       {/* Stats */}
@@ -180,13 +190,12 @@ export default async function BancosPage() {
         </div>
       )}
 
-      {/* Formulario crear cuenta */}
-      <div className="bg-white border border-lilac-100 rounded-2xl shadow-sm p-6">
-        <h2 className="font-semibold text-ink-900 mb-1 flex items-center gap-2">
+      {/* Formulario crear cuenta — solo visible con ?nueva=1 */}
+      {showForm && <div className="bg-white border border-lilac-100 rounded-2xl shadow-sm p-6">
+        <h2 className="font-semibold text-ink-900 mb-4 flex items-center gap-2">
           <Plus size={18} className="text-lilac-600" />
-          Agregar cuenta bancaria
+          Nueva cuenta bancaria
         </h2>
-        <p className="text-sm text-ink-500 mb-5">Registra una nueva cuenta o caja de efectivo.</p>
         <form action={createAccount} className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div className="space-y-1">
             <label className="text-sm font-semibold text-ink-700">Banco / Entidad *</label>
@@ -247,7 +256,7 @@ export default async function BancosPage() {
             </button>
           </div>
         </form>
-      </div>
+      </div>}
     </div>
   );
 }
