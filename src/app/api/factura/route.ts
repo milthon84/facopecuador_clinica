@@ -234,10 +234,9 @@ export async function POST(req: Request) {
       sri_authorization_number,
       sri_authorization_date,
       sri_environment: config.ambiente,
-      payment_method,
-      bank_account_id: bank_account_id || null,
+      payment_method:    payment_method    || null,
+      bank_account_id:   bank_account_id   || null,
       payment_reference: payment_reference || null,
-      payment_status: bank_account_id ? "paid" : "pending",
       ...(sri_error_messages ? { sri_error_messages } : {}),
     }).select().single();
 
@@ -256,7 +255,13 @@ export async function POST(req: Request) {
 
     await supabase.from("invoice_items").insert(itemsToInsert);
 
-    // 11. Crear transacción bancaria automática si hay cuenta seleccionada
+    // 11. Actualizar payment_status y crear transacción bancaria (requiere migración)
+    try {
+      await supabase.from("invoices").update({
+        payment_status: bank_account_id ? "paid" : "pending",
+      }).eq("id", invoice.id);
+    } catch { /* columna aún no existe — ejecutar migration_cuentas_cobrar_pagar.sql */ }
+
     if (bank_account_id) {
       try {
         await supabase.from("bank_transactions").insert({
