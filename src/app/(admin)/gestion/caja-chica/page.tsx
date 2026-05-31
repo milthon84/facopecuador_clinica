@@ -306,25 +306,6 @@ export default async function CajaChicaPage() {
         );
       })}
 
-      {/* Agregar otra caja chica */}
-      <div className="bg-white border border-dashed border-lilac-200 rounded-2xl p-5 text-center">
-        <form action={setupCajaChica} className="inline-flex flex-col items-center gap-3">
-          <p className="text-sm text-ink-500">¿Necesitas otra caja chica? (sucursal, departamento...)</p>
-          <div className="flex gap-2">
-            <input name="bank_name" required placeholder="Nombre de la caja"
-              className="border border-lilac-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-lilac-400 bg-white" />
-            <div className="relative">
-              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-ink-400 text-xs">$</span>
-              <input type="number" name="initial_balance" min="0" step="0.01" defaultValue="100" placeholder="Fondo"
-                className="w-28 border border-lilac-200 rounded-xl pl-7 pr-2 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-lilac-400 bg-white font-mono" />
-            </div>
-            <button type="submit"
-              className="flex items-center gap-1.5 bg-lilac-600 hover:bg-lilac-700 text-white px-3 py-2 rounded-xl text-sm font-semibold transition-colors">
-              <Plus size={14} /> Crear
-            </button>
-          </div>
-        </form>
-      </div>
     </div>
   );
 }
