@@ -166,38 +166,40 @@ export default function EditarFichaClientPage({ patient }: EditarFichaClientPage
     }
   }, [birthDate]);
 
-  // Handle Odontogram interactions
+  // Handle Odontogram interactions — simbología MSP Ecuador
+  const WHOLE_TOOTH_TOOLS = [
+    "extraccion","perdida_caries","perdida_otra",
+    "sellante_necesario","sellante_realizado",
+    "endodoncia_nec","endodoncia_real",
+    "corona","protesis_fija","protesis_removible","protesis_total",
+  ];
+  const MOVILIDAD_TOOLS = ["movilidad_1","movilidad_2","movilidad_3"];
+  const RECESION_TOOLS  = ["recesion_1","recesion_2","recesion_3","recesion_4"];
+
   const handleSurfaceClick = (toothNum: number, surface: string, tool: string) => {
     setOdontogram((prev) => {
       const tooth = prev[toothNum] || { general: "sano", surfaces: {} };
       const surfaces = { ...tooth.surfaces };
 
-      if (["corona", "perdida", "extraccion"].includes(tool)) {
-        return {
-          ...prev,
-          [toothNum]: {
-            ...tooth,
-            general: tooth.general === tool ? "sano" : tool,
-          },
-        };
+      if (WHOLE_TOOTH_TOOLS.includes(tool)) {
+        // Condición de toda la pieza (toggle)
+        return { ...prev, [toothNum]: { ...tooth, general: tooth.general === tool ? "sano" : tool } };
+      } else if (MOVILIDAD_TOOLS.includes(tool)) {
+        // Movilidad como atributo adicional (solo piezas definitivas 6.3)
+        const grade = Number(tool.split("_")[1]);
+        return { ...prev, [toothNum]: { ...tooth, movilidad: tooth.movilidad === grade ? null : grade } };
+      } else if (RECESION_TOOLS.includes(tool)) {
+        // Recesión como atributo adicional (solo piezas definitivas 6.3)
+        const grade = Number(tool.split("_")[1]);
+        return { ...prev, [toothNum]: { ...tooth, recesion: tooth.recesion === grade ? null : grade } };
       } else if (tool === "sano") {
+        // Borrador de superficie
         delete surfaces[surface];
-        return {
-          ...prev,
-          [toothNum]: {
-            ...tooth,
-            surfaces,
-          },
-        };
+        return { ...prev, [toothNum]: { ...tooth, surfaces } };
       } else {
+        // Condición de superficie: caries, obturacion
         surfaces[surface] = surfaces[surface] === tool ? "sano" : tool;
-        return {
-          ...prev,
-          [toothNum]: {
-            ...tooth,
-            surfaces,
-          },
-        };
+        return { ...prev, [toothNum]: { ...tooth, surfaces } };
       }
     });
   };
@@ -266,14 +268,34 @@ export default function EditarFichaClientPage({ patient }: EditarFichaClientPage
   const childLowerQuad8 = [85, 84, 83, 82, 81];
   const childLowerQuad7 = [71, 72, 73, 74, 75];
 
+  // Simbología según normativa MSP Ecuador (Historia Clínica Única Odontología)
   const tools = [
-    { id: "caries", label: "Caries (Rojo)", color: "bg-red-500 border-red-600 text-white", desc: "Daño en esmalte/superficie" },
-    { id: "sellante_necesario", label: "Sellante Req.", color: "bg-blue-100 border-blue-400 text-blue-700", desc: "Requiere aplicación profiláctica" },
-    { id: "sellante_realizado", label: "Sellante Realiz.", color: "bg-blue-600 border-blue-700 text-white", desc: "Sellante ya colocado" },
-    { id: "corona", label: "Corona (Dorado)", color: "bg-gold-50 border-gold-500 text-gold-700 ring-2 ring-gold-200", desc: "Corona protésica (Afecta todo el diente)" },
-    { id: "perdida", label: "Ausente", color: "bg-white border-red-400 text-red-600 ring-2 ring-red-100", desc: "Diente ausente o perdido" },
-    { id: "extraccion", label: "Extracción", color: "bg-white border-amber-500 text-amber-700 ring-2 ring-amber-100", desc: "Requiere extracción indicada" },
-    { id: "sano", label: "Borrador", color: "bg-ink-900 text-white border-ink-900", desc: "Limpiar/Borrar anomalías" },
+    // ── Superficies ───────────────────────────────────────────────────────────
+    { id: "caries",             sym: "■", symColor: "#ef4444", label: "Caries",              color: "bg-red-500 border-red-600 text-white",          desc: "Superficie cariada — rojo (6.16)" },
+    { id: "obturacion",         sym: "■", symColor: "#3b82f6", label: "Obturación",           color: "bg-blue-600 border-blue-700 text-white",         desc: "Superficie obturada — azul (6.15)" },
+    // ── Ausencias ─────────────────────────────────────────────────────────────
+    { id: "extraccion",         sym: "✕", symColor: "#ef4444", label: "Extracción ind.",      color: "bg-white border-red-500 text-red-600",           desc: "X Roja — extracción indicada (6.6)" },
+    { id: "perdida_caries",     sym: "✕", symColor: "#3b82f6", label: "Perdida caries",       color: "bg-white border-blue-500 text-blue-700",         desc: "X Azul — perdida por caries (6.7)" },
+    { id: "perdida_otra",       sym: "⊗", symColor: "#3b82f6", label: "Perdida otra causa",   color: "bg-white border-blue-600 text-blue-700",         desc: "X+○ Azul — perdida otra causa (6.8)" },
+    // ── Tratamientos ─────────────────────────────────────────────────────────
+    { id: "sellante_necesario", sym: "*", symColor: "#ef4444", label: "Sellante nec.",        color: "bg-red-50 border-red-400 text-red-700",          desc: "* Rojo — sellante necesario (6.4)" },
+    { id: "sellante_realizado", sym: "*", symColor: "#3b82f6", label: "Sellante real.",       color: "bg-blue-50 border-blue-400 text-blue-700",       desc: "* Azul — sellante realizado (6.5)" },
+    { id: "endodoncia_nec",     sym: "△", symColor: "#ef4444", label: "Endodoncia nec.",      color: "bg-red-100 border-red-500 text-red-700",         desc: "△ Rojo — endodoncia indicada (6.9)" },
+    { id: "endodoncia_real",    sym: "△", symColor: "#3b82f6", label: "Endodoncia real.",     color: "bg-blue-100 border-blue-500 text-blue-700",      desc: "△ Azul — endodoncia realizada (6.10)" },
+    { id: "corona",             sym: "○", symColor: "#3b82f6", label: "Corona",               color: "bg-white border-blue-600 text-blue-800",         desc: "○ Azul — corona protésica (6.14)" },
+    { id: "protesis_fija",      sym: "⋯", symColor: "#3b82f6", label: "Prótesis fija",        color: "bg-blue-50 border-blue-400 text-blue-700",       desc: "⋯ Azul — prótesis fija (6.11)" },
+    { id: "protesis_removible", sym: "(⋯)", symColor: "#3b82f6", label: "Prót. removible",   color: "bg-blue-50 border-blue-300 text-blue-600",       desc: "(⋯) Azul — prótesis removible (6.12)" },
+    { id: "protesis_total",     sym: "=", symColor: "#3b82f6", label: "Prótesis total",       color: "bg-blue-100 border-blue-600 text-blue-800",      desc: "= Azul — prótesis total (6.13)" },
+    // ── Periodontal (solo piezas definitivas) ────────────────────────────────
+    { id: "movilidad_1",        sym: "1", symColor: "#f97316", label: "Movilidad G1",         color: "bg-orange-50 border-orange-400 text-orange-700", desc: "Movilidad grado 1 — Miller (6.1)" },
+    { id: "movilidad_2",        sym: "2", symColor: "#f97316", label: "Movilidad G2",         color: "bg-orange-100 border-orange-500 text-orange-800", desc: "Movilidad grado 2 — Miller (6.1)" },
+    { id: "movilidad_3",        sym: "3", symColor: "#f97316", label: "Movilidad G3",         color: "bg-orange-200 border-orange-600 text-orange-900", desc: "Movilidad grado 3 — Miller (6.1)" },
+    { id: "recesion_1",         sym: "R1", symColor: "#9333ea", label: "Recesión G1",         color: "bg-purple-50 border-purple-400 text-purple-700", desc: "Recesión grado 1 — Miller (6.2)" },
+    { id: "recesion_2",         sym: "R2", symColor: "#9333ea", label: "Recesión G2",         color: "bg-purple-100 border-purple-500 text-purple-800", desc: "Recesión grado 2 — Miller (6.2)" },
+    { id: "recesion_3",         sym: "R3", symColor: "#9333ea", label: "Recesión G3",         color: "bg-purple-200 border-purple-600 text-purple-900", desc: "Recesión grado 3 — Miller (6.2)" },
+    { id: "recesion_4",         sym: "R4", symColor: "#9333ea", label: "Recesión G4",         color: "bg-purple-300 border-purple-700 text-purple-900", desc: "Recesión grado 4 — Miller (6.2)" },
+    // ── Borrador ─────────────────────────────────────────────────────────────
+    { id: "sano",               sym: "✗", symColor: "#1f2937", label: "Borrador",             color: "bg-ink-900 text-white border-ink-900",           desc: "Limpiar condición de la superficie" },
   ];
 
   const hasRiskFactors = Object.entries(medicalHistory).some(([k, v]) => k !== "otros" && v === true);
@@ -684,23 +706,31 @@ export default function EditarFichaClientPage({ patient }: EditarFichaClientPage
                 </div>
               </div>
 
-              {/* Tools Palette */}
+              {/* Tools Palette — Simbología MSP Ecuador */}
               <div className="bg-lilac-50/55 rounded-2xl p-4 border border-lilac-100 mb-6">
-                <div className="text-xs font-bold text-ink-700 uppercase mb-2">Herramienta Seleccionada</div>
-                <div className="flex flex-wrap gap-2">
+                <div className="text-xs font-bold text-ink-700 uppercase mb-3">
+                  Simbología — Herramienta activa: <span className="text-lilac-700">{tools.find(t => t.id === selectedTool)?.label}</span>
+                </div>
+                <div className="flex flex-wrap gap-1.5">
                   {tools.map((t) => (
                     <button
                       key={t.id}
                       type="button"
                       onClick={() => setSelectedTool(t.id)}
-                      className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all border flex flex-col items-start gap-0.5 text-left ${
+                      title={t.desc}
+                      className={`px-2.5 py-1.5 rounded-lg text-xs font-bold transition-all border flex items-center gap-1.5 ${
                         selectedTool === t.id
                           ? `${t.color} scale-105 shadow-md`
-                          : "bg-white border-lilac-100 text-ink-700 hover:border-lilac-300 hover:bg-lilac-50/20"
+                          : "bg-white border-lilac-100 text-ink-700 hover:border-lilac-300 hover:bg-lilac-50"
                       }`}
                     >
-                      <span className="font-bold">{t.label}</span>
-                      <span className="text-[10px] opacity-80 font-normal">{t.desc}</span>
+                      <span
+                        className="font-black text-sm leading-none w-6 text-center shrink-0"
+                        style={{ color: selectedTool === t.id ? "inherit" : (t as any).symColor }}
+                      >
+                        {(t as any).sym}
+                      </span>
+                      <span className="whitespace-nowrap">{t.label}</span>
                     </button>
                   ))}
                 </div>
@@ -927,95 +957,120 @@ function Tooth({
   onSurfaceClick: (toothNum: number, surface: string, tool: string) => void;
   onClearTooth: (toothNum: number) => void;
 }) {
-  const general = state.general || "sano";
-  const surfaces = state.surfaces || {};
+  const general   = state.general   || "sano";
+  const surfaces  = state.surfaces  || {};
+  const movilidad = state.movilidad ?? null;
+  const recesion  = state.recesion  ?? null;
 
   const handlePartClick = (surfaceKey: string) => {
     onSurfaceClick(toothNum, surfaceKey, selectedTool);
   };
 
+  // Colores de superficie: caries=rojo, obturacion=azul
   const getSurfaceColorClass = (surfKey: string) => {
     const cond = surfaces[surfKey];
-    if (cond === "caries") return "fill-red-500 hover:fill-red-600 stroke-red-600";
-    if (cond === "sellante_necesario") return "fill-blue-100 hover:fill-blue-200 stroke-blue-500 stroke-dasharray-[2_2]";
-    if (cond === "sellante_realizado") return "fill-blue-500 hover:fill-blue-600 stroke-blue-600";
-    return "fill-white hover:fill-gold-50 stroke-lilac-200";
+    if (cond === "caries")    return "fill-red-500 hover:fill-red-600 stroke-red-700";
+    if (cond === "obturacion") return "fill-blue-500 hover:fill-blue-600 stroke-blue-700";
+    return "fill-white hover:fill-lilac-50 stroke-lilac-300";
   };
 
-  const centerColorClass = getSurfaceColorClass("center");
+  const hasMark = general !== "sano" || Object.keys(surfaces).length > 0 || movilidad || recesion;
 
   return (
     <div className="flex flex-col items-center p-1.5 bg-white rounded-xl border border-lilac-50 hover:border-lilac-200 transition-all shadow-sm">
       <div className="text-[10px] font-bold text-ink-800 mb-1">{toothNum}</div>
       <div className="relative w-[50px] h-[50px]">
         <svg viewBox="0 0 60 60" className="w-full h-full">
-          {/* Top (Vestibular) */}
-          <polygon
-            points="0,0 60,0 42,18 18,18"
-            className={`transition-colors cursor-pointer stroke-[1px] ${getSurfaceColorClass("top")}`}
-            onClick={() => handlePartClick("top")}
-          />
-          {/* Bottom (Lingual/Palatino) */}
-          <polygon
-            points="0,60 60,60 42,42 18,42"
-            className={`transition-colors cursor-pointer stroke-[1px] ${getSurfaceColorClass("bottom")}`}
-            onClick={() => handlePartClick("bottom")}
-          />
-          {/* Left (Distal/Mesial) */}
-          <polygon
-            points="0,0 18,18 18,42 0,60"
-            className={`transition-colors cursor-pointer stroke-[1px] ${getSurfaceColorClass("left")}`}
-            onClick={() => handlePartClick("left")}
-          />
-          {/* Right (Mesial/Distal) */}
-          <polygon
-            points="60,0 42,18 42,42 60,60"
-            className={`transition-colors cursor-pointer stroke-[1px] ${getSurfaceColorClass("right")}`}
-            onClick={() => handlePartClick("right")}
-          />
-          {/* Center (Oclusal) */}
-          <rect
-            x="18"
-            y="18"
-            width="24"
-            height="24"
-            className={`transition-colors cursor-pointer stroke-[1px] ${centerColorClass}`}
-            onClick={() => handlePartClick("center")}
-          />
+          {/* Superficies */}
+          <polygon points="0,0 60,0 42,18 18,18"   className={`transition-colors cursor-pointer stroke-[1px] ${getSurfaceColorClass("top")}`}    onClick={() => handlePartClick("top")} />
+          <polygon points="0,60 60,60 42,42 18,42"  className={`transition-colors cursor-pointer stroke-[1px] ${getSurfaceColorClass("bottom")}`} onClick={() => handlePartClick("bottom")} />
+          <polygon points="0,0 18,18 18,42 0,60"    className={`transition-colors cursor-pointer stroke-[1px] ${getSurfaceColorClass("left")}`}   onClick={() => handlePartClick("left")} />
+          <polygon points="60,0 42,18 42,42 60,60"  className={`transition-colors cursor-pointer stroke-[1px] ${getSurfaceColorClass("right")}`}  onClick={() => handlePartClick("right")} />
+          <rect x="18" y="18" width="24" height="24" className={`transition-colors cursor-pointer stroke-[1px] ${getSurfaceColorClass("center")}`} onClick={() => handlePartClick("center")} />
 
-          {/* Overlays for whole-tooth state */}
+          {/* ── Overlays de pieza completa — simbología MSP Ecuador ── */}
+
+          {/* 6.6 Extracción indicada: X Roja */}
+          {general === "extraccion" && (<>
+            <line x1="8" y1="8" x2="52" y2="52" stroke="#ef4444" strokeWidth="4.5" strokeLinecap="round" className="pointer-events-none" />
+            <line x1="52" y1="8" x2="8" y2="52" stroke="#ef4444" strokeWidth="4.5" strokeLinecap="round" className="pointer-events-none" />
+          </>)}
+
+          {/* 6.7 Perdida por caries: X Azul */}
+          {general === "perdida_caries" && (<>
+            <line x1="8" y1="8" x2="52" y2="52" stroke="#3b82f6" strokeWidth="4.5" strokeLinecap="round" className="pointer-events-none" />
+            <line x1="52" y1="8" x2="8" y2="52" stroke="#3b82f6" strokeWidth="4.5" strokeLinecap="round" className="pointer-events-none" />
+          </>)}
+
+          {/* 6.8 Perdida por otra causa: X Azul + círculo azul */}
+          {general === "perdida_otra" && (<>
+            <line x1="8" y1="8" x2="52" y2="52" stroke="#3b82f6" strokeWidth="4" strokeLinecap="round" className="pointer-events-none" />
+            <line x1="52" y1="8" x2="8" y2="52" stroke="#3b82f6" strokeWidth="4" strokeLinecap="round" className="pointer-events-none" />
+            <circle cx="30" cy="30" r="27" fill="none" stroke="#3b82f6" strokeWidth="2.5" className="pointer-events-none" />
+          </>)}
+
+          {/* 6.4 Sellante necesario: Asterisco Rojo */}
+          {general === "sellante_necesario" && (
+            <text x="30" y="41" textAnchor="middle" fontSize="36" fontWeight="900" fill="#ef4444" className="pointer-events-none" style={{ fontFamily: "monospace" }}>*</text>
+          )}
+
+          {/* 6.5 Sellante realizado: Asterisco Azul */}
+          {general === "sellante_realizado" && (
+            <text x="30" y="41" textAnchor="middle" fontSize="36" fontWeight="900" fill="#3b82f6" className="pointer-events-none" style={{ fontFamily: "monospace" }}>*</text>
+          )}
+
+          {/* 6.9 Endodoncia necesaria: Triángulo Rojo */}
+          {general === "endodoncia_nec" && (
+            <polygon points="30,6 54,52 6,52" fill="none" stroke="#ef4444" strokeWidth="3.5" strokeLinejoin="round" className="pointer-events-none" />
+          )}
+
+          {/* 6.10 Endodoncia realizada: Triángulo Azul */}
+          {general === "endodoncia_real" && (
+            <polygon points="30,6 54,52 6,52" fill="none" stroke="#3b82f6" strokeWidth="3.5" strokeLinejoin="round" className="pointer-events-none" />
+          )}
+
+          {/* 6.14 Corona: Círculo Azul */}
           {general === "corona" && (
-            <circle
-              cx="30"
-              cy="30"
-              r="27"
-              fill="none"
-              stroke="#C9A961"
-              strokeWidth="3.5"
-              className="pointer-events-none"
-            />
+            <circle cx="30" cy="30" r="27" fill="none" stroke="#3b82f6" strokeWidth="3.5" className="pointer-events-none" />
           )}
 
-          {general === "perdida" && (
-            <>
-              <line x1="5" y1="5" x2="55" y2="55" stroke="#ef4444" strokeWidth="4.5" strokeLinecap="round" className="pointer-events-none" />
-              <line x1="55" y1="5" x2="5" y2="55" stroke="#ef4444" strokeWidth="4.5" strokeLinecap="round" className="pointer-events-none" />
-            </>
+          {/* 6.11 Prótesis fija: línea punteada azul */}
+          {general === "protesis_fija" && (
+            <line x1="5" y1="30" x2="55" y2="30" stroke="#3b82f6" strokeWidth="3" strokeDasharray="7 4" strokeLinecap="round" className="pointer-events-none" />
           )}
 
-          {general === "extraccion" && (
-            <line x1="5" y1="55" x2="55" y2="5" stroke="#ef4444" strokeWidth="4.5" strokeLinecap="round" className="pointer-events-none" />
+          {/* 6.12 Prótesis removible: (⋯) azul */}
+          {general === "protesis_removible" && (<>
+            <text x="3" y="42" fontSize="30" fill="#3b82f6" fontWeight="bold" className="pointer-events-none">(</text>
+            <line x1="17" y1="30" x2="43" y2="30" stroke="#3b82f6" strokeWidth="2.5" strokeDasharray="5 3" strokeLinecap="round" className="pointer-events-none" />
+            <text x="42" y="42" fontSize="30" fill="#3b82f6" fontWeight="bold" className="pointer-events-none">)</text>
+          </>)}
+
+          {/* 6.13 Prótesis total: = Azul */}
+          {general === "protesis_total" && (<>
+            <line x1="10" y1="23" x2="50" y2="23" stroke="#3b82f6" strokeWidth="3.5" strokeLinecap="round" className="pointer-events-none" />
+            <line x1="10" y1="37" x2="50" y2="37" stroke="#3b82f6" strokeWidth="3.5" strokeLinecap="round" className="pointer-events-none" />
+          </>)}
+
+          {/* 6.1 Movilidad: número naranja (esquina sup-izq) */}
+          {movilidad && (
+            <text x="4" y="16" fontSize="14" fontWeight="900" fill="#f97316" className="pointer-events-none">{movilidad}</text>
+          )}
+
+          {/* 6.2 Recesión: R+número morado (esquina sup-der) */}
+          {recesion && (
+            <text x="56" y="16" textAnchor="end" fontSize="11" fontWeight="900" fill="#9333ea" className="pointer-events-none">R{recesion}</text>
           )}
         </svg>
       </div>
-      
-      {/* Clear action under tooth */}
-      {(general !== "sano" || Object.keys(surfaces).length > 0) && (
+
+      {/* Limpiar pieza */}
+      {hasMark && (
         <button
           type="button"
           onClick={() => onClearTooth(toothNum)}
           className="text-[9px] text-red-500 hover:text-red-700 mt-1 font-semibold transition-colors"
-          title="Limpiar"
+          title="Limpiar toda la pieza"
         >
           Limpiar
         </button>
