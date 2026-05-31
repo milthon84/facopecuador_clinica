@@ -55,6 +55,11 @@ ALTER TABLE public.bank_accounts ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.bank_transactions ENABLE ROW LEVEL SECURITY;
 
 -- Admin y contador pueden leer y escribir
+DROP POLICY IF EXISTS "admin_contador_leen_cuentas"    ON public.bank_accounts;
+DROP POLICY IF EXISTS "admin_gestiona_cuentas"         ON public.bank_accounts;
+DROP POLICY IF EXISTS "admin_contador_leen_movimientos" ON public.bank_transactions;
+DROP POLICY IF EXISTS "admin_gestiona_movimientos"     ON public.bank_transactions;
+
 CREATE POLICY "admin_contador_leen_cuentas"
   ON public.bank_accounts FOR SELECT TO authenticated
   USING (public.get_user_role() IN ('admin', 'contador'));

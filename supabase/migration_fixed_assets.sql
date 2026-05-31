@@ -62,6 +62,11 @@ CREATE INDEX IF NOT EXISTS idx_asset_depreciations_asset ON public.asset_depreci
 ALTER TABLE public.fixed_assets ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.asset_depreciations ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "admin_contador_leen_activos"         ON public.fixed_assets;
+DROP POLICY IF EXISTS "admin_gestiona_activos"              ON public.fixed_assets;
+DROP POLICY IF EXISTS "admin_contador_leen_depreciaciones"  ON public.asset_depreciations;
+DROP POLICY IF EXISTS "admin_gestiona_depreciaciones"       ON public.asset_depreciations;
+
 CREATE POLICY "admin_contador_leen_activos"
   ON public.fixed_assets FOR SELECT TO authenticated
   USING (public.get_user_role() IN ('admin', 'contador'));

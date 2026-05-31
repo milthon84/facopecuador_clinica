@@ -31,6 +31,11 @@ ALTER TABLE public.system_roles ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.role_permissions ENABLE ROW LEVEL SECURITY;
 
 -- Todos los usuarios autenticados pueden leer
+DROP POLICY IF EXISTS "autenticados_leen_roles"    ON public.system_roles;
+DROP POLICY IF EXISTS "autenticados_leen_permisos" ON public.role_permissions;
+DROP POLICY IF EXISTS "admin_gestiona_roles"       ON public.system_roles;
+DROP POLICY IF EXISTS "admin_gestiona_permisos"    ON public.role_permissions;
+
 CREATE POLICY "autenticados_leen_roles"
   ON public.system_roles FOR SELECT TO authenticated USING (true);
 

@@ -47,6 +47,9 @@ CREATE INDEX IF NOT EXISTS idx_expense_payments_expense ON public.expense_paymen
 ALTER TABLE public.invoice_payments ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.expense_payments ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "admin_contador_invoice_payments" ON public.invoice_payments;
+DROP POLICY IF EXISTS "admin_contador_expense_payments" ON public.expense_payments;
+
 CREATE POLICY "admin_contador_invoice_payments"
   ON public.invoice_payments FOR ALL TO authenticated
   USING (public.get_user_role() IN ('admin', 'contador'))
