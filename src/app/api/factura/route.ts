@@ -255,10 +255,12 @@ export async function POST(req: Request) {
 
     await supabase.from("invoice_items").insert(itemsToInsert);
 
-    // 11. Actualizar payment_status y crear transacción bancaria (requiere migración)
+    // 11. Actualizar payment_status
+    // Efectivo = cobrado inmediatamente; con cuenta bancaria = cobrado; resto = pendiente
+    const isPaidImmediately = payment_method === "efectivo" || !!bank_account_id;
     try {
       await supabase.from("invoices").update({
-        payment_status: bank_account_id ? "paid" : "pending",
+        payment_status: isPaidImmediately ? "paid" : "pending",
       }).eq("id", invoice.id);
     } catch { /* columna aún no existe — ejecutar migration_cuentas_cobrar_pagar.sql */ }
 
