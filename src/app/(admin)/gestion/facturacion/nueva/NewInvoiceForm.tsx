@@ -3,7 +3,7 @@
 import { useState, FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft, Plus, Trash2, Send, FileText, User, Search, X, BookOpen, ChevronDown, Loader2, CheckCircle2, AlertCircle } from "lucide-react";
+import { ArrowLeft, Plus, Trash2, Send, FileText, User, Search, X, BookOpen, ChevronDown, Loader2, CheckCircle2, AlertCircle, ShieldCheck } from "lucide-react";
 import { validateDocumento, validateEmail, validateTelefono } from "@/lib/validators";
 
 interface InvoiceItem {
@@ -171,6 +171,8 @@ export default function NewInvoiceForm({
   const ivaAmount      = subtotal15 * 0.15;
   const totalFactura   = subtotal15 + subtotal0 + ivaAmount;
 
+  const requiresBankConfirmation = paymentMethod !== "efectivo";
+
   function validateForm(): boolean {
     const e: Record<string, string> = {};
     if (!clientName.trim() || clientName.trim().length < 2) e.clientName = "Razón social / nombre requerido";
@@ -181,6 +183,13 @@ export default function NewInvoiceForm({
     const telErr = validateTelefono(clientPhone, true);
     if (telErr) e.clientPhone = telErr;
     if (items.length === 0) e.items = "Agrega al menos un ítem a la factura";
+
+    // Para pagos no en efectivo: cuenta bancaria y comprobante son obligatorios
+    if (requiresBankConfirmation) {
+      if (!bankAccountId) e.bankAccountId = "Selecciona la cuenta donde recibiste el pago";
+      if (!paymentReference.trim()) e.paymentReference = "El número de comprobante/referencia es obligatorio";
+    }
+
     setFormErrors(e);
     return Object.keys(e).length === 0;
   }
@@ -372,50 +381,86 @@ export default function NewInvoiceForm({
         </div>
 
         {/* ── Método de Pago ──────────────────────────────── */}
-        <div className="bg-white border border-lilac-100 rounded-2xl shadow-sm p-4 sm:p-5">
-          <h3 className="font-semibold text-sm text-ink-700 flex items-center gap-2 mb-4 border-b border-lilac-50 pb-2">
+        <div className={`border rounded-2xl shadow-sm p-4 sm:p-5 ${requiresBankConfirmation ? "bg-amber-50 border-amber-200" : "bg-white border-lilac-100"}`}>
+          <h3 className="font-semibold text-sm text-ink-700 flex items-center gap-2 mb-3 border-b border-lilac-50 pb-2">
             <span className="text-lilac-600">💳</span>
             Forma de Pago
           </h3>
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            <div className="space-y-1">
-              <label className="text-xs font-semibold text-ink-700">Método *</label>
-              <select value={paymentMethod} onChange={e => { setPaymentMethod(e.target.value); setBankAccountId(""); }}
-                className="w-full bg-white border border-lilac-200 rounded-xl px-3 py-2 text-sm focus:ring-2 focus:ring-lilac-500 focus:outline-none">
-                {PAYMENT_METHODS.map(m => (
-                  <option key={m.value} value={m.value}>{m.label}</option>
-                ))}
-              </select>
-            </div>
 
-            {paymentMethod !== "efectivo" && (
-              <div className="space-y-1">
-                <label className="text-xs font-semibold text-ink-700">
-                  Cuenta bancaria{(paymentMethod === "transferencia" || paymentMethod === "cheque") ? " *" : ""}
-                </label>
-                <select value={bankAccountId} onChange={e => setBankAccountId(e.target.value)}
-                  required={paymentMethod === "transferencia" || paymentMethod === "cheque"}
-                  className="w-full bg-white border border-lilac-200 rounded-xl px-3 py-2 text-sm focus:ring-2 focus:ring-lilac-500 focus:outline-none">
-                  <option value="">— Seleccionar cuenta —</option>
-                  {bankAccounts.map(b => (
-                    <option key={b.id} value={b.id}>
-                      {b.bank_name}{b.account_number ? ` · ${b.account_number}` : ""}
-                    </option>
-                  ))}
-                </select>
-                {bankAccounts.length === 0 && (
-                  <p className="text-[11px] text-amber-600">No hay cuentas registradas. <a href="/gestion/bancos" className="underline">Agregar cuenta</a></p>
-                )}
-              </div>
-            )}
-
-            <div className="space-y-1">
-              <label className="text-xs font-semibold text-ink-700">N° Referencia / Comprobante</label>
-              <input type="text" value={paymentReference} onChange={e => setPaymentReference(e.target.value)}
-                placeholder="Ej. TRF-001234"
-                className="w-full bg-white border border-lilac-200 rounded-xl px-3 py-2 text-sm focus:ring-2 focus:ring-lilac-500 focus:outline-none font-mono" />
+          {/* Selector de método */}
+          <div className="mb-4">
+            <label className="text-xs font-semibold text-ink-700 block mb-1">Método *</label>
+            <div className="flex flex-wrap gap-2">
+              {PAYMENT_METHODS.map(m => (
+                <button key={m.value} type="button"
+                  onClick={() => { setPaymentMethod(m.value); setBankAccountId(""); setPaymentReference(""); }}
+                  className={`px-4 py-2 rounded-xl text-sm font-semibold border transition-all ${
+                    paymentMethod === m.value
+                      ? m.value === "efectivo"
+                        ? "bg-green-600 text-white border-green-600 shadow-sm"
+                        : "bg-amber-500 text-white border-amber-500 shadow-sm"
+                      : "bg-white text-ink-700 border-lilac-200 hover:border-lilac-400"
+                  }`}>
+                  {m.value === "efectivo" ? "💵 " : "🏦 "}{m.label}
+                </button>
+              ))}
             </div>
           </div>
+
+          {/* Efectivo: flujo inmediato */}
+          {!requiresBankConfirmation && (
+            <div className="flex items-center gap-2 bg-green-50 border border-green-200 rounded-xl px-4 py-3">
+              <CheckCircle2 size={16} className="text-green-600 shrink-0" />
+              <p className="text-sm text-green-800">
+                <strong>Pago en efectivo</strong> — la factura se emite y queda cobrada inmediatamente.
+              </p>
+            </div>
+          )}
+
+          {/* Transferencia / Tarjeta: requiere validar pago primero */}
+          {requiresBankConfirmation && (
+            <div className="space-y-4">
+              <div className="flex items-start gap-2 bg-amber-100 border border-amber-300 rounded-xl px-4 py-3">
+                <AlertCircle size={16} className="text-amber-700 shrink-0 mt-0.5" />
+                <p className="text-sm text-amber-900">
+                  <strong>Paso previo obligatorio:</strong> Verifica en tu cuenta bancaria que el pago ya fue acreditado antes de emitir la factura.
+                  Ingresa la cuenta donde lo recibiste y el número de comprobante.
+                </p>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="space-y-1">
+                  <label className="text-xs font-semibold text-ink-700">Cuenta bancaria donde se recibió el pago *</label>
+                  <select value={bankAccountId}
+                    onChange={e => { setBankAccountId(e.target.value); setFormErrors(p => ({ ...p, bankAccountId: "" })); }}
+                    className={`w-full bg-white border rounded-xl px-3 py-2 text-sm focus:ring-2 focus:ring-amber-400 focus:outline-none ${formErrors.bankAccountId ? "border-red-400" : "border-amber-300"}`}>
+                    <option value="">— Seleccionar cuenta —</option>
+                    {bankAccounts.map(b => (
+                      <option key={b.id} value={b.id}>
+                        {b.bank_name}{b.account_number ? ` · ${b.account_number}` : ""}
+                      </option>
+                    ))}
+                  </select>
+                  {formErrors.bankAccountId && <p className="text-xs text-red-500">{formErrors.bankAccountId}</p>}
+                  {bankAccounts.length === 0 && (
+                    <p className="text-[11px] text-amber-700">
+                      <a href="/gestion/bancos" className="underline font-medium">Registra una cuenta bancaria</a> primero.
+                    </p>
+                  )}
+                </div>
+
+                <div className="space-y-1">
+                  <label className="text-xs font-semibold text-ink-700">N° Comprobante / Referencia de pago *</label>
+                  <input type="text" value={paymentReference}
+                    onChange={e => { setPaymentReference(e.target.value); setFormErrors(p => ({ ...p, paymentReference: "" })); }}
+                    placeholder="Ej. TRF-20260101-001234"
+                    className={`w-full bg-white border rounded-xl px-3 py-2 text-sm focus:ring-2 focus:ring-amber-400 focus:outline-none font-mono ${formErrors.paymentReference ? "border-red-400" : "border-amber-300"}`} />
+                  {formErrors.paymentReference && <p className="text-xs text-red-500">{formErrors.paymentReference}</p>}
+                  <p className="text-[11px] text-amber-700">Número de transacción del banco o comprobante del cliente.</p>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* ── Ítems ───────────────────────────────────────── */}
@@ -584,10 +629,16 @@ export default function NewInvoiceForm({
             Cancelar
           </button>
           <button type="submit" disabled={loading}
-            className="flex items-center gap-2 bg-lilac-600 hover:bg-lilac-700 text-white px-7 py-2.5 rounded-xl transition-colors font-semibold shadow-md shadow-lilac-200 disabled:opacity-70 text-sm">
+            className={`flex items-center gap-2 text-white px-7 py-2.5 rounded-xl transition-colors font-semibold shadow-md disabled:opacity-70 text-sm ${
+              requiresBankConfirmation
+                ? "bg-amber-600 hover:bg-amber-700 shadow-amber-200"
+                : "bg-green-600 hover:bg-green-700 shadow-green-200"
+            }`}>
             {loading
               ? <><div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> Procesando…</>
-              : <><Send size={16} /> Emitir Factura</>
+              : requiresBankConfirmation
+                ? <><ShieldCheck size={16} /> Pago verificado — Emitir Factura</>
+                : <><Send size={16} /> Emitir Factura en Efectivo</>
             }
           </button>
         </div>
