@@ -153,8 +153,8 @@ export default async function CuentasPorPagarPage({
                 className="w-full border border-red-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-400 bg-white">
                 <option value="transferencia">Transferencia</option>
                 <option value="efectivo">Efectivo</option>
-                <option value="cheque">Cheque</option>
-                <option value="tarjeta_debito">Tarjeta Débito</option>
+                
+                
                 <option value="tarjeta_credito">Tarjeta Crédito</option>
               </select>
             </div>

@@ -40,11 +40,9 @@ interface BankAccount {
 }
 
 const PAYMENT_METHODS = [
-  { value: "efectivo",        label: "Efectivo",         sriCode: "01" },
-  { value: "transferencia",   label: "Transferencia",    sriCode: "20" },
-  { value: "cheque",          label: "Cheque",           sriCode: "20" },
-  { value: "tarjeta_debito",  label: "Tarjeta Débito",   sriCode: "16" },
-  { value: "tarjeta_credito", label: "Tarjeta Crédito",  sriCode: "19" },
+  { value: "efectivo",        label: "Efectivo",                 sriCode: "01" },
+  { value: "transferencia",   label: "Transferencia / Depósito", sriCode: "20" },
+  { value: "tarjeta_credito", label: "Tarjeta de Crédito",       sriCode: "19" },
 ];
 
 export default function NewInvoiceForm({

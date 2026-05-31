@@ -246,8 +246,8 @@ export default async function CuentasPorCobrarPage({
                               className="w-full border border-green-200 rounded-xl px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-green-400">
                               <option value="efectivo">Efectivo</option>
                               <option value="transferencia">Transferencia</option>
-                              <option value="cheque">Cheque</option>
-                              <option value="tarjeta_debito">Tarjeta Débito</option>
+                              
+                              
                               <option value="tarjeta_credito">Tarjeta Crédito</option>
                             </select>
                           </div>
@@ -306,7 +306,7 @@ export default async function CuentasPorCobrarPage({
                               className="w-full border border-lilac-200 rounded-xl px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-lilac-400">
                               <option value="efectivo">Efectivo</option>
                               <option value="transferencia">Transferencia</option>
-                              <option value="cheque">Cheque</option>
+                              
                             </select>
                           </div>
                           <div className="space-y-1">

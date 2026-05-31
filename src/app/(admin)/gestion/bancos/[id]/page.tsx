@@ -286,8 +286,8 @@ export default async function BancoDetailPage({ params }: { params: { id: string
               className="w-full bg-lilac-50/50 border border-lilac-100 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-lilac-500">
               <option value="transferencia">Transferencia</option>
               <option value="efectivo">Efectivo</option>
-              <option value="cheque">Cheque</option>
-              <option value="tarjeta_debito">Tarjeta Débito</option>
+              
+              
               <option value="tarjeta_credito">Tarjeta Crédito</option>
             </select>
           </div>

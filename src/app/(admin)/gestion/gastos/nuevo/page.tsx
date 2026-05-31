@@ -180,8 +180,8 @@ export default async function NuevoGastoPage() {
                 <select name="payment_method" required
                   className="w-full border border-lilac-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-lilac-400 bg-white">
                   <option value="efectivo">Efectivo</option>
-                  <option value="transferencia">Transferencia</option>
-                  <option value="tarjeta">Tarjeta</option>
+                  <option value="transferencia">Transferencia / Depósito</option>
+                  <option value="tarjeta_credito">Tarjeta de Crédito</option>
                   <option value="credito">Crédito (por pagar)</option>
                 </select>
               </div>
