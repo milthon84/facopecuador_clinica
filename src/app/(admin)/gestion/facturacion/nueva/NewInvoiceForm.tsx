@@ -1,10 +1,11 @@
 "use client";
 
-import { useState, FormEvent } from "react";
+import { useState, FormEvent, useRef } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft, Plus, Trash2, Send, FileText, User, Search, X, BookOpen, ChevronDown, Loader2, CheckCircle2, AlertCircle, ShieldCheck } from "lucide-react";
+import { ArrowLeft, Plus, Trash2, Send, FileText, User, X, BookOpen, ChevronDown, Loader2, CheckCircle2, AlertCircle, ShieldCheck, Paperclip } from "lucide-react";
 import { validateDocumento, validateEmail, validateTelefono } from "@/lib/validators";
+import { createClient } from "@/lib/supabase/client";
 
 interface InvoiceItem {
   id: string;
@@ -36,7 +37,7 @@ interface BankAccount {
   id: string;
   bank_name: string;
   account_number: string | null;
-  account_type: string;
+  account_type: string; // ahorros | corriente | caja
 }
 
 const PAYMENT_METHODS = [
@@ -68,6 +69,10 @@ export default function NewInvoiceForm({
   // Lookup local (pacientes + facturas previas)
   const [lookupStatus, setLookupStatus] = useState<"idle" | "loading" | "found" | "not_found">("idle");
   const [lookupSource, setLookupSource] = useState<"patient" | "invoice" | null>(null);
+
+  // Comprobante de pago
+  const [comprobanteFile, setComprobanteFile] = useState<File | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [items, setItems] = useState<InvoiceItem[]>([]);
 
@@ -197,6 +202,23 @@ export default function NewInvoiceForm({
     if (!validateForm()) return;
     setLoading(true);
     try {
+      // Subir comprobante si existe
+      let comprobanteUrl: string | undefined;
+      if (comprobanteFile && requiresBankConfirmation) {
+        try {
+          const supabase = createClient();
+          const ext = comprobanteFile.name.split(".").pop();
+          const path = `comprobantes/${Date.now()}.${ext}`;
+          const { data: upload } = await supabase.storage
+            .from("payment-proofs")
+            .upload(path, comprobanteFile, { upsert: true });
+          if (upload) {
+            const { data: { publicUrl } } = supabase.storage.from("payment-proofs").getPublicUrl(path);
+            comprobanteUrl = publicUrl;
+          }
+        } catch { /* si falla el upload, continúa sin URL */ }
+      }
+
       const res = await fetch("/api/factura", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -210,7 +232,7 @@ export default function NewInvoiceForm({
           items,
           payment_method:    paymentMethod,
           bank_account_id:   bankAccountId || undefined,
-          payment_reference: paymentReference || undefined,
+          payment_reference: paymentReference || comprobanteUrl || undefined,
           forma_pago:        PAYMENT_METHODS.find(m => m.value === paymentMethod)?.sriCode ?? "01",
         }),
       });
@@ -243,13 +265,10 @@ export default function NewInvoiceForm({
 
         {/* ── Datos del Cliente ───────────────────────────── */}
         <div className="bg-white border border-lilac-100 rounded-2xl shadow-sm p-4 sm:p-5">
-          <div className="mb-4 border-b border-lilac-50 pb-2">
-            <h3 className="font-semibold text-sm text-ink-700 flex items-center gap-2">
-              <User size={15} className="text-lilac-600" />
-              Datos del Adquirente
-            </h3>
-            <p className="text-[11px] text-ink-400 mt-0.5">Ingresa la cédula o RUC — los datos se cargan automáticamente si existe en el sistema.</p>
-          </div>
+          <h3 className="font-semibold text-sm text-ink-700 flex items-center gap-2 mb-4 border-b border-lilac-50 pb-2">
+            <User size={15} className="text-lilac-600" />
+            Datos del Adquirente
+          </h3>
 
           {/* Indicador de paciente seleccionado */}
           {patientId && (
@@ -371,46 +390,53 @@ export default function NewInvoiceForm({
             </div>
           )}
 
-          {/* Transferencia / Tarjeta: requiere validar pago primero */}
+          {/* Transferencia / Tarjeta */}
           {requiresBankConfirmation && (
-            <div className="space-y-4">
-              <div className="flex items-start gap-2 bg-amber-100 border border-amber-300 rounded-xl px-4 py-3">
-                <AlertCircle size={16} className="text-amber-700 shrink-0 mt-0.5" />
-                <p className="text-sm text-amber-900">
-                  <strong>Paso previo obligatorio:</strong> Verifica en tu cuenta bancaria que el pago ya fue acreditado antes de emitir la factura.
-                  Ingresa la cuenta donde lo recibiste y el número de comprobante.
-                </p>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mt-1">
+              <div className="space-y-1">
+                <label className="text-xs font-semibold text-ink-700">Cuenta *</label>
+                <select value={bankAccountId}
+                  onChange={e => { setBankAccountId(e.target.value); setFormErrors(p => ({ ...p, bankAccountId: "" })); }}
+                  className={`w-full bg-white border rounded-xl px-3 py-2 text-sm focus:ring-2 focus:ring-amber-400 focus:outline-none ${formErrors.bankAccountId ? "border-red-400" : "border-amber-300"}`}>
+                  <option value="">— Cuenta destino —</option>
+                  {bankAccounts.filter(b => b.account_type !== "caja").map(b => (
+                    <option key={b.id} value={b.id}>
+                      {b.bank_name}{b.account_number ? ` · ${b.account_number}` : ""}
+                    </option>
+                  ))}
+                </select>
+                {formErrors.bankAccountId && <p className="text-xs text-red-500">{formErrors.bankAccountId}</p>}
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div className="space-y-1">
-                  <label className="text-xs font-semibold text-ink-700">Cuenta bancaria donde se recibió el pago *</label>
-                  <select value={bankAccountId}
-                    onChange={e => { setBankAccountId(e.target.value); setFormErrors(p => ({ ...p, bankAccountId: "" })); }}
-                    className={`w-full bg-white border rounded-xl px-3 py-2 text-sm focus:ring-2 focus:ring-amber-400 focus:outline-none ${formErrors.bankAccountId ? "border-red-400" : "border-amber-300"}`}>
-                    <option value="">— Seleccionar cuenta —</option>
-                    {bankAccounts.map(b => (
-                      <option key={b.id} value={b.id}>
-                        {b.bank_name}{b.account_number ? ` · ${b.account_number}` : ""}
-                      </option>
-                    ))}
-                  </select>
-                  {formErrors.bankAccountId && <p className="text-xs text-red-500">{formErrors.bankAccountId}</p>}
-                  {bankAccounts.length === 0 && (
-                    <p className="text-[11px] text-amber-700">
-                      <a href="/gestion/bancos" className="underline font-medium">Registra una cuenta bancaria</a> primero.
-                    </p>
-                  )}
-                </div>
+              <div className="space-y-1">
+                <label className="text-xs font-semibold text-ink-700">N° Referencia *</label>
+                <input type="text" value={paymentReference}
+                  onChange={e => { setPaymentReference(e.target.value); setFormErrors(p => ({ ...p, paymentReference: "" })); }}
+                  placeholder="TRF-001234"
+                  className={`w-full bg-white border rounded-xl px-3 py-2 text-sm focus:ring-2 focus:ring-amber-400 focus:outline-none font-mono ${formErrors.paymentReference ? "border-red-400" : "border-amber-300"}`} />
+                {formErrors.paymentReference && <p className="text-xs text-red-500">{formErrors.paymentReference}</p>}
+              </div>
 
-                <div className="space-y-1">
-                  <label className="text-xs font-semibold text-ink-700">N° Comprobante / Referencia de pago *</label>
-                  <input type="text" value={paymentReference}
-                    onChange={e => { setPaymentReference(e.target.value); setFormErrors(p => ({ ...p, paymentReference: "" })); }}
-                    placeholder="Ej. TRF-20260101-001234"
-                    className={`w-full bg-white border rounded-xl px-3 py-2 text-sm focus:ring-2 focus:ring-amber-400 focus:outline-none font-mono ${formErrors.paymentReference ? "border-red-400" : "border-amber-300"}`} />
-                  {formErrors.paymentReference && <p className="text-xs text-red-500">{formErrors.paymentReference}</p>}
-                  <p className="text-[11px] text-amber-700">Número de transacción del banco o comprobante del cliente.</p>
+              <div className="space-y-1">
+                <label className="text-xs font-semibold text-ink-700 flex items-center gap-1">
+                  <Paperclip size={11} /> Comprobante
+                </label>
+                <div className="flex items-center gap-2">
+                  <input ref={fileInputRef} type="file" accept="image/*,.pdf"
+                    className="hidden"
+                    onChange={e => setComprobanteFile(e.target.files?.[0] ?? null)} />
+                  <button type="button"
+                    onClick={() => fileInputRef.current?.click()}
+                    className={`flex-1 flex items-center gap-1.5 border rounded-xl px-3 py-2 text-xs transition-colors ${comprobanteFile ? "border-green-400 bg-green-50 text-green-700" : "border-amber-300 bg-white text-ink-500 hover:bg-amber-50"}`}>
+                    <Paperclip size={12} />
+                    {comprobanteFile ? comprobanteFile.name.slice(0, 18) + "…" : "Adjuntar archivo"}
+                  </button>
+                  {comprobanteFile && (
+                    <button type="button" onClick={() => { setComprobanteFile(null); if (fileInputRef.current) fileInputRef.current.value = ""; }}
+                      className="text-ink-400 hover:text-red-500">
+                      <X size={14} />
+                    </button>
+                  )}
                 </div>
               </div>
             </div>

@@ -71,7 +71,7 @@ export default async function CuentasPorPagarPage({
       .eq("status", "registered")
       .order("expense_date", { ascending: true }),
     supabase.from("expense_payments").select("expense_id, amount"),
-    supabase.from("bank_accounts").select("id, bank_name, account_number").eq("is_active", true).order("bank_name"),
+    supabase.from("bank_accounts").select("id, bank_name, account_number, account_type").eq("is_active", true).order("bank_name"),
   ]);
 
   // Suma de pagos por gasto
@@ -163,7 +163,7 @@ export default async function CuentasPorPagarPage({
               <select name="bank_account_id"
                 className="w-full border border-red-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-400 bg-white">
                 <option value="">— No registrar en banco —</option>
-                {(bankAccounts || []).map(b => (
+                {(bankAccounts || []).filter(b => b.account_type !== "caja").map(b => (
                   <option key={b.id} value={b.id}>
                     {b.bank_name}{b.account_number ? ` · ${b.account_number}` : ""}
                   </option>
