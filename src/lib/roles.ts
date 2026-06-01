@@ -24,6 +24,7 @@ const ADMIN_ONLY_ROUTES = [
   "/gestion/categorias",
   "/gestion/unidades",
   "/gestion/servicios",
+  "/gestion/facturacion/config",
   "/gestion/usuarios",
   "/gestion/roles",
   "/gestion/auditoria",
@@ -69,6 +70,7 @@ export const ALL_RESOURCES = [
   { section: "Clínica",       path: "/gestion/facturacion",  label: "Facturación SRI" },
   { section: "Clínica",       path: "/gestion/gastos",       label: "Compras" },
   { section: "Clínica",       path: "/gestion/contabilidad", label: "Contabilidad" },
+  { section: "Sistema",       path: "/gestion/facturacion/config", label: "Config. SRI" },
   { section: "Sistema",       path: "/gestion/usuarios",     label: "Usuarios" },
   { section: "Sistema",       path: "/gestion/auditoria",    label: "Auditoría" },
 ] as const;
@@ -105,6 +107,7 @@ export const NAV_ITEMS: NavItemDef[] = [
   { href: "/gestion/facturacion",  label: "Facturación SRI", icon: "FileText",        section: "Clínica",       roles: ["admin", "contador"] },
   { href: "/gestion/gastos",        label: "Compras",         icon: "ShoppingCart",    section: "Clínica",       roles: ["admin", "contador"] },
   { href: "/gestion/contabilidad", label: "Contabilidad",    icon: "FileBarChart2",   section: "Clínica",       roles: ["admin", "contador"] },
+  { href: "/gestion/facturacion/config", label: "Config. SRI",  icon: "FileKey",         section: "Sistema",       roles: ["admin"] },
   { href: "/gestion/usuarios",     label: "Usuarios",        icon: "UserCog",         section: "Sistema",       roles: ["admin"] },
   { href: "/gestion/roles",        label: "Roles",           icon: "Shield",          section: "Sistema",       roles: ["admin"] },
   { href: "/gestion/auditoria",    label: "Auditoría",       icon: "ShieldCheck",     section: "Sistema",       roles: ["admin"] },

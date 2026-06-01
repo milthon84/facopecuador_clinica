@@ -1,4 +1,5 @@
 import { createAdminClient } from "@/lib/supabase/admin";
+import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import { ArrowLeft, Save, Building2, Key } from "lucide-react";
@@ -7,6 +8,11 @@ import SriAmbienteSection from "@/components/SriAmbienteSection";
 export const dynamic = "force-dynamic";
 
 export default async function SriConfigPage() {
+  // Solo administradores pueden acceder
+  const sessionClient = createClient();
+  const { data: { user } } = await sessionClient.auth.getUser();
+  if ((user?.app_metadata?.role as string) !== "admin") redirect("/gestion");
+
   const supabase = createAdminClient();
   const { data: config } = await supabase.from("sri_configs").select("*").single();
 
