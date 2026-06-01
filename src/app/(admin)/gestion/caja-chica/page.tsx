@@ -84,8 +84,17 @@ export default async function CajaChicaPage({
     supabase.from("bank_transactions").select("*").order("date", { ascending: false }).order("created_at", { ascending: false }).limit(200),
   ]);
 
-  // Caja Chica: cuentas tipo "caja" que NO son la Caja General
-  const cajaAccounts = (allAccounts as BankAccount[] || []).filter(a => a.account_type === "caja" && !(a as any).is_caja_general);
+  // Caja Chica: solo cuentas tipo "caja" que:
+  // 1. NO estén marcadas como is_caja_general
+  // 2. NO tengan "efectivo" o "general" en el nombre (fallback si la migración no está aplicada)
+  const NOMBRES_EXCLUIDOS = ["efectivo", "general", "caja general", "caja/efectivo"];
+  const cajaAccounts = (allAccounts as BankAccount[] || []).filter(a => {
+    if (a.account_type !== "caja") return false;
+    if ((a as any).is_caja_general === true) return false;
+    const nombre = a.bank_name.toLowerCase().replace(/[\s\/]/g, "");
+    if (NOMBRES_EXCLUIDOS.some(n => nombre.includes(n.replace(/[\s\/]/g, "")))) return false;
+    return true;
+  });
   const bankAccounts = (allAccounts as BankAccount[] || []).filter(a => a.account_type !== "caja");
 
   const txMap = new Map<string, BankTx[]>();
