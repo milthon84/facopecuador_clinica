@@ -233,7 +233,7 @@ export default function ReservarPage() {
 
               <div className="grid sm:grid-cols-2 gap-4">
                 <Field label="Teléfono *" error={errors.phone}>
-                  <input className="input" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="+57 300 000 0000" />
+                  <input className="input" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="0997631134" />
                 </Field>
                 <Field label="Email *" error={errors.email}>
                   <input
