@@ -6,7 +6,6 @@ if (dns && typeof dns.setDefaultResultOrder === "function") {
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
-  output: "standalone",
 
   webpack: (config) => {
     config.infrastructureLogging = { level: "error" };
