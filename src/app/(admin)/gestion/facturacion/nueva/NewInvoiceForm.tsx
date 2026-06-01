@@ -74,9 +74,7 @@ export default function NewInvoiceForm({
   const [comprobanteFile, setComprobanteFile] = useState<File | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const [items, setItems] = useState<InvoiceItem[]>([
-    { id: "1", description: "", quantity: 1, unit_price: 0, discount: 0, iva_code: "4" },
-  ]);
+  const [items, setItems] = useState<InvoiceItem[]>([]);
 
   const [patientId,      setPatientId]      = useState(initialPatient?.id ?? "");
   const [clientName,     setClientName]     = useState(initialPatient?.full_name ?? "");
