@@ -67,6 +67,24 @@ export default async function SriConfigPage() {
   const { data: secState } = await supabase2.rpc("estado_secuencial").single() as any;
   const hasCert = !!config?.p12_storage_path;
 
+  // Leer info del certificado para verificar que el RUC coincide
+  let certInfo: { subject: string; serialNumber: string; validFrom: string; validTo: string } | null = null;
+  let certRucMatch: boolean | null = null;
+  if (hasCert && config?.signature_password) {
+    try {
+      const { parseCertInfo } = await import("@/lib/sri-sign");
+      const { data: p12Data } = await supabase2.storage.from("sri-certificates").download(config.p12_storage_path);
+      if (p12Data) {
+        const p12Buffer = Buffer.from(await p12Data.arrayBuffer());
+        certInfo = parseCertInfo(p12Buffer, config.signature_password);
+        // Verificar que el RUC del certificado aparece en el subject o serial
+        const rucConfigured = config.ruc ?? "";
+        certRucMatch = certInfo.subject.includes(rucConfigured) ||
+                       certInfo.subject.includes(rucConfigured.slice(0, 10));
+      }
+    } catch { /* ignorar si no se puede leer */ }
+  }
+
   return (
     <div className="max-w-2xl mx-auto">
       {/* Header compacto */}
@@ -182,6 +200,24 @@ export default async function SriConfigPage() {
               certExpires={config?.p12_cert_expires ?? null}
             />
           </div>
+
+          {/* Diagnóstico del certificado */}
+          {certInfo && (
+            <div className={`rounded-xl px-4 py-3 border text-xs space-y-1 ${certRucMatch ? "bg-green-50 border-green-200" : "bg-red-50 border-red-200"}`}>
+              <p className={`font-bold flex items-center gap-1.5 ${certRucMatch ? "text-green-800" : "text-red-800"}`}>
+                {certRucMatch ? "✅ Certificado compatible con el RUC" : "❌ ADVERTENCIA: el certificado NO coincide con el RUC"}
+              </p>
+              <p className="text-ink-600 font-mono text-[11px]">Subject: {certInfo.subject}</p>
+              <p className="text-ink-500 text-[11px]">Vigencia: {certInfo.validFrom} → {certInfo.validTo}</p>
+              {!certRucMatch && (
+                <p className="text-red-700 font-semibold mt-1">
+                  ⚠ El RUC configurado ({config?.ruc}) no aparece en el certificado.
+                  Esto causa el error GenericJDBCException en el SRI.
+                  Verifica que el .p12 pertenece al RUC {config?.ruc}.
+                </p>
+              )}
+            </div>
+          )}
 
           <div className="flex justify-end pt-2">
             <button
