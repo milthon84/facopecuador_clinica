@@ -60,10 +60,7 @@ type BankTransaction = {
   status: string;
 };
 
-export default async function BancosPage({
-  searchParams,
-}: { searchParams: { nueva?: string } }) {
-  const showForm = searchParams.nueva === "1";
+export default async function BancosPage() {
   const supabase = createAdminClient();
 
   const [{ data: accounts }, { data: transactions }] = await Promise.all([
@@ -93,14 +90,9 @@ export default async function BancosPage({
           Cuentas Bancarias
         </h1>
         <Link
-          href={showForm ? "/gestion/bancos" : "/gestion/bancos?nueva=1"}
-          className={`flex items-center gap-2 px-4 py-2 rounded-xl font-semibold text-sm transition-colors ${
-            showForm
-              ? "bg-ink-100 text-ink-700 border border-ink-200 hover:bg-ink-200"
-              : "bg-lilac-600 hover:bg-lilac-700 text-white shadow-md shadow-lilac-200"
-          }`}>
-          <Plus size={16} />
-          {showForm ? "Cancelar" : "Agregar cuenta"}
+          href="/gestion/bancos/nueva"
+          className="flex items-center gap-2 px-4 py-2 rounded-xl font-semibold text-sm transition-colors bg-lilac-600 hover:bg-lilac-700 text-white shadow-md shadow-lilac-200">
+          <Plus size={16} /> Agregar cuenta
         </Link>
       </div>
 
@@ -190,73 +182,6 @@ export default async function BancosPage({
         </div>
       )}
 
-      {/* Formulario crear cuenta — solo visible con ?nueva=1 */}
-      {showForm && <div className="bg-white border border-lilac-100 rounded-2xl shadow-sm p-6">
-        <h2 className="font-semibold text-ink-900 mb-4 flex items-center gap-2">
-          <Plus size={18} className="text-lilac-600" />
-          Nueva cuenta bancaria
-        </h2>
-        <form action={createAccount} className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <div className="space-y-1">
-            <label className="text-sm font-semibold text-ink-700">Banco / Entidad *</label>
-            {/* datalist: permite elegir de la lista O escribir uno diferente */}
-            <input name="bank_name" required list="bancos-ecuador"
-              placeholder="Selecciona o escribe el banco"
-              className="w-full bg-lilac-50/50 border border-lilac-100 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-lilac-500" />
-            <datalist id="bancos-ecuador">
-              <option value="Banco Pichincha" />
-              <option value="Banco Guayaquil" />
-              <option value="Produbanco" />
-              <option value="Banco del Pacífico" />
-              <option value="Banco Internacional" />
-              <option value="Banco Bolivariano" />
-              <option value="Banco de la Producción (Produbanco)" />
-              <option value="Banco Solidario" />
-              <option value="Banco General Rumiñahui" />
-              <option value="Banco del Austro" />
-              <option value="Banco Citybank" />
-              <option value="Banco Diners Club" />
-              <option value="Cooperativa JEP" />
-              <option value="Cooperativa 29 de Octubre" />
-              <option value="Mutualista Pichincha" />
-              <option value="Caja / Efectivo" />
-            </datalist>
-          </div>
-          <div className="space-y-1">
-            <label className="text-sm font-semibold text-ink-700">N° de Cuenta</label>
-            <input name="account_number" placeholder="Ej. 2100123456"
-              className="w-full bg-lilac-50/50 border border-lilac-100 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-lilac-500 font-mono" />
-          </div>
-          <div className="space-y-1">
-            <label className="text-sm font-semibold text-ink-700">Tipo de cuenta *</label>
-            <select name="account_type"
-              className="w-full bg-lilac-50/50 border border-lilac-100 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-lilac-500">
-              <option value="ahorros">Cuenta de Ahorros</option>
-              <option value="corriente">Cuenta Corriente</option>
-              <option value="caja">Caja / Efectivo</option>
-            </select>
-          </div>
-          <div className="space-y-1">
-            <label className="text-sm font-semibold text-ink-700">Saldo inicial</label>
-            <div className="relative">
-              <span className="absolute left-4 top-1/2 -translate-y-1/2 text-ink-400 text-sm">$</span>
-              <input name="initial_balance" type="number" min="0" step="0.01" defaultValue="0"
-                className="w-full bg-lilac-50/50 border border-lilac-100 rounded-xl pl-8 pr-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-lilac-500 font-mono" />
-            </div>
-          </div>
-          <div className="sm:col-span-2 space-y-1">
-            <label className="text-sm font-semibold text-ink-700">Notas</label>
-            <input name="notes" placeholder="Ej. Cuenta principal de operaciones"
-              className="w-full bg-lilac-50/50 border border-lilac-100 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-lilac-500" />
-          </div>
-          <div className="sm:col-span-2 flex justify-end pt-2">
-            <button type="submit"
-              className="flex items-center gap-2 bg-lilac-600 hover:bg-lilac-700 text-white px-6 py-2.5 rounded-xl font-semibold text-sm transition-colors shadow-md shadow-lilac-200">
-              <Plus size={16} /> Agregar cuenta
-            </button>
-          </div>
-        </form>
-      </div>}
     </div>
   );
 }
