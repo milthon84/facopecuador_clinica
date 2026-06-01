@@ -152,7 +152,7 @@ export async function POST(req: Request) {
       importeTotal,
       moneda: "DOLAR",
 
-      pagos: [{ formaPago: body.forma_pago || "01", total: importeTotal }],
+      pagos: [{ formaPago: body.forma_pago || "01", total: importeTotal, plazo: 0, unidadTiempo: "dias" }],
       detalles,
       // infoAdicional omitido — campo opcional que puede causar problemas con caracteres en la DB del SRI
     };

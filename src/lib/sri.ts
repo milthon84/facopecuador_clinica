@@ -207,7 +207,7 @@ export function generarXMLFactura(data: SRIInvoiceData): string {
       xml += `      <pago>\n`;
       xml += `        <formaPago>${p.formaPago}</formaPago>\n`;
       xml += `        <total>${formatNum(p.total)}</total>\n`;
-      if (p.plazo) xml += `        <plazo>${p.plazo}</plazo>\n`;
+      if (p.plazo != null) xml += `        <plazo>${p.plazo}</plazo>\n`;
       if (p.unidadTiempo) xml += `        <unidadTiempo>${p.unidadTiempo}</unidadTiempo>\n`;
       xml += `      </pago>\n`;
     });
