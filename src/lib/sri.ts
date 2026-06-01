@@ -106,6 +106,17 @@ export function generarClaveAcceso(data: {
   return `${cadena48}${digito}`;
 }
 
+/** Escapa caracteres especiales XML — el SRI prefiere escape sobre CDATA */
+function xe(s: string | undefined | null): string {
+  if (!s) return "";
+  return String(s)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&apos;");
+}
+
 /**
  * Genera el XML en formato SRI (sin firma)
  */
@@ -120,9 +131,9 @@ export function generarXMLFactura(data: SRIInvoiceData): string {
   xml += `  <infoTributaria>\n`;
   xml += `    <ambiente>${data.ambiente}</ambiente>\n`;
   xml += `    <tipoEmision>${data.tipoEmision}</tipoEmision>\n`;
-  xml += `    <razonSocial><![CDATA[${data.razonSocial}]]></razonSocial>\n`;
+  xml += `    <razonSocial>${xe(data.razonSocial)}</razonSocial>\n`;
   if (data.nombreComercial) {
-    xml += `    <nombreComercial><![CDATA[${data.nombreComercial}]]></nombreComercial>\n`;
+    xml += `    <nombreComercial>${xe(data.nombreComercial)}</nombreComercial>\n`;
   }
   xml += `    <ruc>${data.ruc.padStart(13, "0")}</ruc>\n`;
   xml += `    <claveAcceso>${data.claveAcceso}</claveAcceso>\n`;
@@ -130,21 +141,21 @@ export function generarXMLFactura(data: SRIInvoiceData): string {
   xml += `    <estab>${data.estab}</estab>\n`;
   xml += `    <ptoEmi>${data.ptoEmi}</ptoEmi>\n`;
   xml += `    <secuencial>${data.secuencial}</secuencial>\n`;
-  xml += `    <dirMatriz><![CDATA[${data.dirMatriz}]]></dirMatriz>\n`;
+  xml += `    <dirMatriz>${xe(data.dirMatriz)}</dirMatriz>\n`;
   xml += `  </infoTributaria>\n`;
 
   // infoFactura
   xml += `  <infoFactura>\n`;
   xml += `    <fechaEmision>${data.fechaEmision}</fechaEmision>\n`;
   if (data.dirEstablecimiento) {
-    xml += `    <dirEstablecimiento><![CDATA[${data.dirEstablecimiento}]]></dirEstablecimiento>\n`;
+    xml += `    <dirEstablecimiento>${xe(data.dirEstablecimiento)}</dirEstablecimiento>\n`;
   }
   xml += `    <obligadoContabilidad>${data.obligadoContabilidad}</obligadoContabilidad>\n`;
   xml += `    <tipoIdentificacionComprador>${data.tipoIdentificacionComprador}</tipoIdentificacionComprador>\n`;
-  xml += `    <razonSocialComprador><![CDATA[${data.razonSocialComprador}]]></razonSocialComprador>\n`;
+  xml += `    <razonSocialComprador>${xe(data.razonSocialComprador)}</razonSocialComprador>\n`;
   xml += `    <identificacionComprador>${data.identificacionComprador}</identificacionComprador>\n`;
   if (data.direccionComprador) {
-    xml += `    <direccionComprador><![CDATA[${data.direccionComprador}]]></direccionComprador>\n`;
+    xml += `    <direccionComprador>${xe(data.direccionComprador)}</direccionComprador>\n`;
   }
   xml += `    <totalSinImpuestos>${formatNum(data.totalSinImpuestos)}</totalSinImpuestos>\n`;
   xml += `    <totalDescuento>${formatNum(data.totalDescuento)}</totalDescuento>\n`;
@@ -209,8 +220,8 @@ export function generarXMLFactura(data: SRIInvoiceData): string {
   xml += `  <detalles>\n`;
   data.detalles.forEach(d => {
     xml += `    <detalle>\n`;
-    xml += `      <codigoPrincipal><![CDATA[${d.codigoPrincipal}]]></codigoPrincipal>\n`;
-    xml += `      <descripcion><![CDATA[${d.descripcion}]]></descripcion>\n`;
+    xml += `      <codigoPrincipal>${xe(d.codigoPrincipal)}</codigoPrincipal>\n`;
+    xml += `      <descripcion>${xe(d.descripcion)}</descripcion>\n`;
     xml += `      <cantidad>${formatNum6(d.cantidad)}</cantidad>\n`;
     xml += `      <precioUnitario>${formatNum6(d.precioUnitario)}</precioUnitario>\n`;
     xml += `      <descuento>${formatNum(d.descuento)}</descuento>\n`;
@@ -232,7 +243,7 @@ export function generarXMLFactura(data: SRIInvoiceData): string {
   if (data.infoAdicional && Object.keys(data.infoAdicional).length > 0) {
     xml += `  <infoAdicional>\n`;
     Object.entries(data.infoAdicional).forEach(([key, val]) => {
-      xml += `    <campoAdicional nombre="${key}"><![CDATA[${val}]]></campoAdicional>\n`;
+      xml += `    <campoAdicional nombre="${xe(key)}">${xe(val)}</campoAdicional>\n`;
     });
     xml += `  </infoAdicional>\n`;
   }
