@@ -3,7 +3,7 @@ import {
   CalendarDays, LayoutDashboard, Users, Clock, Ban,
   Package, FileText, UserCog, ShieldCheck, ChevronRight,
   Settings, ShoppingCart, FileBarChart2, Shield, Tag, Ruler, Stethoscope,
-  Building2, Landmark, Wallet, CircleDollarSign, CreditCard,
+  Building2, Landmark, Wallet, CircleDollarSign, CreditCard, Banknote,
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -34,6 +34,7 @@ const ICONS: Record<string, React.ReactNode> = {
   Building2:       <Building2 size={16} />,
   Landmark:        <Landmark size={16} />,
   Wallet:            <Wallet size={16} />,
+  Banknote:          <Banknote size={16} />,
   CircleDollarSign:  <CircleDollarSign size={16} />,
   CreditCard:        <CreditCard size={16} />,
 };
