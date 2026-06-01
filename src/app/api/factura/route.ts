@@ -161,15 +161,20 @@ export async function POST(req: Request) {
 
     const xmlFactura = generarXMLFactura(invoiceData);
 
-    // 9. Firmar y enviar al SRI (producción) o simular (pruebas)
-    const esProduccion = config.ambiente === "2";
+    // 9. Firmar y enviar al SRI
+    // - Producción (ambiente=2): requiere certificado obligatoriamente
+    // - Pruebas (ambiente=1): envía al SRI de pruebas si hay certificado, simula si no hay
+    const tieneCertificado = !!(config.p12_storage_path && config.signature_password);
+    const esProduccion     = config.ambiente === "2";
+    const enviarAlSRI      = esProduccion || tieneCertificado; // pruebas con cert = real
+
     let sri_status: string = "authorized";
     let sri_authorization_number: string = claveAcceso;
     let sri_authorization_date: string   = new Date().toISOString();
     let sri_error_messages: object | null = null;
 
-    if (esProduccion) {
-      // Verificar que el certificado está configurado
+    if (enviarAlSRI) {
+      // Verificar certificado
       if (!config.p12_storage_path || !config.signature_password) {
         return NextResponse.json(
           { error: "Modo Producción requiere certificado .p12 configurado en Configuración SRI." },
@@ -191,7 +196,7 @@ export async function POST(req: Request) {
       // Firmar XML con XAdES-BES
       const xmlFirmado = signXMLWithP12(xmlFactura, p12Buffer, config.signature_password);
 
-      // Enviar al SRI y esperar autorización
+      // Enviar al SRI (pruebas: celcer.sri.gob.ec | producción: cel.sri.gob.ec)
       const { recepcion, autorizacion } = await enviarYAutorizar(
         xmlFirmado,
         claveAcceso,
@@ -209,10 +214,10 @@ export async function POST(req: Request) {
         sri_status = "rejected";
         sri_error_messages = autorizacion.mensajes ?? null;
       } else {
-        // EN PROCESO — guardar como submitted para reintentar después
         sri_status = "submitted";
       }
     }
+    // Si no hay certificado en modo pruebas → simular autorización (desarrollo local)
 
     // 10. Guardar Factura en Base de Datos
     const { data: invoice, error: invoiceError } = await supabase.from("invoices").insert({
