@@ -115,16 +115,15 @@ export function signXMLWithP12(xmlString: string, p12Buffer: Buffer, password: s
   const signedPropsDigest = sha1b64(signedPropsXml);
 
   // ── 4. Document digest ───────────────────────────────────────────────────
-  // C14N excluye la declaración <?xml...?>, así que la quitamos antes de hashear.
-  // Sin transform C14N explícito en la Reference — solo enveloped-signature.
+  // Se hashea el documento original SIN la declaración XML (C14N la excluye)
   const docDigest = sha1b64(stripXmlDeclaration(xmlString));
 
   // ── 5. SignedInfo ────────────────────────────────────────────────────────
-  // IMPORTANTE: NO incluir xmlns aquí. El <Signature> padre lo declarará.
-  // La C14N que aplica el SRI al verificar producirá <SignedInfo Id="...">
-  // SIN el xmlns (ya en scope del padre). Firmamos exactamente eso.
+  // C14N INCLUSIVA: cuando el SRI canonicaliza <SignedInfo> como nodo raíz,
+  // incluye TODOS los namespaces en scope, incluyendo el xmlns heredado del padre.
+  // Por eso DEBEMOS incluir xmlns al firmar — es lo que el SRI verificará.
   const signedInfoXml = [
-    `<SignedInfo Id="Signature-SignedInfo">`,
+    `<SignedInfo xmlns="http://www.w3.org/2000/09/xmldsig#" Id="Signature-SignedInfo">`,
     `<CanonicalizationMethod Algorithm="http://www.w3.org/TR/2001/REC-xml-c14n-20010315"/>`,
     `<SignatureMethod Algorithm="http://www.w3.org/2000/09/xmldsig#rsa-sha1"/>`,
     `<Reference Id="SignedProperties-Reference" Type="http://uri.etsi.org/01903#SignedProperties" URI="#Signature-SignedProperties">`,
