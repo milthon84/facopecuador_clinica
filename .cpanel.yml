@@ -1,0 +1,7 @@
+---
+deployment:
+  tasks:
+    - export DEPLOYPATH=/home/$(whoami)/domains/clinica.facop.com.ec/public_html
+    - /bin/cp -r . $DEPLOYPATH
+    - cd $DEPLOYPATH && npm install --production=false
+    - cd $DEPLOYPATH && npm run build
