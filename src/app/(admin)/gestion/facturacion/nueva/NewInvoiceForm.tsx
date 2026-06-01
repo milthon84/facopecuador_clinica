@@ -618,8 +618,8 @@ export default function NewInvoiceForm({
                         ${lineTotal > 0 ? lineTotal.toFixed(2) : "0.00"}
                       </td>
                       <td className="px-3 py-2 text-center">
-                        <button type="button" onClick={() => removeItem(item.id)} disabled={items.length === 1}
-                          className="text-ink-300 hover:text-red-500 transition-colors disabled:opacity-30">
+                        <button type="button" onClick={() => removeItem(item.id)}
+                          className="text-ink-300 hover:text-red-500 transition-colors">
                           <Trash2 size={14} />
                         </button>
                       </td>
