@@ -3,9 +3,10 @@ import { createAdminClient } from "@/lib/supabase/admin";
 
 /**
  * Busca datos completos de un cliente por cédula o RUC.
- * Prioridad: pacientes → facturas previas (con todos sus datos históricos).
- * Busca con el documento exacto Y con formato cédula+001 (persona natural).
- * GET /api/admin/client-lookup?document=1718372335
+ * Prioridad: paciente + facturas previas → solo facturas previas.
+ * Prueba cédula exacta Y cédula+001 (RUC persona natural).
+ * Si el paciente ya fue facturado, carga los datos de la última factura
+ * (razón social, email, teléfono, dirección usados en facturación).
  */
 export async function GET(req: Request) {
   const { searchParams } = new URL(req.url);
@@ -14,60 +15,73 @@ export async function GET(req: Request) {
 
   const supabase = createAdminClient();
 
-  // Variantes a buscar: exacto + cédula→RUC (solo si son 10 dígitos)
+  // Variantes a buscar: exacto + cédula→RUC
   const variants = /^\d{10}$/.test(raw) ? [raw, `${raw}001`] : [raw];
 
-  // ── 1. Buscar en pacientes ────────────────────────────────────────────────
+  // ── 1. Buscar paciente en cualquier variante ───────────────────────────────
+  let patientId: string | null = null;
+  let patientName = "";
+  let patientEmail = "";
+  let patientPhone = "";
+
   for (const doc of variants) {
     const { data: patient } = await supabase
       .from("patients")
-      .select("id, full_name, email, phone, document_number")
+      .select("id, full_name, email, phone")
       .eq("document_number", doc)
       .maybeSingle();
 
     if (patient) {
-      // Buscar también la factura más reciente para complementar con dirección
-      const { data: lastInv } = await supabase
-        .from("invoices")
-        .select("client_email, client_phone, client_address")
-        .eq("client_document", doc)
-        .order("created_at", { ascending: false })
-        .limit(1)
-        .maybeSingle();
-
-      // Usar datos del paciente primero, completar con factura si faltan
-      return NextResponse.json({
-        found: true,
-        source: "patient",
-        patient_id: patient.id,
-        name:    patient.full_name                    ?? "",
-        email:   patient.email    || lastInv?.client_email   || "",
-        phone:   patient.phone    || lastInv?.client_phone   || "",
-        address: lastInv?.client_address ?? "",
-      });
+      patientId    = patient.id;
+      patientName  = patient.full_name ?? "";
+      patientEmail = patient.email     ?? "";
+      patientPhone = patient.phone     ?? "";
+      break;
     }
   }
 
-  // ── 2. Buscar en facturas previas ─────────────────────────────────────────
+  // ── 2. Buscar la factura más reciente en TODAS las variantes ──────────────
+  let lastInvoice: {
+    client_name: string; client_email: string | null;
+    client_phone: string | null; client_address: string | null;
+  } | null = null;
+
   for (const doc of variants) {
-    const { data: invoice } = await supabase
+    const { data: inv } = await supabase
       .from("invoices")
-      .select("client_name, client_email, client_phone, client_address, client_document")
+      .select("client_name, client_email, client_phone, client_address")
       .eq("client_document", doc)
       .order("created_at", { ascending: false })
       .limit(1)
       .maybeSingle();
 
-    if (invoice) {
-      return NextResponse.json({
-        found: true,
-        source: "invoice",
-        name:    invoice.client_name    ?? "",
-        email:   invoice.client_email   ?? "",
-        phone:   invoice.client_phone   ?? "",
-        address: invoice.client_address ?? "",
-      });
-    }
+    if (inv) { lastInvoice = inv; break; }
+  }
+
+  // ── 3. Si encontramos al paciente ─────────────────────────────────────────
+  if (patientId) {
+    return NextResponse.json({
+      found:      true,
+      source:     lastInvoice ? "patient+invoice" : "patient",
+      patient_id: patientId,
+      // Razón social: usa la de la última factura si existe (puede ser diferente)
+      name:    lastInvoice?.client_name  || patientName,
+      email:   lastInvoice?.client_email || patientEmail || "",
+      phone:   lastInvoice?.client_phone || patientPhone || "",
+      address: lastInvoice?.client_address ?? "",
+    });
+  }
+
+  // ── 4. Solo factura previa (no es paciente registrado) ────────────────────
+  if (lastInvoice) {
+    return NextResponse.json({
+      found:   true,
+      source:  "invoice",
+      name:    lastInvoice.client_name    ?? "",
+      email:   lastInvoice.client_email   ?? "",
+      phone:   lastInvoice.client_phone   ?? "",
+      address: lastInvoice.client_address ?? "",
+    });
   }
 
   return NextResponse.json({ found: false });

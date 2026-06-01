@@ -68,13 +68,15 @@ export default function NewInvoiceForm({
 
   // Lookup local (pacientes + facturas previas)
   const [lookupStatus, setLookupStatus] = useState<"idle" | "loading" | "found" | "not_found">("idle");
-  const [lookupSource, setLookupSource] = useState<"patient" | "invoice" | null>(null);
+  const [lookupSource, setLookupSource] = useState<"patient" | "patient+invoice" | "invoice" | null>(null);
 
   // Comprobante de pago
   const [comprobanteFile, setComprobanteFile] = useState<File | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const [items, setItems] = useState<InvoiceItem[]>([]);
+  const [items, setItems] = useState<InvoiceItem[]>([
+    { id: "1", description: "", quantity: 1, unit_price: 0, discount: 0, iva_code: "4" },
+  ]);
 
   const [patientId,      setPatientId]      = useState(initialPatient?.id ?? "");
   const [clientName,     setClientName]     = useState(initialPatient?.full_name ?? "");
@@ -178,6 +180,8 @@ export default function NewInvoiceForm({
 
   function validateForm(): boolean {
     const e: Record<string, string> = {};
+
+    // Datos del cliente
     if (!clientName.trim() || clientName.trim().length < 2) e.clientName = "Razón social / nombre requerido";
     const docErr = validateDocumento(clientDocument);
     if (docErr) e.clientDocument = docErr;
@@ -185,7 +189,17 @@ export default function NewInvoiceForm({
     if (emailErr) e.clientEmail = emailErr;
     const telErr = validateTelefono(clientPhone, true);
     if (telErr) e.clientPhone = telErr;
-    if (items.length === 0) e.items = "Agrega al menos un ítem a la factura";
+
+    // Ítems: debe haber al menos uno con descripción y precio mayor a 0
+    const validItems = items.filter(i => i.description.trim() && i.unit_price > 0);
+    if (validItems.length === 0) {
+      e.items = "Agrega al menos un ítem con descripción y precio para facturar";
+    }
+
+    // Total debe ser mayor a 0
+    if (totalFactura <= 0 && validItems.length > 0) {
+      e.items = "El total de la factura debe ser mayor a $0.00";
+    }
 
     // Para pagos no en efectivo: cuenta bancaria y comprobante son obligatorios
     if (requiresBankConfirmation) {
@@ -308,8 +322,9 @@ export default function NewInvoiceForm({
               </div>
               {formErrors.clientDocument && <p className="text-xs text-red-500">{formErrors.clientDocument}</p>}
               {lookupStatus === "loading"   && <p className="text-xs text-lilac-500 flex items-center gap-1"><Loader2 size={11} className="animate-spin" /> Buscando en el sistema…</p>}
-              {lookupStatus === "found" && lookupSource === "patient"  && <p className="text-xs text-green-600 font-medium flex items-center gap-1"><CheckCircle2 size={11} /> Datos cargados desde pacientes registrados</p>}
-              {lookupStatus === "found" && lookupSource === "invoice"  && <p className="text-xs text-green-600 font-medium flex items-center gap-1"><CheckCircle2 size={11} /> Datos cargados desde facturación previa</p>}
+              {lookupStatus === "found" && lookupSource === "patient"         && <p className="text-xs text-green-600 font-medium flex items-center gap-1"><CheckCircle2 size={11} /> Paciente registrado</p>}
+              {lookupStatus === "found" && lookupSource === "patient+invoice" && <p className="text-xs text-green-600 font-medium flex items-center gap-1"><CheckCircle2 size={11} /> Paciente con datos de facturación previa cargados</p>}
+              {lookupStatus === "found" && lookupSource === "invoice"         && <p className="text-xs text-green-600 font-medium flex items-center gap-1"><CheckCircle2 size={11} /> Datos cargados desde factura anterior</p>}
               {lookupStatus === "not_found" && <p className="text-xs text-ink-400 flex items-center gap-1"><AlertCircle size={11} /> No encontrado — ingresa los datos manualmente</p>}
             </div>
 
@@ -602,6 +617,22 @@ export default function NewInvoiceForm({
             </div>
           </div>
         </div>
+
+        {/* Resumen de errores de validación */}
+        {Object.keys(formErrors).length > 0 && (
+          <div className="bg-red-50 border border-red-200 rounded-2xl px-4 py-3">
+            <p className="text-xs font-bold text-red-700 mb-1.5 flex items-center gap-1.5">
+              <AlertCircle size={13} /> Completa los siguientes campos antes de emitir:
+            </p>
+            <ul className="space-y-0.5">
+              {Object.values(formErrors).map((err, i) => (
+                <li key={i} className="text-xs text-red-600 flex items-center gap-1.5">
+                  <span className="w-1 h-1 rounded-full bg-red-400 shrink-0" /> {err}
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
 
         <div className="flex justify-end gap-3">
           <button type="button" onClick={() => router.push("/gestion/facturacion")}

@@ -79,16 +79,56 @@ type Transaction = {
   expenses: { supplier_name: string; document_number: string | null } | null;
 };
 
-export default async function BancoDetailPage({ params }: { params: { id: string } }) {
+async function transferToBankAction(formData: FormData) {
+  "use server";
+  const session = createClient();
+  const { data: { user } } = await session.auth.getUser();
+  if ((user?.app_metadata?.role as string) !== "admin") throw new Error("Sin permisos");
+
+  const supabase    = createAdminClient();
+  const caja_id     = formData.get("caja_id") as string;
+  const bank_id     = formData.get("bank_id") as string;
+  const amount      = Number(formData.get("amount"));
+  const date        = formData.get("date") as string;
+  const reference   = (formData.get("reference") as string)?.trim() || null;
+
+  if (amount <= 0) throw new Error("Monto inválido");
+
+  await supabase.from("bank_transactions").insert({
+    account_id: caja_id, type: "egreso", amount, date,
+    description: "Depósito en banco desde Caja General",
+    reference, payment_method: "transferencia",
+    status: "confirmado", origin: "automatico",
+  });
+  await supabase.from("bank_transactions").insert({
+    account_id: bank_id, type: "ingreso", amount, date,
+    description: "Depósito desde Caja General",
+    reference, payment_method: "transferencia",
+    status: "confirmado", origin: "automatico",
+  });
+
+  redirect(`/gestion/bancos/${caja_id}`);
+}
+
+export default async function BancoDetailPage({
+  params,
+  searchParams,
+}: { params: { id: string }; searchParams: { action?: string } }) {
+  const showForm = searchParams.action === "manual";
   const supabase = createAdminClient();
 
-  const [{ data: account }, { data: rawTransactions }] = await Promise.all([
+  const [{ data: account }, { data: rawTransactions }, { data: allBanks }] = await Promise.all([
     supabase.from("bank_accounts").select("*").eq("id", params.id).single(),
     supabase.from("bank_transactions")
       .select("*, invoices(invoice_number), expenses(supplier_name, document_number)")
       .eq("account_id", params.id)
       .order("date", { ascending: false })
       .order("created_at", { ascending: false }),
+    supabase.from("bank_accounts")
+      .select("id, bank_name, account_number")
+      .eq("is_active", true)
+      .neq("account_type", "caja")
+      .order("bank_name"),
   ]);
 
   if (!account) notFound();
@@ -101,7 +141,9 @@ export default async function BancoDetailPage({ params }: { params: { id: string
   const totalEgresos  = confirmedTxs.filter(t => t.type === "egreso").reduce((s, t) => s + t.amount, 0);
   const balance = account.initial_balance + totalIngresos - totalEgresos;
 
-  const today = new Date().toISOString().split("T")[0];
+  const today         = new Date().toISOString().split("T")[0];
+  const isCajaGeneral = !!(account as any).is_caja_general;
+  const bankAccounts  = (allBanks || []) as { id: string; bank_name: string; account_number: string | null }[];
 
   return (
     <div className="max-w-4xl mx-auto">
@@ -121,6 +163,31 @@ export default async function BancoDetailPage({ params }: { params: { id: string
             {account.account_number && ` · ${account.account_number}`}
           </p>
         </div>
+        {isCajaGeneral ? (
+          /* Caja General: solo permite depositar en banco */
+          <Link
+            href={showForm ? `/gestion/bancos/${params.id}` : `/gestion/bancos/${params.id}?action=depositar`}
+            className={`flex items-center gap-2 px-4 py-2 rounded-xl font-semibold text-sm transition-colors shrink-0 ${
+              searchParams.action === "depositar"
+                ? "bg-ink-100 text-ink-700 border border-ink-200"
+                : "bg-green-600 hover:bg-green-700 text-white shadow-md shadow-green-200"
+            }`}>
+            <Plus size={16} />
+            {searchParams.action === "depositar" ? "Cancelar" : "Depositar en banco"}
+          </Link>
+        ) : (
+          /* Otras cuentas: movimiento manual */
+          <Link
+            href={showForm ? `/gestion/bancos/${params.id}` : `/gestion/bancos/${params.id}?action=manual`}
+            className={`flex items-center gap-2 px-4 py-2 rounded-xl font-semibold text-sm transition-colors shrink-0 ${
+              showForm
+                ? "bg-ink-100 text-ink-700 border border-ink-200 hover:bg-ink-200"
+                : "bg-lilac-600 hover:bg-lilac-700 text-white shadow-md shadow-lilac-200"
+            }`}>
+            <Plus size={16} />
+            {showForm ? "Cancelar" : "Movimiento manual"}
+          </Link>
+        )}
       </div>
 
       {/* Stats */}
@@ -146,6 +213,66 @@ export default async function BancoDetailPage({ params }: { params: { id: string
           <p className="text-xl font-bold text-red-600">${totalEgresos.toFixed(2)}</p>
         </div>
       </div>
+
+      {/* Banner informativo Caja General */}
+      {isCajaGeneral && (
+        <div className="bg-blue-50 border border-blue-100 rounded-xl px-4 py-3 mb-4 flex items-center gap-3">
+          <span className="text-lg">💵</span>
+          <p className="text-sm text-blue-800">
+            <strong>Caja General</strong> — recibe automáticamente todos los pagos en efectivo de facturas.
+            Para mover el dinero a un banco usa el botón <strong>"Depositar en banco"</strong>.
+          </p>
+        </div>
+      )}
+
+      {/* Formulario: Depositar en banco (solo Caja General) */}
+      {isCajaGeneral && searchParams.action === "depositar" && (
+        <div className="bg-white border border-green-200 rounded-2xl shadow-sm p-5 mb-6">
+          <h2 className="font-semibold text-ink-900 mb-4 flex items-center gap-2 text-sm">
+            <TrendingUp size={16} className="text-green-600" />
+            Depositar efectivo en cuenta bancaria
+          </h2>
+          <form action={transferToBankAction} className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            <input type="hidden" name="caja_id" value={account.id} />
+            <div className="col-span-2 space-y-1">
+              <label className="text-xs font-semibold text-ink-700">Cuenta bancaria destino *</label>
+              <select name="bank_id" required
+                className="w-full border border-green-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-400 bg-white">
+                <option value="">— Seleccionar banco —</option>
+                {bankAccounts.map(b => (
+                  <option key={b.id} value={b.id}>
+                    {b.bank_name}{b.account_number ? ` · ${b.account_number}` : ""}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="space-y-1">
+              <label className="text-xs font-semibold text-ink-700">Monto *</label>
+              <div className="relative">
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-ink-400 text-xs">$</span>
+                <input name="amount" type="number" required min="0.01" step="0.01"
+                  className="w-full border border-green-200 rounded-xl pl-7 pr-2 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-400 bg-white font-mono" />
+              </div>
+            </div>
+            <div className="space-y-1">
+              <label className="text-xs font-semibold text-ink-700">Fecha *</label>
+              <input name="date" type="date" required defaultValue={today}
+                className="w-full border border-green-200 rounded-xl px-2 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-400 bg-white" />
+            </div>
+            <div className="col-span-2 sm:col-span-3 space-y-1">
+              <label className="text-xs font-semibold text-ink-700">N° Referencia / Comprobante</label>
+              <input name="reference" placeholder="N° depósito, comprobante..."
+                className="w-full border border-green-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-400 bg-white font-mono" />
+            </div>
+            <div className="col-span-2 sm:col-span-1 flex items-end">
+              <button type="submit"
+                className="w-full flex items-center justify-center gap-2 bg-green-600 hover:bg-green-700 text-white py-2 rounded-xl font-semibold text-sm transition-colors">
+                <TrendingUp size={14} /> Depositar
+              </button>
+            </div>
+          </form>
+        </div>
+      )}
 
       {/* Tabla de movimientos */}
       <div className="bg-white border border-lilac-100 rounded-2xl shadow-sm overflow-hidden mb-6">
@@ -235,14 +362,23 @@ export default async function BancoDetailPage({ params }: { params: { id: string
         )}
       </div>
 
-      {/* Registrar movimiento manual */}
-      <div className="bg-white border border-lilac-100 rounded-2xl shadow-sm p-6">
-        <h2 className="font-semibold text-ink-900 mb-1 flex items-center gap-2">
-          <Plus size={18} className="text-lilac-600" />
-          Registrar movimiento manual
-          <span className="text-[10px] bg-amber-100 text-amber-700 border border-amber-200 px-2 py-0.5 rounded-full font-semibold">✏ Manual</span>
-        </h2>
-        <p className="text-sm text-ink-500 mb-5">Para ajustes, comisiones u operaciones no vinculadas a facturas ni compras.</p>
+      {/* Registrar movimiento manual — solo visible con ?action=manual */}
+      {showForm && <div className="bg-white border border-lilac-200 rounded-2xl shadow-sm p-5 mb-6">
+        <div className="flex items-start gap-3 mb-4 pb-3 border-b border-lilac-50">
+          <div className="w-9 h-9 rounded-xl bg-amber-100 flex items-center justify-center shrink-0">
+            <Plus size={18} className="text-amber-700" />
+          </div>
+          <div>
+            <h2 className="font-semibold text-ink-900 flex items-center gap-2">
+              Registrar movimiento manual
+              <span className="text-[10px] bg-amber-100 text-amber-700 border border-amber-200 px-2 py-0.5 rounded-full font-semibold">✏ Manual</span>
+            </h2>
+            <p className="text-xs text-ink-500 mt-0.5">
+              Úsalo para ajustes, comisiones u operaciones <strong>no vinculadas a facturas ni compras</strong>.
+              Los movimientos automáticos se generan solos al emitir facturas o registrar compras.
+            </p>
+          </div>
+        </div>
 
         <form action={addTransaction} className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <input type="hidden" name="account_id" value={account.id} />
@@ -320,7 +456,7 @@ export default async function BancoDetailPage({ params }: { params: { id: string
             </button>
           </div>
         </form>
-      </div>
+      </div>}
     </div>
   );
 }

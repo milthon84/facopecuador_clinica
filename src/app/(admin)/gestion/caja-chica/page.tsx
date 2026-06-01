@@ -84,7 +84,8 @@ export default async function CajaChicaPage({
     supabase.from("bank_transactions").select("*").order("date", { ascending: false }).order("created_at", { ascending: false }).limit(200),
   ]);
 
-  const cajaAccounts = (allAccounts as BankAccount[] || []).filter(a => a.account_type === "caja");
+  // Caja Chica: cuentas tipo "caja" que NO son la Caja General
+  const cajaAccounts = (allAccounts as BankAccount[] || []).filter(a => a.account_type === "caja" && !(a as any).is_caja_general);
   const bankAccounts = (allAccounts as BankAccount[] || []).filter(a => a.account_type !== "caja");
 
   const txMap = new Map<string, BankTx[]>();

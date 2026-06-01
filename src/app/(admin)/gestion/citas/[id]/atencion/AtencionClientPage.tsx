@@ -492,16 +492,6 @@ export default function AtencionClientPage({ appointment, patient, initialConsul
                       <option value="O">Otro</option>
                     </select>
                   </div>
-                  <div>
-                    <label className="block text-xs font-bold text-ink-700 uppercase mb-1">Dirección de Domicilio</label>
-                    <input
-                      type="text"
-                      placeholder="Calle Principal, Nro, Ciudad"
-                      value={address}
-                      onChange={(e) => setAddress(e.target.value)}
-                      className="w-full text-sm rounded-xl border border-lilac-200 px-3 py-2 bg-lilac-50/20 focus:border-lilac-500 outline-none"
-                    />
-                  </div>
                 </div>
               )}
             </div>

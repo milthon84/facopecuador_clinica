@@ -40,17 +40,30 @@ async function confirmFullPayment(formData: FormData) {
   // Marcar factura como pagada
   await supabase.from("invoices").update({ payment_status: "paid" }).eq("id", invoice_id);
 
-  // Ingreso bancario automático si tiene cuenta
+  const { data: inv } = await supabase
+    .from("invoices").select("invoice_number, client_name").eq("id", invoice_id).single();
+
   if (bank_account_id) {
-    const { data: inv } = await supabase
-      .from("invoices").select("invoice_number, client_name").eq("id", invoice_id).single();
+    // Transferencia/Tarjeta → cuenta bancaria seleccionada
     await supabase.from("bank_transactions").insert({
-      account_id: bank_account_id, type: "ingreso", amount,
-      date: today,
+      account_id: bank_account_id, type: "ingreso", amount, date: today,
       description: `Cobro Factura ${inv?.invoice_number} — ${inv?.client_name}`,
       reference: comprobante_ref, payment_method,
       invoice_id, status: "confirmado", origin: "automatico",
     }).then(() => {});
+  } else if (payment_method === "efectivo") {
+    // Efectivo → Caja General automáticamente
+    const { data: cajaGeneral } = await supabase
+      .from("bank_accounts").select("id")
+      .eq("is_caja_general", true).eq("is_active", true).maybeSingle();
+    if (cajaGeneral) {
+      await supabase.from("bank_transactions").insert({
+        account_id: cajaGeneral.id, type: "ingreso", amount, date: today,
+        description: `Cobro efectivo Factura ${inv?.invoice_number} — ${inv?.client_name}`,
+        payment_method: "efectivo", invoice_id,
+        status: "confirmado", origin: "automatico",
+      }).then(() => {});
+    }
   }
 
   redirect("/gestion/cuentas-por-cobrar");
