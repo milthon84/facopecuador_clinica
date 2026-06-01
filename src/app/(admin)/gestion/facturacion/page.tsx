@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { FileText, Plus, Settings, CheckCircle2, XCircle, AlertCircle, Clock } from "lucide-react";
+import { FileText, Plus, CheckCircle2, XCircle, AlertCircle, Clock } from "lucide-react";
 
 export const dynamic = "force-dynamic";
 
@@ -37,22 +37,13 @@ export default async function BillingDashboard() {
             Emite y gestiona comprobantes electrónicos autorizados por el SRI.
           </p>
         </div>
-        <div className="flex items-center gap-2">
-          <Link
-            href="/gestion/facturacion/config"
-            className="btn-secondary flex items-center gap-2 text-sm bg-white border border-lilac-200 hover:bg-lilac-50 px-4 py-2 rounded-xl transition-colors font-medium text-ink-700 shadow-sm"
-          >
-            <Settings size={16} />
-            Configuración SRI
-          </Link>
-          <Link
-            href="/gestion/facturacion/nueva"
-            className="btn-primary flex items-center gap-2 text-sm bg-lilac-600 hover:bg-lilac-700 text-white px-4 py-2 rounded-xl transition-colors font-medium shadow-md shadow-lilac-200"
-          >
-            <Plus size={16} />
-            Emitir Factura
-          </Link>
-        </div>
+        <Link
+          href="/gestion/facturacion/nueva"
+          className="btn-primary flex items-center gap-2 text-sm bg-lilac-600 hover:bg-lilac-700 text-white px-4 py-2 rounded-xl transition-colors font-medium shadow-md shadow-lilac-200"
+        >
+          <Plus size={16} />
+          Emitir Factura
+        </Link>
       </div>
 
       <div className="bg-white border border-lilac-100 rounded-2xl overflow-hidden shadow-sm">
