@@ -96,12 +96,18 @@ export async function enviarComprobante(
     "" // SOAPAction vacío
   );
 
+  // Log completo para diagnóstico
+  console.log("=== SRI RECEPCIÓN RESPONSE ===");
+  console.log(responseXml.slice(0, 2000));
+  console.log("=== END SRI RESPONSE ===");
+
   // Si la respuesta no contiene "estado", hubo error en la recepción
   const estadoRaw = extractTag(responseXml, "estado");
   if (!estadoRaw) {
-    // Intentar extraer mensaje de error del SRI
     const faultString = extractTag(responseXml, "faultstring") || extractTag(responseXml, "faultString");
-    throw new Error(`SRI recepción no devolvió estado. ${faultString ? `Fault: ${faultString}` : `Response: ${responseXml.slice(0, 300)}`}`);
+    const detail      = extractTag(responseXml, "detail") || extractTag(responseXml, "Detail");
+    console.error("SRI Fault completo:", responseXml.slice(0, 3000));
+    throw new Error(`SRI recepción no devolvió estado. ${faultString ? `Fault: ${faultString}` : `Response: ${responseXml.slice(0, 500)}`}${detail ? ` | Detail: ${detail.slice(0,200)}` : ""}`);
   }
 
   const estado = estadoRaw as "RECIBIDA" | "DEVUELTA";
