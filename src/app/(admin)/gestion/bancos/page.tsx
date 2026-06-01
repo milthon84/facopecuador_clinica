@@ -43,6 +43,21 @@ async function toggleAccount(formData: FormData) {
   redirect("/gestion/bancos");
 }
 
+async function setCajaGeneral(formData: FormData) {
+  "use server";
+  const session = createClient();
+  const { data: { user } } = await session.auth.getUser();
+  if ((user?.app_metadata?.role as string) !== "admin") throw new Error("Sin permisos");
+
+  const supabase = createAdminClient();
+  const id = formData.get("id") as string;
+  // Desmarcar todas las cajas generales primero
+  await supabase.from("bank_accounts").update({ is_caja_general: false }).eq("account_type", "caja");
+  // Marcar la seleccionada
+  await supabase.from("bank_accounts").update({ is_caja_general: true }).eq("id", id);
+  redirect("/gestion/bancos");
+}
+
 type BankAccount = {
   id: string;
   bank_name: string;
@@ -50,6 +65,7 @@ type BankAccount = {
   account_type: string;
   initial_balance: number;
   is_active: boolean;
+  is_caja_general: boolean | null;
   notes: string | null;
 };
 
@@ -136,7 +152,14 @@ export default async function BancosPage() {
                 <div className="p-5">
                   <div className="flex items-start justify-between mb-3">
                     <div>
-                      <h3 className="font-bold text-ink-900">{account.bank_name}</h3>
+                      <h3 className="font-bold text-ink-900 flex items-center gap-2">
+                        {account.bank_name}
+                        {account.is_caja_general && (
+                          <span className="text-[10px] bg-blue-100 text-blue-700 border border-blue-200 px-1.5 py-0.5 rounded-full font-semibold">
+                            💵 Caja General
+                          </span>
+                        )}
+                      </h3>
                       <p className="text-xs text-ink-400 mt-0.5">
                         {ACCOUNT_TYPE_LABELS[account.account_type]}
                         {account.account_number && ` · ${account.account_number}`}
@@ -166,15 +189,26 @@ export default async function BancosPage() {
                   </div>
                 </div>
 
-                <div className="px-5 py-2.5 bg-lilac-50/40 border-t border-lilac-100 flex items-center justify-between">
+                <div className="px-5 py-2.5 bg-lilac-50/40 border-t border-lilac-100 flex items-center justify-between gap-2">
                   {account.notes && <p className="text-xs text-ink-400 truncate mr-2">{account.notes}</p>}
-                  <form action={toggleAccount} className="ml-auto">
-                    <input type="hidden" name="id" value={account.id} />
-                    <input type="hidden" name="is_active" value={String(account.is_active)} />
-                    <button type="submit" className="text-xs text-ink-400 hover:text-ink-600 transition-colors">
-                      {account.is_active ? "Desactivar" : "Activar"}
-                    </button>
-                  </form>
+                  <div className="ml-auto flex items-center gap-3">
+                    {/* Marcar como Caja General (solo para cuentas tipo caja) */}
+                    {account.account_type === "caja" && !account.is_caja_general && (
+                      <form action={setCajaGeneral}>
+                        <input type="hidden" name="id" value={account.id} />
+                        <button type="submit" className="text-xs text-blue-500 hover:text-blue-700 transition-colors">
+                          Marcar como Caja General
+                        </button>
+                      </form>
+                    )}
+                    <form action={toggleAccount}>
+                      <input type="hidden" name="id" value={account.id} />
+                      <input type="hidden" name="is_active" value={String(account.is_active)} />
+                      <button type="submit" className="text-xs text-ink-400 hover:text-ink-600 transition-colors">
+                        {account.is_active ? "Desactivar" : "Activar"}
+                      </button>
+                    </form>
+                  </div>
                 </div>
               </div>
             );
