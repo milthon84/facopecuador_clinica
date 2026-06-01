@@ -1,13 +1,15 @@
 /**
  * Firma digital XAdES-BES para comprobantes electrónicos SRI Ecuador.
- * Algoritmos requeridos por SRI:
- *   - Digest:    SHA-1  (http://www.w3.org/2000/09/xmldsig#sha1)
- *   - Signature: RSA-SHA1 (http://www.w3.org/2000/09/xmldsig#rsa-sha1)
+ *
+ * Algoritmos:
+ *   - Digest:    SHA-1
+ *   - Signature: RSA-SHA1
  *   - C14N:      http://www.w3.org/TR/2001/REC-xml-c14n-20010315
  *
- * NOTA IMPORTANTE — Error 39 "Firma Inválida":
- * El SRI usa C14N para verificar los hashes. C14N excluye la declaración XML.
- * Por eso el docDigest debe computarse SIN la línea <?xml ...?>.
+ * REGLA CRÍTICA de C14N (causa del Error 39):
+ * Cuando <Signature xmlns="..."> declara el namespace, la C14N del <SignedInfo>
+ * interior NO incluye el xmlns (ya está en scope del padre). Por tanto, lo que
+ * firmamos con RSA debe ser <SignedInfo Id="..."> SIN xmlns.
  */
 
 import forge from "node-forge";
@@ -20,18 +22,15 @@ function sha1b64(data: Buffer | string): string {
   return createHash("sha1").update(buf).digest("base64");
 }
 
-/**
- * C14N simplificado: elimina la declaración XML (C14N nunca la incluye).
- * Para XML bien formado sin namespaces dinámicos, esto es suficiente.
- */
+/** C14N excluye la declaración XML – la quitamos antes de hashear el documento */
 function stripXmlDeclaration(xml: string): string {
   return xml.replace(/^<\?xml[^?]*\?>\s*/m, "");
 }
 
 function nowEcuador(): string {
-  const now = new Date();
+  const now    = new Date();
   const offset = -5 * 60;
-  const local = new Date(now.getTime() + offset * 60000);
+  const local  = new Date(now.getTime() + offset * 60000);
   return local.toISOString().replace("Z", "-05:00");
 }
 
@@ -47,17 +46,13 @@ export interface CertInfo {
 
 export function parseCertInfo(p12Buffer: Buffer, password: string): CertInfo {
   const p12Asn1 = forge.asn1.fromDer(forge.util.createBuffer(p12Buffer.toString("binary")));
-  const p12 = forge.pkcs12.pkcs12FromAsn1(p12Asn1, false, password);
+  const p12     = forge.pkcs12.pkcs12FromAsn1(p12Asn1, false, password);
   const certBags = p12.getBags({ bagType: forge.pki.oids.certBag });
-  const cert = certBags[forge.pki.oids.certBag]?.[0]?.cert;
+  const cert     = certBags[forge.pki.oids.certBag]?.[0]?.cert;
   if (!cert) throw new Error("No se encontró certificado en el archivo .p12");
 
-  const subject = cert.subject.attributes
-    .map((a: any) => `${a.shortName}=${a.value}`)
-    .join(", ");
-  const issuer = cert.issuer.attributes
-    .map((a: any) => `${a.shortName}=${a.value}`)
-    .join(", ");
+  const subject = cert.subject.attributes.map((a: any) => `${a.shortName}=${a.value}`).join(", ");
+  const issuer  = cert.issuer.attributes.map((a: any)  => `${a.shortName}=${a.value}`).join(", ");
 
   return {
     subject,
@@ -70,38 +65,33 @@ export function parseCertInfo(p12Buffer: Buffer, password: string): CertInfo {
 
 // ── Firma XAdES-BES ────────────────────────────────────────────────────────
 
-export function signXMLWithP12(
-  xmlString: string,
-  p12Buffer: Buffer,
-  password: string
-): string {
-  // 1. Parsear PKCS12
+export function signXMLWithP12(xmlString: string, p12Buffer: Buffer, password: string): string {
+
+  // ── 1. Extraer clave y certificado del .p12 ──────────────────────────────
   const p12Asn1 = forge.asn1.fromDer(forge.util.createBuffer(p12Buffer.toString("binary")));
-  const p12 = forge.pkcs12.pkcs12FromAsn1(p12Asn1, false, password);
+  const p12     = forge.pkcs12.pkcs12FromAsn1(p12Asn1, false, password);
 
-  const keyBags  = p12.getBags({ bagType: forge.pki.oids.pkcs8ShroudedKeyBag });
-  const certBags = p12.getBags({ bagType: forge.pki.oids.certBag });
-
-  const privateKey = keyBags[forge.pki.oids.pkcs8ShroudedKeyBag]?.[0]?.key as forge.pki.rsa.PrivateKey | undefined;
-  const cert       = certBags[forge.pki.oids.certBag]?.[0]?.cert;
+  const privateKey = p12.getBags({ bagType: forge.pki.oids.pkcs8ShroudedKeyBag })
+    [forge.pki.oids.pkcs8ShroudedKeyBag]?.[0]?.key as forge.pki.rsa.PrivateKey | undefined;
+  const cert = p12.getBags({ bagType: forge.pki.oids.certBag })
+    [forge.pki.oids.certBag]?.[0]?.cert;
 
   if (!privateKey || !cert) {
     throw new Error("No se pudo extraer clave o certificado del .p12. Verifique la contraseña.");
   }
 
-  // 2. Datos del certificado
-  const certDer    = forge.asn1.toDer(forge.pki.certificateToAsn1(cert)).bytes();
-  const certBase64 = forge.util.encode64(certDer);
-  const certDigest = sha1b64(Buffer.from(certDer, "binary"));
-  const issuerName = cert.issuer.attributes
-    .map((a: any) => `${a.shortName}=${a.value}`)
-    .join(",");
+  // ── 2. Datos del certificado ─────────────────────────────────────────────
+  const certDer      = forge.asn1.toDer(forge.pki.certificateToAsn1(cert)).bytes();
+  const certBase64   = forge.util.encode64(certDer);
+  const certDigest   = sha1b64(Buffer.from(certDer, "binary"));
+  const issuerName   = cert.issuer.attributes.map((a: any) => `${a.shortName}=${a.value}`).join(",");
   const serialNumber = parseInt(cert.serialNumber, 16).toString();
+  const signingTime  = nowEcuador();
 
-  // 3. Tiempo de firma
-  const signingTime = nowEcuador();
-
-  // 4. SignedProperties (XAdES-BES)
+  // ── 3. SignedProperties (XAdES-BES) ─────────────────────────────────────
+  // Se calcula el digest sobre el texto completo (con xmlns:xades) ya que
+  // la Reference a este elemento no especifica transforms, así el SRI usa
+  // el fragmento tal cual aparece en el documento.
   const signedPropsXml = [
     `<xades:SignedProperties xmlns:xades="http://uri.etsi.org/01903/v1.3.2#" Id="Signature-SignedProperties">`,
     `<xades:SignedSignatureProperties>`,
@@ -122,17 +112,19 @@ export function signXMLWithP12(
     `</xades:SignedProperties>`,
   ].join("");
 
-  // 5. Digest de SignedProperties
   const signedPropsDigest = sha1b64(signedPropsXml);
 
-  // 6. Digest del documento SIN declaración XML (C14N excluye <?xml...?>)
-  //    Se incluye transform C14N en la Reference para que el SRI sepa que aplica
-  const xmlSinDeclaracion = stripXmlDeclaration(xmlString);
-  const docDigest         = sha1b64(xmlSinDeclaracion);
+  // ── 4. Document digest ───────────────────────────────────────────────────
+  // C14N excluye la declaración <?xml...?>, así que la quitamos antes de hashear.
+  // Sin transform C14N explícito en la Reference — solo enveloped-signature.
+  const docDigest = sha1b64(stripXmlDeclaration(xmlString));
 
-  // 7. SignedInfo — incluye transform C14N para el documento
+  // ── 5. SignedInfo ────────────────────────────────────────────────────────
+  // IMPORTANTE: NO incluir xmlns aquí. El <Signature> padre lo declarará.
+  // La C14N que aplica el SRI al verificar producirá <SignedInfo Id="...">
+  // SIN el xmlns (ya en scope del padre). Firmamos exactamente eso.
   const signedInfoXml = [
-    `<SignedInfo xmlns="http://www.w3.org/2000/09/xmldsig#" Id="Signature-SignedInfo">`,
+    `<SignedInfo Id="Signature-SignedInfo">`,
     `<CanonicalizationMethod Algorithm="http://www.w3.org/TR/2001/REC-xml-c14n-20010315"/>`,
     `<SignatureMethod Algorithm="http://www.w3.org/2000/09/xmldsig#rsa-sha1"/>`,
     `<Reference Id="SignedProperties-Reference" Type="http://uri.etsi.org/01903#SignedProperties" URI="#Signature-SignedProperties">`,
@@ -142,7 +134,6 @@ export function signXMLWithP12(
     `<Reference URI="">`,
     `<Transforms>`,
     `<Transform Algorithm="http://www.w3.org/2000/09/xmldsig#enveloped-signature"/>`,
-    `<Transform Algorithm="http://www.w3.org/TR/2001/REC-xml-c14n-20010315"/>`,
     `</Transforms>`,
     `<DigestMethod Algorithm="http://www.w3.org/2000/09/xmldsig#sha1"/>`,
     `<DigestValue>${docDigest}</DigestValue>`,
@@ -150,15 +141,14 @@ export function signXMLWithP12(
     `</SignedInfo>`,
   ].join("");
 
-  // 8. Firmar SignedInfo con RSA-SHA1
-  //    El SignedInfo también debe ser canonicalizado antes de firmar
-  const signedInfoC14n = stripXmlDeclaration(signedInfoXml);
+  // ── 6. Firmar SignedInfo con RSA-SHA1 ────────────────────────────────────
+  // Firmamos signedInfoXml tal cual (sin xmlns) = lo que C14N produce dentro de <Signature>
   const md = forge.md.sha1.create();
-  md.update(signedInfoC14n, "utf8");
-  const signatureBytes  = privateKey.sign(md);
-  const signatureBase64 = forge.util.encode64(signatureBytes);
+  md.update(signedInfoXml, "utf8");
+  const signatureBase64 = forge.util.encode64(privateKey.sign(md));
 
-  // 9. Ensamblar Signature completo
+  // ── 7. Ensamblar Signature ───────────────────────────────────────────────
+  // <Signature> declara el xmlns; todos los elementos hijo heredan y no necesitan redeclararlo.
   const signatureXml = [
     `<Signature xmlns="http://www.w3.org/2000/09/xmldsig#" Id="Signature">`,
     signedInfoXml,
@@ -176,7 +166,6 @@ export function signXMLWithP12(
     `</Signature>`,
   ].join("");
 
-  // 10. Insertar la firma justo antes de </factura>
-  //     El XML resultante mantiene la declaración <?xml...?> intacta
+  // ── 8. Insertar firma antes de </factura> ────────────────────────────────
   return xmlString.replace(/<\/factura>\s*$/, `${signatureXml}</factura>`);
 }
