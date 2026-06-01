@@ -153,7 +153,7 @@ export default function NewInvoiceForm({
       quantity:    1,
       unit_price:  Number(s.price),
       discount:    0,
-      iva_code:    (s.iva_code === "4" ? "4" : "0") as "4" | "0",
+      iva_code:    "4" as "4" | "0", // siempre 15% por defecto
     }]);
     setShowCatalog(false);
   }
