@@ -31,12 +31,12 @@ export async function POST(req: Request) {
     const url = ENDPOINTS_AUTORIZACION[ambiente];
 
     const envelope = [
-      `<soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:ec="http://ec.gob.sri.ws.autorizacion">`,
+      `<soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:aut="http://ec.gob.sri.ws.autorizacion">`,
       `<soapenv:Header/>`,
       `<soapenv:Body>`,
-      `<ec:autorizacionComprobante>`,
+      `<aut:autorizacionComprobante>`,
       `<claveAccesoComprobante>${claveAcceso}</claveAccesoComprobante>`,
-      `</ec:autorizacionComprobante>`,
+      `</aut:autorizacionComprobante>`,
       `</soapenv:Body>`,
       `</soapenv:Envelope>`,
     ].join("");
@@ -52,8 +52,8 @@ export async function POST(req: Request) {
       const res = await fetch(url, {
         method: "POST",
         headers: {
-          "Content-Type": "text/xml; charset=utf-8",
-          "SOAPAction": "autorizacionComprobante",
+          "Content-Type": "text/xml;charset=UTF-8",
+          // SOAPAction vacío — el SRI lee el Body directamente
         },
         body: envelope,
         signal: controller.signal,

@@ -37,12 +37,15 @@ export interface SriAutorizacionResult {
 // ── SOAP helpers ───────────────────────────────────────────────────────────
 
 async function soapPost(url: string, body: string, soapAction: string): Promise<string> {
+  const headers: Record<string, string> = {
+    "Content-Type": "text/xml;charset=UTF-8",
+  };
+  // Solo incluir SOAPAction si no está vacío
+  if (soapAction) headers["SOAPAction"] = soapAction;
+
   const res = await fetch(url, {
     method: "POST",
-    headers: {
-      "Content-Type": "text/xml; charset=utf-8",
-      "SOAPAction": soapAction,
-    },
+    headers,
     body,
     signal: AbortSignal.timeout(30_000),
   });
@@ -117,13 +120,15 @@ export async function consultarAutorizacion(
   claveAcceso: string,
   ambiente: "1" | "2"
 ): Promise<SriAutorizacionResult> {
+  // Prefijo "aut" (no "ec") — requerido por el SRI Ecuador para autorización
+  // SOAPAction vacío — evita conflictos con el endpoint del SRI
   const envelope = [
-    `<soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:ec="http://ec.gob.sri.ws.autorizacion">`,
+    `<soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:aut="http://ec.gob.sri.ws.autorizacion">`,
     `<soapenv:Header/>`,
     `<soapenv:Body>`,
-    `<ec:autorizacionComprobante>`,
+    `<aut:autorizacionComprobante>`,
     `<claveAccesoComprobante>${claveAcceso}</claveAccesoComprobante>`,
-    `</ec:autorizacionComprobante>`,
+    `</aut:autorizacionComprobante>`,
     `</soapenv:Body>`,
     `</soapenv:Envelope>`,
   ].join("");
@@ -131,7 +136,7 @@ export async function consultarAutorizacion(
   const responseXml = await soapPost(
     ENDPOINTS.autorizacion[ambiente],
     envelope,
-    "autorizacionComprobante"
+    "" // SOAPAction vacío para autorización — el SRI lee el Body directamente
   );
 
   const autorizacionXml = extractTag(responseXml, "autorizacion");
