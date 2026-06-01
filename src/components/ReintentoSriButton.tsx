@@ -9,11 +9,14 @@ interface DiagResult {
   ambiente: string;
   clave_acceso: string;
   estado_local: string;
-  url_consultada: string;
+  url_autorizacion: string;
+  url_recepcion: string;
   http_status: number;
   error_red: string | null;
   respuesta_sri: string | null;
   estado_sri: string;
+  cero_comprobantes: boolean;
+  diagnostico: string | null;
 }
 
 export default function ReintentoSriButton({ invoiceId }: { invoiceId: string }) {
@@ -135,10 +138,18 @@ export default function ReintentoSriButton({ invoiceId }: { invoiceId: string })
             </div>
           )}
 
+          {/* Diagnóstico principal */}
+          {diag.diagnostico && (
+            <div className={`rounded-lg px-3 py-2 mb-3 border ${diag.cero_comprobantes ? "bg-red-900/30 border-red-700 text-red-300" : "bg-green-900/30 border-green-700 text-green-300"}`}>
+              {diag.diagnostico}
+            </div>
+          )}
+
           {/* Detalles */}
           <div className="space-y-1 mb-3">
             <p><span className="text-ink-400">Factura:</span> <span className="text-white">{diag.factura}</span></p>
-            <p><span className="text-ink-400">URL:</span> <span className="text-green-300 break-all">{diag.url_consultada}</span></p>
+            <p><span className="text-ink-400">Recepción:</span> <span className="text-yellow-300 break-all text-[10px]">{diag.url_recepcion}</span></p>
+            <p><span className="text-ink-400">Autorización:</span> <span className="text-green-300 break-all text-[10px]">{diag.url_autorizacion}</span></p>
             <p><span className="text-ink-400">HTTP:</span> <span className={diag.http_status === 200 ? "text-green-400" : "text-red-400"}>{diag.http_status || "—"}</span></p>
           </div>
 

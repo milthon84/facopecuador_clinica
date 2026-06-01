@@ -77,13 +77,15 @@ export async function enviarComprobante(
 ): Promise<SriRecepcionResult> {
   const xmlBase64 = Buffer.from(signedXml, "utf8").toString("base64");
 
+  // Prefijo "rec" para recepción (igual que "aut" para autorización)
+  // SOAPAction vacío — el SRI lee el Body directamente
   const envelope = [
-    `<soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:ec="http://ec.gob.sri.ws.recepcion">`,
+    `<soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:rec="http://ec.gob.sri.ws.recepcion">`,
     `<soapenv:Header/>`,
     `<soapenv:Body>`,
-    `<ec:validarComprobante>`,
+    `<rec:validarComprobante>`,
     `<xml>${xmlBase64}</xml>`,
-    `</ec:validarComprobante>`,
+    `</rec:validarComprobante>`,
     `</soapenv:Body>`,
     `</soapenv:Envelope>`,
   ].join("");
@@ -91,10 +93,18 @@ export async function enviarComprobante(
   const responseXml = await soapPost(
     ENDPOINTS.recepcion[ambiente],
     envelope,
-    "validarComprobante"
+    "" // SOAPAction vacío
   );
 
-  const estado = extractTag(responseXml, "estado") as "RECIBIDA" | "DEVUELTA";
+  // Si la respuesta no contiene "estado", hubo error en la recepción
+  const estadoRaw = extractTag(responseXml, "estado");
+  if (!estadoRaw) {
+    // Intentar extraer mensaje de error del SRI
+    const faultString = extractTag(responseXml, "faultstring") || extractTag(responseXml, "faultString");
+    throw new Error(`SRI recepción no devolvió estado. ${faultString ? `Fault: ${faultString}` : `Response: ${responseXml.slice(0, 300)}`}`);
+  }
+
+  const estado = estadoRaw as "RECIBIDA" | "DEVUELTA";
 
   const comprobantesRaw = extractAllTags(responseXml, "comprobante");
   const comprobantes = comprobantesRaw.map((c) => ({

@@ -28,7 +28,14 @@ export async function POST(req: Request) {
       "2": "https://cel.sri.gob.ec/comprobantes-electronicos-ws/AutorizacionComprobantesOffline",
     };
 
+    // También mostrar info sobre el endpoint de recepción
+    const ENDPOINTS_RECEPCION: Record<string, string> = {
+      "1": "https://celcer.sri.gob.ec/comprobantes-electronicos-ws/RecepcionComprobantesOffline",
+      "2": "https://cel.sri.gob.ec/comprobantes-electronicos-ws/RecepcionComprobantesOffline",
+    };
+
     const url = ENDPOINTS_AUTORIZACION[ambiente];
+    const urlRecepcion = ENDPOINTS_RECEPCION[ambiente];
 
     const envelope = [
       `<soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:aut="http://ec.gob.sri.ws.autorizacion">`,
@@ -68,21 +75,36 @@ export async function POST(req: Request) {
         : `ERROR DE RED: ${e.message}`;
     }
 
-    return NextResponse.json({
-      factura:       invoice.invoice_number,
-      ambiente:      ambiente === "1" ? "PRUEBAS (celcer.sri.gob.ec)" : "PRODUCCIÓN (cel.sri.gob.ec)",
-      clave_acceso:  claveAcceso,
-      estado_local:  invoice.sri_status,
-      url_consultada: url,
-      http_status:   httpStatus,
-      error_red:     errorMsg || null,
-      respuesta_sri: rawResponse || null,
-      // Extracción básica del estado
-      estado_sri:    rawResponse.includes("AUTORIZADO") ? "AUTORIZADO"
+    // Diagnóstico adicional: ¿el SRI tiene 0 registros?
+    const ceroComprobantes = rawResponse.includes("numeroComprobantes>0") || rawResponse.includes("<numeroComprobantes>0<");
+    const estadoSRI = rawResponse.includes("AUTORIZADO") && !rawResponse.includes("NO AUTORIZADO") ? "AUTORIZADO"
                    : rawResponse.includes("NO AUTORIZADO") ? "NO AUTORIZADO"
                    : rawResponse.includes("EN PROCESO") ? "EN PROCESO"
                    : errorMsg ? "SIN CONEXIÓN"
-                   : "DESCONOCIDO",
+                   : "DESCONOCIDO";
+
+    let diagnostico = "";
+    if (ceroComprobantes) {
+      diagnostico = "⚠ El SRI tiene 0 registros para esta clave. Significa que el XML NUNCA llegó al SRI correctamente. El problema está en el paso de RECEPCIÓN, no en la autorización.";
+    } else if (estadoSRI === "AUTORIZADO") {
+      diagnostico = "✅ Factura autorizada por el SRI.";
+    } else if (estadoSRI === "SIN CONEXIÓN") {
+      diagnostico = "❌ Sin conexión al SRI. Verifica que el servidor tiene acceso a internet y que celcer.sri.gob.ec es accesible.";
+    }
+
+    return NextResponse.json({
+      factura:            invoice.invoice_number,
+      ambiente:           ambiente === "1" ? "PRUEBAS (celcer.sri.gob.ec)" : "PRODUCCIÓN (cel.sri.gob.ec)",
+      clave_acceso:       claveAcceso,
+      estado_local:       invoice.sri_status,
+      url_autorizacion:   url,
+      url_recepcion:      urlRecepcion,
+      http_status:        httpStatus,
+      error_red:          errorMsg || null,
+      respuesta_sri:      rawResponse || null,
+      estado_sri:         estadoSRI,
+      cero_comprobantes:  ceroComprobantes,
+      diagnostico:        diagnostico || null,
     });
 
   } catch (err: any) {
