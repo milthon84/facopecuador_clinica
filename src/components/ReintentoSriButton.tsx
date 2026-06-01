@@ -23,9 +23,12 @@ export default function ReintentoSriButton({ invoiceId }: { invoiceId: string })
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [diagLoading, setDiagLoading] = useState(false);
+  const [xmlLoading, setXmlLoading] = useState(false);
   const [result, setResult] = useState<"authorized" | "rejected" | "submitted" | null>(null);
   const [diag, setDiag] = useState<DiagResult | null>(null);
   const [showDiag, setShowDiag] = useState(false);
+  const [xmlContent, setXmlContent] = useState<string | null>(null);
+  const [showXml, setShowXml] = useState(false);
 
   async function reintentar() {
     setLoading(true);
@@ -44,6 +47,24 @@ export default function ReintentoSriButton({ invoiceId }: { invoiceId: string })
       alert("Error al reintentar: " + err.message);
     } finally {
       setLoading(false);
+    }
+  }
+
+  async function verXML() {
+    setXmlLoading(true);
+    setShowXml(true);
+    try {
+      const res  = await fetch("/api/admin/sri-xml-preview", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ invoice_id: invoiceId }),
+      });
+      const data = await res.json();
+      setXmlContent(data.xml_preview || data.error || "Sin XML");
+    } catch (err: any) {
+      setXmlContent("Error: " + err.message);
+    } finally {
+      setXmlLoading(false);
     }
   }
 
@@ -95,7 +116,7 @@ export default function ReintentoSriButton({ invoiceId }: { invoiceId: string })
           </button>
         )}
 
-        {/* Botón diagnóstico */}
+        {/* Botón diagnóstico SRI */}
         <button onClick={diagnosticar} disabled={diagLoading}
           className="flex items-center gap-1.5 text-xs font-semibold text-lilac-700 bg-lilac-50 border border-lilac-200 hover:bg-lilac-100 px-3 py-1.5 rounded-xl transition-colors disabled:opacity-60">
           {diagLoading
@@ -103,7 +124,31 @@ export default function ReintentoSriButton({ invoiceId }: { invoiceId: string })
             : <><Search size={14} /> Ver respuesta SRI</>
           }
         </button>
+
+        {/* Botón ver XML generado */}
+        <button onClick={verXML} disabled={xmlLoading}
+          className="flex items-center gap-1.5 text-xs font-semibold text-ink-600 bg-white border border-ink-200 hover:bg-ink-50 px-3 py-1.5 rounded-xl transition-colors disabled:opacity-60">
+          {xmlLoading
+            ? <><Loader2 size={14} className="animate-spin" /> Generando…</>
+            : <><Search size={14} /> Ver XML</>
+          }
+        </button>
       </div>
+
+      {/* Panel XML */}
+      {showXml && (
+        <div className="mt-2 bg-ink-900 text-green-300 rounded-xl p-4 text-xs font-mono relative">
+          <button onClick={() => setShowXml(false)} className="absolute top-2 right-2 text-ink-400 hover:text-white">
+            <X size={14} />
+          </button>
+          <p className="text-ink-400 text-[11px] mb-2 font-sans font-semibold uppercase tracking-wide">
+            XML generado (sin firma) — para validar en SRI
+          </p>
+          <pre className="overflow-x-auto text-[10px] text-green-300 whitespace-pre-wrap max-h-64 overflow-y-auto">
+            {xmlContent}
+          </pre>
+        </div>
+      )}
 
       {/* Panel de diagnóstico */}
       {showDiag && diag && (
