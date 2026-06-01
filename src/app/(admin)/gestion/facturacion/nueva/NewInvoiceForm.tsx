@@ -62,6 +62,7 @@ export default function NewInvoiceForm({
   const [showCatalog, setShowCatalog] = useState(false);
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
   const [hasSubmitted, setHasSubmitted] = useState(false);
+  const errorTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const [paymentMethod,    setPaymentMethod]    = useState("efectivo");
   const [bankAccountId,    setBankAccountId]    = useState("");
@@ -162,11 +163,18 @@ export default function NewInvoiceForm({
   };
 
   const removeItem = (id: string) => {
-    if (items.length > 1) setItems(items.filter(i => i.id !== id));
+    setItems(items.filter(i => i.id !== id));
+    // Limpiar error de ítems al eliminar
+    setFormErrors(p => { const n = { ...p }; delete n.items; return n; });
   };
 
   const updateItem = (id: string, field: keyof InvoiceItem, value: any) => {
-    setItems(items.map(i => i.id === id ? { ...i, [field]: value } : i));
+    const updated = items.map(i => i.id === id ? { ...i, [field]: value } : i);
+    setItems(updated);
+    // Limpiar error de ítems si ya hay al menos uno válido
+    if (updated.some(i => i.description.trim() && i.unit_price > 0)) {
+      setFormErrors(p => { const n = { ...p }; delete n.items; return n; });
+    }
   };
 
   const subtotal15     = items.filter(i => i.iva_code === "4").reduce((acc, i) => acc + ((i.quantity * i.unit_price) - i.discount), 0);
@@ -207,6 +215,16 @@ export default function NewInvoiceForm({
     }
 
     setFormErrors(e);
+
+    // Auto-limpiar errores después de 5 segundos
+    if (Object.keys(e).length > 0) {
+      if (errorTimerRef.current) clearTimeout(errorTimerRef.current);
+      errorTimerRef.current = setTimeout(() => {
+        setFormErrors({});
+        setHasSubmitted(false);
+      }, 5000);
+    }
+
     return Object.keys(e).length === 0;
   }
 
