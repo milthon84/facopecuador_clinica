@@ -281,6 +281,23 @@ export default function NewInvoiceForm({
 
   return (
     <div className="max-w-5xl mx-auto pb-12">
+
+      {/* Overlay de bloqueo durante el procesamiento */}
+      {loading && (
+        <div className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-black/50 backdrop-blur-sm">
+          <div className="bg-white rounded-2xl shadow-2xl p-8 max-w-sm w-full mx-4 flex flex-col items-center text-center">
+            <div className="w-16 h-16 rounded-full border-4 border-lilac-100 border-t-lilac-600 animate-spin mb-5" />
+            <h3 className="text-lg font-bold text-ink-900 mb-2">Procesando Factura</h3>
+            <p className="text-sm text-ink-500">
+              Firmando y enviando al SRI Ecuador…
+            </p>
+            <p className="text-xs text-ink-400 mt-2">
+              Este proceso puede tardar hasta 30 segundos. No cierres la ventana.
+            </p>
+          </div>
+        </div>
+      )}
+
       <div className="flex items-center gap-3 mb-5">
         <Link
           href="/gestion/facturacion"

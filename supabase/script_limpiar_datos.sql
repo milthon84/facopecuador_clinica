@@ -76,9 +76,11 @@ DELETE FROM public.audit_logs;
 -- 13. Pacientes
 DELETE FROM public.patients;
 
--- Resetear secuencial de facturas al inicio
-UPDATE public.invoice_sequence SET current_value = 0 WHERE id = 1;
--- (si la tabla tiene diferente estructura, comentar la línea anterior)
+-- ⚠ IMPORTANTE: NO SE RESETEA EL SECUENCIAL DE FACTURAS
+-- El secuencial NUNCA debe retroceder para evitar "Clave de acceso registrada" en el SRI.
+-- Si necesitas avanzar el secuencial manualmente, usa:
+--   SELECT avanzar_secuencial_a(NUEVO_NUMERO);
+-- Ejemplo: SELECT avanzar_secuencial_a(100); -- próxima factura será 001-001-000000100
 
 COMMIT;
 
