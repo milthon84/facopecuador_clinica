@@ -1,142 +1,239 @@
 import Link from "next/link";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { formatTimeLocal } from "@/lib/availability";
-import { ChevronLeft, ChevronRight, Plus } from "lucide-react";
+import { ChevronLeft, ChevronRight, Calendar, LayoutGrid } from "lucide-react";
 
 export const dynamic = "force-dynamic";
 
-interface SearchParams { week?: string }
+interface SearchParams { view?: string; date?: string }
 
-export default async function CalendarioPage({ searchParams }: { searchParams: SearchParams }) {
-  const supabase = createAdminClient();
+// ── Helpers ────────────────────────────────────────────────────────────────
 
-  // Parsear semana base
-  let baseDate: Date;
-  if (searchParams.week && searchParams.week.includes("-")) {
-    const parts = searchParams.week.split("-");
-    const year = parseInt(parts[0], 10);
-    const month = parseInt(parts[1], 10) - 1;
-    const day = parseInt(parts[2], 10);
-    baseDate = new Date(year, month, day);
-  } else {
-    baseDate = new Date();
+function parseDate(s?: string): Date {
+  if (s && /^\d{4}-\d{2}-\d{2}$/.test(s)) {
+    const [y, m, d] = s.split("-").map(Number);
+    return new Date(y, m - 1, d);
   }
-  const monday = mondayOf(baseDate);
-  const sunday = new Date(monday);
-  sunday.setDate(sunday.getDate() + 6);
-  sunday.setHours(23, 59, 59, 999);
+  return new Date();
+}
 
-  const { data: appts } = await supabase
-    .from("appointments")
-    .select("id, starts_at, status, patient:patients(full_name), dental_consultation:dental_consultations(id)")
-    .gte("starts_at", monday.toISOString())
-    .lte("starts_at", sunday.toISOString())
-    .order("starts_at");
-
-  // Agrupar por día
-  const byDay: Record<string, typeof appts> = {};
-  for (let i = 0; i < 7; i++) {
-    const d = new Date(monday);
-    d.setDate(d.getDate() + i);
-    byDay[d.toDateString()] = [] as any;
-  }
-  for (const a of appts || []) {
-    const key = new Date(a.starts_at).toDateString();
-    if (byDay[key]) (byDay[key] as any).push(a);
-  }
-
-  const prevWeek = new Date(monday); prevWeek.setDate(prevWeek.getDate() - 7);
-  const nextWeek = new Date(monday); nextWeek.setDate(nextWeek.getDate() + 7);
-
-  const prevWeekStr = formatLocalDate(prevWeek);
-  const nextWeekStr = formatLocalDate(nextWeek);
-
-  return (
-    <div>
-      <div className="flex items-center justify-between mb-5 flex-wrap gap-3">
-        <h1 className="text-2xl font-bold">Calendario semanal</h1>
-        <div className="flex gap-2">
-          <Link href={`/gestion/calendario?week=${prevWeekStr}`} className="btn-ghost px-3 py-2">
-            <ChevronLeft size={16} />
-          </Link>
-          <Link href="/gestion/calendario" className="btn-ghost">Hoy</Link>
-          <Link href={`/gestion/calendario?week=${nextWeekStr}`} className="btn-ghost px-3 py-2">
-            <ChevronRight size={16} />
-          </Link>
-        </div>
-      </div>
-
-      <div className="text-sm text-ink-600 mb-4">
-        Semana del {monday.toLocaleDateString("es-CO", { day: "numeric", month: "long" })} al{" "}
-        {sunday.toLocaleDateString("es-CO", { day: "numeric", month: "long", year: "numeric" })}
-      </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-7 gap-3">
-        {Object.entries(byDay).map(([key, list]) => {
-          const d = new Date(key);
-          const isToday = d.toDateString() === new Date().toDateString();
-          return (
-            <div key={key} className={`card p-3 ${isToday ? "ring-2 ring-gold-500" : ""}`}>
-              <div className="mb-2">
-                <div className="text-xs text-ink-600 uppercase">
-                  {d.toLocaleDateString("es-CO", { weekday: "short" })}
-                </div>
-                <div className="font-bold text-lg">{d.getDate()}</div>
-              </div>
-              {(!list || list.length === 0) ? (
-                <div className="text-xs text-ink-600/60 italic">Sin citas</div>
-              ) : (
-                <ul className="space-y-1.5">
-                  {(list as any[]).map((a) => {
-                    const t = new Date(a.starts_at);
-                    const time = formatTimeLocal(t);
-                    const p = Array.isArray(a.patient) ? a.patient[0] : a.patient;
-                    const hasConsultation = Array.isArray(a.dental_consultation)
-                      ? a.dental_consultation.length > 0
-                      : !!a.dental_consultation;
-                    const color =
-                      a.status === "cancelled" ? "bg-red-50 text-red-700 line-through" :
-                      a.status === "attended" ? "bg-green-50 text-green-700" :
-                      a.status === "no_show" ? "bg-amber-50 text-amber-700" :
-                      "bg-lilac-50 text-lilac-800";
-                    return (
-                      <li key={a.id}>
-                        <Link href={`/gestion/citas/${a.id}`} className={`block rounded-lg px-2 py-1.5 text-xs ${color} hover:opacity-80 transition-all`}>
-                          <div className="flex items-center justify-between gap-1 font-semibold">
-                            <span>{time}</span>
-                            {hasConsultation && (
-                              <span className="text-[10px] text-gold-600 font-bold bg-gold-50 px-1 rounded-sm border border-gold-200" title="Ficha Clínica Completada y Enviada">
-                                📄✓
-                              </span>
-                            )}
-                          </div>
-                          <div className="truncate">{p?.full_name}</div>
-                        </Link>
-                      </li>
-                    );
-                  })}
-                </ul>
-              )}
-            </div>
-          );
-        })}
-      </div>
-    </div>
-  );
+function fmtDate(d: Date) {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 }
 
 function mondayOf(d: Date): Date {
   const date = new Date(d);
-  const day = date.getDay();
-  const diff = (day === 0 ? -6 : 1 - day);
+  const diff = date.getDay() === 0 ? -6 : 1 - date.getDay();
   date.setDate(date.getDate() + diff);
   date.setHours(0, 0, 0, 0);
   return date;
 }
 
-function formatLocalDate(d: Date): string {
-  const year = d.getFullYear();
-  const month = String(d.getMonth() + 1).padStart(2, "0");
-  const day = String(d.getDate()).padStart(2, "0");
-  return `${year}-${month}-${day}`;
+const STATUS_COLOR: Record<string, string> = {
+  cancelled: "bg-red-50 text-red-700 line-through",
+  attended:  "bg-green-50 text-green-700",
+  no_show:   "bg-amber-50 text-amber-700",
+  scheduled: "bg-lilac-50 text-lilac-800",
+};
+
+export default async function CalendarioPage({ searchParams }: { searchParams: SearchParams }) {
+  const view    = searchParams.view ?? "month"; // "month" | "week"
+  const base    = parseDate(searchParams.date);
+  const supabase = createAdminClient();
+
+  // ── Rango de fechas según vista ────────────────────────────────────────
+  let rangeStart: Date, rangeEnd: Date;
+  let prevDate: Date, nextDate: Date;
+  let title: string;
+
+  if (view === "week") {
+    rangeStart = mondayOf(base);
+    rangeEnd   = new Date(rangeStart); rangeEnd.setDate(rangeEnd.getDate() + 6); rangeEnd.setHours(23, 59, 59);
+    prevDate   = new Date(rangeStart); prevDate.setDate(prevDate.getDate() - 7);
+    nextDate   = new Date(rangeStart); nextDate.setDate(nextDate.getDate() + 7);
+    title = `${rangeStart.toLocaleDateString("es-EC", { day: "numeric", month: "long" })} — ${rangeEnd.toLocaleDateString("es-EC", { day: "numeric", month: "long", year: "numeric" })}`;
+  } else {
+    // Month view
+    rangeStart = new Date(base.getFullYear(), base.getMonth(), 1);
+    rangeEnd   = new Date(base.getFullYear(), base.getMonth() + 1, 0, 23, 59, 59);
+    prevDate   = new Date(base.getFullYear(), base.getMonth() - 1, 1);
+    nextDate   = new Date(base.getFullYear(), base.getMonth() + 1, 1);
+    title = base.toLocaleDateString("es-EC", { month: "long", year: "numeric" })
+      .replace(/^./, s => s.toUpperCase());
+  }
+
+  // ── Cargar citas ──────────────────────────────────────────────────────
+  const { data: appts } = await supabase
+    .from("appointments")
+    .select("id, starts_at, status, patient:patients(full_name), dental_consultation:dental_consultations(id)")
+    .gte("starts_at", rangeStart.toISOString())
+    .lte("starts_at", rangeEnd.toISOString())
+    .order("starts_at");
+
+  // Agrupar por YYYY-MM-DD local
+  const byDay = new Map<string, typeof appts>();
+  for (const a of appts || []) {
+    const d = new Date(a.starts_at);
+    const key = fmtDate(d);
+    if (!byDay.has(key)) byDay.set(key, [] as any);
+    (byDay.get(key) as any[]).push(a);
+  }
+
+  const todayStr = fmtDate(new Date());
+
+  // ── Renderizar citas de un día ─────────────────────────────────────────
+  function ApptList({ dateStr, max }: { dateStr: string; max: number }) {
+    const list = byDay.get(dateStr) || [];
+    if (list.length === 0) return null;
+    const shown = list.slice(0, max);
+    const extra = list.length - max;
+    return (
+      <ul className="space-y-0.5 mt-1">
+        {(shown as any[]).map((a) => {
+          const p = Array.isArray(a.patient) ? a.patient[0] : a.patient;
+          const color = STATUS_COLOR[a.status] ?? STATUS_COLOR.scheduled;
+          return (
+            <li key={a.id}>
+              <Link href={`/gestion/citas/${a.id}`}
+                className={`block rounded px-1.5 py-0.5 text-[11px] leading-tight truncate ${color} hover:opacity-80`}>
+                {formatTimeLocal(new Date(a.starts_at))} {p?.full_name}
+              </Link>
+            </li>
+          );
+        })}
+        {extra > 0 && (
+          <li className="text-[10px] text-lilac-600 font-semibold px-1">+{extra} más</li>
+        )}
+      </ul>
+    );
+  }
+
+  // ── Vista Mensual ─────────────────────────────────────────────────────
+  function MonthView() {
+    // Generar días del grid: desde el lunes de la primera semana
+    const firstDay   = new Date(base.getFullYear(), base.getMonth(), 1);
+    const gridStart  = mondayOf(firstDay);
+    // Terminar en el domingo que cubra el último día del mes
+    const lastDay    = new Date(base.getFullYear(), base.getMonth() + 1, 0);
+    const gridEnd    = new Date(mondayOf(lastDay));
+    gridEnd.setDate(gridEnd.getDate() + 6);
+
+    const days: Date[] = [];
+    const cur = new Date(gridStart);
+    while (cur <= gridEnd) { days.push(new Date(cur)); cur.setDate(cur.getDate() + 1); }
+
+    const WEEK_DAYS = ["Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom"];
+
+    return (
+      <div>
+        {/* Cabecera días semana */}
+        <div className="grid grid-cols-7 mb-1">
+          {WEEK_DAYS.map(d => (
+            <div key={d} className="text-center text-[11px] font-bold text-ink-400 uppercase py-1">{d}</div>
+          ))}
+        </div>
+        {/* Grid de días */}
+        <div className="grid grid-cols-7 gap-0.5">
+          {days.map(d => {
+            const str      = fmtDate(d);
+            const isToday  = str === todayStr;
+            const inMonth  = d.getMonth() === base.getMonth();
+            const hasAppts = (byDay.get(str) || []).length > 0;
+            return (
+              <div key={str}
+                className={`min-h-[90px] rounded-xl p-1.5 border transition-colors ${
+                  isToday   ? "border-lilac-500 bg-lilac-50" :
+                  !inMonth  ? "border-transparent bg-gray-50/50" :
+                  hasAppts  ? "border-lilac-100 bg-white" :
+                              "border-gray-100 bg-white"
+                }`}>
+                <div className={`text-xs font-bold w-6 h-6 flex items-center justify-center rounded-full mb-0.5 ${
+                  isToday ? "bg-lilac-600 text-white" : inMonth ? "text-ink-800" : "text-ink-300"
+                }`}>
+                  {d.getDate()}
+                </div>
+                {inMonth && <ApptList dateStr={str} max={3} />}
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    );
+  }
+
+  // ── Vista Semanal ─────────────────────────────────────────────────────
+  function WeekView() {
+    const days: Date[] = [];
+    for (let i = 0; i < 7; i++) {
+      const d = new Date(rangeStart); d.setDate(d.getDate() + i);
+      days.push(d);
+    }
+    return (
+      <div className="grid grid-cols-7 gap-2">
+        {days.map(d => {
+          const str     = fmtDate(d);
+          const isToday = str === todayStr;
+          return (
+            <div key={str} className={`rounded-xl p-2.5 border ${isToday ? "border-lilac-500 bg-lilac-50 ring-2 ring-lilac-200" : "border-lilac-100 bg-white"}`}>
+              <div className="mb-1.5">
+                <div className="text-[10px] text-ink-500 uppercase font-semibold">
+                  {d.toLocaleDateString("es-EC", { weekday: "short" })}
+                </div>
+                <div className={`text-lg font-bold ${isToday ? "text-lilac-700" : "text-ink-800"}`}>
+                  {d.getDate()}
+                </div>
+              </div>
+              {(byDay.get(str) || []).length === 0
+                ? <p className="text-[11px] text-ink-400 italic">Sin citas</p>
+                : <ApptList dateStr={str} max={10} />
+              }
+            </div>
+          );
+        })}
+      </div>
+    );
+  }
+
+  return (
+    <div className="max-w-6xl mx-auto">
+      {/* Header */}
+      <div className="flex items-center justify-between mb-5 flex-wrap gap-3">
+        <h1 className="text-xl font-bold text-ink-900 capitalize">{title}</h1>
+
+        <div className="flex items-center gap-2">
+          {/* Toggle vista */}
+          <div className="flex rounded-xl border border-lilac-200 overflow-hidden bg-white">
+            <Link href={`/gestion/calendario?view=month&date=${fmtDate(base)}`}
+              className={`flex items-center gap-1.5 px-3 py-2 text-xs font-semibold transition-colors ${
+                view === "month" ? "bg-lilac-600 text-white" : "text-ink-600 hover:bg-lilac-50"
+              }`}>
+              <LayoutGrid size={13} /> Mes
+            </Link>
+            <Link href={`/gestion/calendario?view=week&date=${fmtDate(base)}`}
+              className={`flex items-center gap-1.5 px-3 py-2 text-xs font-semibold transition-colors ${
+                view === "week" ? "bg-lilac-600 text-white" : "text-ink-600 hover:bg-lilac-50"
+              }`}>
+              <Calendar size={13} /> Semana
+            </Link>
+          </div>
+
+          {/* Navegación */}
+          <Link href={`/gestion/calendario?view=${view}&date=${fmtDate(prevDate)}`}
+            className="w-8 h-8 flex items-center justify-center rounded-lg border border-lilac-200 hover:bg-lilac-50 transition-colors">
+            <ChevronLeft size={16} />
+          </Link>
+          <Link href={`/gestion/calendario?view=${view}&date=${fmtDate(new Date())}`}
+            className="px-3 py-1.5 rounded-lg border border-lilac-200 text-xs font-semibold hover:bg-lilac-50 transition-colors">
+            Hoy
+          </Link>
+          <Link href={`/gestion/calendario?view=${view}&date=${fmtDate(nextDate)}`}
+            className="w-8 h-8 flex items-center justify-center rounded-lg border border-lilac-200 hover:bg-lilac-50 transition-colors">
+            <ChevronRight size={16} />
+          </Link>
+        </div>
+      </div>
+
+      {view === "week" ? <WeekView /> : <MonthView />}
+    </div>
+  );
 }
