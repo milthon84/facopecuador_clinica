@@ -26,7 +26,7 @@ export default function NuevaCompraForm({ today, bankAccounts, cajaAccounts, sav
   const accountLabel   = method === "efectivo" ? "Caja chica" : "Cuenta bancaria destino";
 
   return (
-    <form action={saveExpense} className="space-y-3">
+    <form action={saveExpense} noValidate className="space-y-3">
 
       {/* Proveedor + RUC */}
       <div className="grid grid-cols-2 gap-3">

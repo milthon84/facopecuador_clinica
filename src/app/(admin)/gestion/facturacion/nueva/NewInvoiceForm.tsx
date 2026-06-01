@@ -311,7 +311,7 @@ export default function NewInvoiceForm({
         </div>
       </div>
 
-      <form onSubmit={handleSubmit} className="space-y-5">
+      <form onSubmit={handleSubmit} noValidate className="space-y-5">
 
         {/* ── Datos del Cliente ───────────────────────────── */}
         <div className="bg-white border border-lilac-100 rounded-2xl shadow-sm p-4 sm:p-5">
