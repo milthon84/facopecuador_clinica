@@ -4,6 +4,10 @@
  *   - Digest:    SHA-1  (http://www.w3.org/2000/09/xmldsig#sha1)
  *   - Signature: RSA-SHA1 (http://www.w3.org/2000/09/xmldsig#rsa-sha1)
  *   - C14N:      http://www.w3.org/TR/2001/REC-xml-c14n-20010315
+ *
+ * NOTA IMPORTANTE — Error 39 "Firma Inválida":
+ * El SRI usa C14N para verificar los hashes. C14N excluye la declaración XML.
+ * Por eso el docDigest debe computarse SIN la línea <?xml ...?>.
  */
 
 import forge from "node-forge";
@@ -16,8 +20,15 @@ function sha1b64(data: Buffer | string): string {
   return createHash("sha1").update(buf).digest("base64");
 }
 
+/**
+ * C14N simplificado: elimina la declaración XML (C14N nunca la incluye).
+ * Para XML bien formado sin namespaces dinámicos, esto es suficiente.
+ */
+function stripXmlDeclaration(xml: string): string {
+  return xml.replace(/^<\?xml[^?]*\?>\s*/m, "");
+}
+
 function nowEcuador(): string {
-  // Ecuador: UTC-5
   const now = new Date();
   const offset = -5 * 60;
   const local = new Date(now.getTime() + offset * 60000);
@@ -111,11 +122,15 @@ export function signXMLWithP12(
     `</xades:SignedProperties>`,
   ].join("");
 
-  // 5. Digest de SignedProperties y del documento
+  // 5. Digest de SignedProperties
   const signedPropsDigest = sha1b64(signedPropsXml);
-  const docDigest         = sha1b64(xmlString);
 
-  // 6. SignedInfo
+  // 6. Digest del documento SIN declaración XML (C14N excluye <?xml...?>)
+  //    Se incluye transform C14N en la Reference para que el SRI sepa que aplica
+  const xmlSinDeclaracion = stripXmlDeclaration(xmlString);
+  const docDigest         = sha1b64(xmlSinDeclaracion);
+
+  // 7. SignedInfo — incluye transform C14N para el documento
   const signedInfoXml = [
     `<SignedInfo xmlns="http://www.w3.org/2000/09/xmldsig#" Id="Signature-SignedInfo">`,
     `<CanonicalizationMethod Algorithm="http://www.w3.org/TR/2001/REC-xml-c14n-20010315"/>`,
@@ -127,6 +142,7 @@ export function signXMLWithP12(
     `<Reference URI="">`,
     `<Transforms>`,
     `<Transform Algorithm="http://www.w3.org/2000/09/xmldsig#enveloped-signature"/>`,
+    `<Transform Algorithm="http://www.w3.org/TR/2001/REC-xml-c14n-20010315"/>`,
     `</Transforms>`,
     `<DigestMethod Algorithm="http://www.w3.org/2000/09/xmldsig#sha1"/>`,
     `<DigestValue>${docDigest}</DigestValue>`,
@@ -134,13 +150,15 @@ export function signXMLWithP12(
     `</SignedInfo>`,
   ].join("");
 
-  // 7. Firmar SignedInfo con RSA-SHA1
+  // 8. Firmar SignedInfo con RSA-SHA1
+  //    El SignedInfo también debe ser canonicalizado antes de firmar
+  const signedInfoC14n = stripXmlDeclaration(signedInfoXml);
   const md = forge.md.sha1.create();
-  md.update(signedInfoXml, "utf8");
+  md.update(signedInfoC14n, "utf8");
   const signatureBytes  = privateKey.sign(md);
   const signatureBase64 = forge.util.encode64(signatureBytes);
 
-  // 8. Ensamblar Signature completo
+  // 9. Ensamblar Signature completo
   const signatureXml = [
     `<Signature xmlns="http://www.w3.org/2000/09/xmldsig#" Id="Signature">`,
     signedInfoXml,
@@ -158,6 +176,7 @@ export function signXMLWithP12(
     `</Signature>`,
   ].join("");
 
-  // 9. Insertar antes del cierre del elemento raíz
+  // 10. Insertar la firma justo antes de </factura>
+  //     El XML resultante mantiene la declaración <?xml...?> intacta
   return xmlString.replace(/<\/factura>\s*$/, `${signatureXml}</factura>`);
 }
