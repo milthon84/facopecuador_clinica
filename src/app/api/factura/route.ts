@@ -154,9 +154,7 @@ export async function POST(req: Request) {
 
       pagos: [{ formaPago: body.forma_pago || "01", total: importeTotal }],
       detalles,
-      infoAdicional: client_email
-        ? { Email: client_email, ...(client_phone ? { Teléfono: client_phone } : {}) }
-        : undefined,
+      // infoAdicional omitido — campo opcional que puede causar problemas con caracteres en la DB del SRI
     };
 
     const xmlFactura = generarXMLFactura(invoiceData);
