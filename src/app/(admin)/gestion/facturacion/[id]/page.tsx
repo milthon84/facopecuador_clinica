@@ -3,9 +3,10 @@ import { notFound } from "next/navigation";
 import Link from "next/link";
 import {
   ArrowLeft, CheckCircle2, XCircle, AlertCircle, Clock,
-  User, FileText, Hash, CreditCard,
+  User, FileText, Hash, CreditCard, RefreshCw,
 } from "lucide-react";
 import CopyButton from "@/components/CopyButton";
+import ReintentoSriButton from "@/components/ReintentoSriButton";
 
 export const dynamic = "force-dynamic";
 
@@ -84,6 +85,10 @@ export default async function InvoiceDetailPage({ params }: { params: { id: stri
           </div>
           <p className="text-xs text-ink-500 mt-0.5">{issuedAt}</p>
         </div>
+        {/* Botón reintento para facturas en estado submitted */}
+        {invoice.sri_status === "submitted" && (
+          <ReintentoSriButton invoiceId={invoice.id} />
+        )}
       </div>
 
       <div className="space-y-4">

@@ -253,6 +253,7 @@ export default function NewInvoiceForm({
       const result = await res.json();
       if (!res.ok) throw new Error(result.error || "Error al procesar la factura");
       alert(`Factura emitida. Clave de acceso: ${result.clave_acceso}`);
+      router.refresh();
       router.push("/gestion/facturacion");
     } catch (err: any) {
       alert("Error: " + err.message);

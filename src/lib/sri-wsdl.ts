@@ -173,15 +173,18 @@ export async function enviarYAutorizar(
     return { recepcion, autorizacion: { estado: "NO AUTORIZADO" } };
   }
 
-  // Esperar 3s antes de consultar (SRI necesita procesar)
+  // Esperar 3s antes de la primera consulta
   await new Promise((r) => setTimeout(r, 3000));
 
   let autorizacion = await consultarAutorizacion(claveAcceso, ambiente);
 
-  // Si está en proceso, reintentar una vez más tras 5s
-  if (autorizacion.estado === "EN PROCESO") {
+  // Reintentar hasta 4 veces con 5s de espera si el SRI responde "EN PROCESO"
+  const MAX_RETRIES = 4;
+  let intentos = 0;
+  while (autorizacion.estado === "EN PROCESO" && intentos < MAX_RETRIES) {
     await new Promise((r) => setTimeout(r, 5000));
     autorizacion = await consultarAutorizacion(claveAcceso, ambiente);
+    intentos++;
   }
 
   return { recepcion, autorizacion };
