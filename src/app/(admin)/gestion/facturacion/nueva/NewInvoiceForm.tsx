@@ -61,6 +61,7 @@ export default function NewInvoiceForm({
   const [loading, setLoading] = useState(false);
   const [showCatalog, setShowCatalog] = useState(false);
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
+  const [hasSubmitted, setHasSubmitted] = useState(false);
 
   const [paymentMethod,    setPaymentMethod]    = useState("efectivo");
   const [bankAccountId,    setBankAccountId]    = useState("");
@@ -211,6 +212,7 @@ export default function NewInvoiceForm({
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
+    setHasSubmitted(true);
     if (!validateForm()) return;
     setLoading(true);
     try {
@@ -617,8 +619,8 @@ export default function NewInvoiceForm({
           </div>
         </div>
 
-        {/* Resumen de errores de validación */}
-        {Object.keys(formErrors).length > 0 && (
+        {/* Resumen de errores — solo visible después del primer intento de envío */}
+        {hasSubmitted && Object.keys(formErrors).length > 0 && (
           <div className="bg-red-50 border border-red-200 rounded-2xl px-4 py-3">
             <p className="text-xs font-bold text-red-700 mb-1.5 flex items-center gap-1.5">
               <AlertCircle size={13} /> Completa los siguientes campos antes de emitir:
