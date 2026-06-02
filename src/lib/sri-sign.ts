@@ -132,9 +132,10 @@ export function signXMLWithP12(xmlString: string, p12Buffer: Buffer, password: s
   const signedPropsDigest = sha1b64(signedPropsXml);
 
   // ── 4. Document digest ───────────────────────────────────────────────────
-  // Incluimos la declaración XML completa — el SRI hashea los bytes tal cual
-  // llegan después de aplicar enveloped-signature (sin C14N explícita en el Reference)
-  const docDigest = sha1b64(xmlString);
+  // URI="#comprobante" apunta al elemento <factura id="comprobante"> (sin declaración XML)
+  // El hash se calcula SOLO sobre el elemento <factura>, no incluye <?xml...?>
+  const xmlSinDeclaracion = xmlString.replace(/^<\?xml[^?]*\?>/, "");
+  const docDigest = sha1b64(xmlSinDeclaracion);
 
   // ── 5. SignedInfo con prefijo ds: (estándar referencia SRI Ecuador) ───────
   // Usamos ds: en lugar de namespace por defecto — algunos validadores Java
@@ -148,7 +149,7 @@ export function signXMLWithP12(xmlString: string, p12Buffer: Buffer, password: s
     `<ds:DigestMethod Algorithm="${DS}sha1"/>`,
     `<ds:DigestValue>${signedPropsDigest}</ds:DigestValue>`,
     `</ds:Reference>`,
-    `<ds:Reference Id="Signature-Reference-comprobante" URI="">`,
+    `<ds:Reference Id="Signature-Reference-comprobante" URI="#comprobante">`,
     `<ds:Transforms>`,
     `<ds:Transform Algorithm="${DS}enveloped-signature"/>`,
     `</ds:Transforms>`,
