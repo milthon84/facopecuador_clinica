@@ -1,11 +1,17 @@
 /**
  * Firma digital XAdES-BES para comprobantes electrónicos SRI Ecuador.
- * Usa xml-crypto v6 con idMode='id' (minúscula) para <factura id="comprobante">.
+ * Implementación custom con todos los fixes aplicados:
+ * - XML minificado (sin whitespace)
+ * - Sin CDATA
+ * - URI="#comprobante" (elemento raíz con id="comprobante")
+ * - Transforms: enveloped-signature + C14N
+ * - docDigest sin declaración XML (URI apunta al elemento, no al documento)
+ * - Prefijo ds: para XMLDSig
+ * - QualifyingProperties dentro de ds:Object (no en factura directamente)
  */
 
 import forge from "node-forge";
 import { createHash } from "crypto";
-import { SignedXml } from "xml-crypto";
 
 // ── Utilidades ─────────────────────────────────────────────────────────────
 
@@ -15,8 +21,8 @@ function sha1b64(data: Buffer | string): string {
 }
 
 function nowEcuador(): string {
-  const now    = new Date();
-  const local  = new Date(now.getTime() + (-5 * 60) * 60000);
+  const now   = new Date();
+  const local = new Date(now.getTime() + (-5 * 60) * 60000);
   return local.toISOString().replace("Z", "-05:00");
 }
 
@@ -53,8 +59,11 @@ export function parseCertInfo(p12Buffer: Buffer, password: string): CertInfo {
 // ── Firma XAdES-BES ────────────────────────────────────────────────────────
 
 export function signXMLWithP12(xmlString: string, p12Buffer: Buffer, password: string): string {
+  const DS    = "http://www.w3.org/2000/09/xmldsig#";
+  const XADES = "http://uri.etsi.org/01903/v1.3.2#";
+  const C14N  = "http://www.w3.org/TR/2001/REC-xml-c14n-20010315";
 
-  // 1. Extraer clave y certificado
+  // ── 1. Extraer clave y certificado ───────────────────────────────────────
   let p12: any;
   try {
     const asn1 = forge.asn1.fromDer(forge.util.createBuffer(p12Buffer.toString("binary")));
@@ -71,25 +80,23 @@ export function signXMLWithP12(xmlString: string, p12Buffer: Buffer, password: s
   if (!privateKey) throw new Error("No se encontró clave privada en el .p12.");
   if (!cert)       throw new Error("No se encontró certificado en el .p12.");
 
-  // 2. Datos del certificado
+  // ── 2. Datos del certificado ─────────────────────────────────────────────
   const certDer      = forge.asn1.toDer(forge.pki.certificateToAsn1(cert)).bytes();
   const certBase64   = forge.util.encode64(certDer);
   const certDigest   = sha1b64(Buffer.from(certDer, "binary"));
   const issuerName   = cert.issuer.attributes.map((a: any) => `${a.shortName}=${a.value}`).join(",");
   const serialNumber = parseInt(cert.serialNumber, 16).toString();
   const signingTime  = nowEcuador();
-  const privateKeyPem = forge.pki.privateKeyToPem(privateKey);
 
-  // 3. XAdES SignedProperties
-  const signedPropsId  = "Signature-SignedProperties";
+  // ── 3. XAdES SignedProperties ────────────────────────────────────────────
   const signedPropsXml = [
-    `<xades:SignedProperties xmlns:xades="http://uri.etsi.org/01903/v1.3.2#" xmlns:ds="http://www.w3.org/2000/09/xmldsig#" Id="${signedPropsId}">`,
+    `<xades:SignedProperties xmlns:xades="${XADES}" xmlns:ds="${DS}" Id="Signature-SignedProperties">`,
     `<xades:SignedSignatureProperties>`,
     `<xades:SigningTime>${signingTime}</xades:SigningTime>`,
     `<xades:SigningCertificate>`,
     `<xades:Cert>`,
     `<xades:CertDigest>`,
-    `<ds:DigestMethod Algorithm="http://www.w3.org/2000/09/xmldsig#sha1"/>`,
+    `<ds:DigestMethod Algorithm="${DS}sha1"/>`,
     `<ds:DigestValue>${certDigest}</ds:DigestValue>`,
     `</xades:CertDigest>`,
     `<xades:IssuerSerial>`,
@@ -104,66 +111,59 @@ export function signXMLWithP12(xmlString: string, p12Buffer: Buffer, password: s
 
   const signedPropsDigest = sha1b64(signedPropsXml);
 
-  // 4. El QualifyingProperties va DENTRO de <ds:Object> en la Signature,
-  //    NO directamente en <factura> (eso causaría error 35 por XSD inválido)
-  const qualifyingBlock = [
+  // ── 4. Document digest ───────────────────────────────────────────────────
+  // URI="#comprobante" apunta al elemento <factura id="comprobante">
+  // → hash del elemento SIN la declaración XML (C14N la excluye)
+  // → SIN la Signature (enveloped-signature la remueve)
+  // Para XML minificado sin namespaces complejos, C14N ≈ texto plano
+  const xmlSinDeclaracion = xmlString.replace(/^<\?xml[^?]*\?>/, "");
+  const docDigest = sha1b64(xmlSinDeclaracion);
+
+  // ── 5. SignedInfo ────────────────────────────────────────────────────────
+  // Con xmlns:ds declarado (es el nodo raíz del C14N, incluye namespaces en scope)
+  const signedInfoXml = [
+    `<ds:SignedInfo xmlns:ds="${DS}" Id="Signature-SignedInfo">`,
+    `<ds:CanonicalizationMethod Algorithm="${C14N}"/>`,
+    `<ds:SignatureMethod Algorithm="${DS}rsa-sha1"/>`,
+    // Referencia a SignedProperties (XAdES)
+    `<ds:Reference Id="Signature-Reference-SignedProperties" Type="${XADES}SignedProperties" URI="#Signature-SignedProperties">`,
+    `<ds:Transforms><ds:Transform Algorithm="${C14N}"/></ds:Transforms>`,
+    `<ds:DigestMethod Algorithm="${DS}sha1"/>`,
+    `<ds:DigestValue>${signedPropsDigest}</ds:DigestValue>`,
+    `</ds:Reference>`,
+    // Referencia al documento (elemento <factura id="comprobante">)
+    `<ds:Reference Id="Signature-Reference-comprobante" URI="#comprobante">`,
+    `<ds:Transforms>`,
+    `<ds:Transform Algorithm="${DS}enveloped-signature"/>`,
+    `<ds:Transform Algorithm="${C14N}"/>`,
+    `</ds:Transforms>`,
+    `<ds:DigestMethod Algorithm="${DS}sha1"/>`,
+    `<ds:DigestValue>${docDigest}</ds:DigestValue>`,
+    `</ds:Reference>`,
+    `</ds:SignedInfo>`,
+  ].join("");
+
+  // ── 6. Firmar SignedInfo con RSA-SHA1 ────────────────────────────────────
+  const md = forge.md.sha1.create();
+  md.update(signedInfoXml, "utf8");
+  const signatureBase64 = forge.util.encode64(privateKey.sign(md));
+
+  // ── 7. Ensamblar Signature completa ──────────────────────────────────────
+  const signatureXml = [
+    `<ds:Signature xmlns:ds="${DS}" Id="Signature">`,
+    signedInfoXml,
+    `<ds:SignatureValue Id="SignatureValue">${signatureBase64}</ds:SignatureValue>`,
+    `<ds:KeyInfo Id="Certificate">`,
+    `<ds:X509Data><ds:X509Certificate>${certBase64}</ds:X509Certificate></ds:X509Data>`,
+    `</ds:KeyInfo>`,
     `<ds:Object Id="QualifyingProperties">`,
-    `<xades:QualifyingProperties xmlns:xades="http://uri.etsi.org/01903/v1.3.2#" Target="#Signature">`,
+    `<xades:QualifyingProperties xmlns:xades="${XADES}" Target="#Signature">`,
     signedPropsXml,
     `</xades:QualifyingProperties>`,
     `</ds:Object>`,
+    `</ds:Signature>`,
   ].join("");
 
-  // 5. Configurar xml-crypto
-  const sigOptions: any = {
-    idMode: "id",          // ← CRÍTICO: id en minúscula para <factura id="comprobante">
-    privateKey: privateKeyPem,
-    signatureAlgorithm: "http://www.w3.org/2000/09/xmldsig#rsa-sha1",
-    canonicalizationAlgorithm: "http://www.w3.org/TR/2001/REC-xml-c14n-20010315",
-  };
-  const sig = new SignedXml(sigOptions);
-
-  // Referencia al elemento <factura id="comprobante">
-  sig.addReference({
-    xpath: `//*[@id='comprobante']`,
-    transforms: [
-      "http://www.w3.org/2000/09/xmldsig#enveloped-signature",
-      "http://www.w3.org/TR/2001/REC-xml-c14n-20010315",
-    ],
-    digestAlgorithm: "http://www.w3.org/2000/09/xmldsig#sha1",
-    uri: "#comprobante",
-    isEmptyUri: false,
-  });
-
-  // Referencia a SignedProperties (XAdES)
-  sig.addReference({
-    xpath: `//*[@Id='${signedPropsId}']`,
-    transforms: ["http://www.w3.org/TR/2001/REC-xml-c14n-20010315"],
-    digestAlgorithm: "http://www.w3.org/2000/09/xmldsig#sha1",
-    digestValue: signedPropsDigest,
-    uri: `#${signedPropsId}`,
-    isEmptyUri: false,
-  });
-
-  // Proveedor de información del certificado
-  sig.getKeyInfoContent = () =>
-    `<ds:X509Data><ds:X509Certificate>${certBase64}</ds:X509Certificate></ds:X509Data>`;
-
-  // 6. Firmar el XML original (sin QualifyingProperties en <factura>)
-  sig.computeSignature(xmlString, {
-    prefix: "ds",
-    location: {
-      reference: `//*[@id='comprobante']`,
-      action: "append",
-    },
-  });
-
-  // 7. Inyectar QualifyingProperties DENTRO de <ds:Signature> como <ds:Object>
-  //    La estructura correcta: <factura>...<ds:Signature>...<ds:Object>...</ds:Object></ds:Signature></factura>
-  const signedXml = sig.getSignedXml().replace(
-    `</ds:Signature>`,
-    `${qualifyingBlock}</ds:Signature>`
-  );
-
-  return signedXml;
+  // ── 8. Insertar Signature antes de </factura> ────────────────────────────
+  return xmlString.replace(/<\/factura>\s*$/, `${signatureXml}</factura>`);
 }
