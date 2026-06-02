@@ -119,10 +119,13 @@ export function signXMLWithP12(xmlString: string, p12Buffer: Buffer, password: s
   const xmlSinDeclaracion = xmlString.replace(/^<\?xml[^?]*\?>/, "");
   const docDigest = sha1b64(xmlSinDeclaracion);
 
-  // ── 5. SignedInfo ────────────────────────────────────────────────────────
-  // Con xmlns:ds declarado (es el nodo raíz del C14N, incluye namespaces en scope)
+  // ── 5. SignedInfo SIN xmlns:ds ───────────────────────────────────────────
+  // El padre <ds:Signature xmlns:ds="..."> ya declara xmlns:ds.
+  // C14N del <ds:SignedInfo> como elemento hijo NO re-incluye xmlns:ds
+  // porque el padre ya lo tiene en scope. Firmamos exactamente lo que
+  // el SRI verificará con C14N.
   const signedInfoXml = [
-    `<ds:SignedInfo xmlns:ds="${DS}" Id="Signature-SignedInfo">`,
+    `<ds:SignedInfo Id="Signature-SignedInfo">`,
     `<ds:CanonicalizationMethod Algorithm="${C14N}"/>`,
     `<ds:SignatureMethod Algorithm="${DS}rsa-sha1"/>`,
     // Referencia a SignedProperties (XAdES)
