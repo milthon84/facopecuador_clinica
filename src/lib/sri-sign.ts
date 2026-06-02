@@ -66,16 +66,33 @@ export function parseCertInfo(p12Buffer: Buffer, password: string): CertInfo {
 export function signXMLWithP12(xmlString: string, p12Buffer: Buffer, password: string): string {
 
   // ── 1. Extraer clave y certificado del .p12 ──────────────────────────────
-  const p12Asn1 = forge.asn1.fromDer(forge.util.createBuffer(p12Buffer.toString("binary")));
-  const p12     = forge.pkcs12.pkcs12FromAsn1(p12Asn1, false, password);
+  let p12: any;
+  try {
+    const p12Asn1 = forge.asn1.fromDer(forge.util.createBuffer(p12Buffer.toString("binary")));
+    p12 = forge.pkcs12.pkcs12FromAsn1(p12Asn1, false, password);
+  } catch (e: any) {
+    throw new Error(`Contraseña del certificado incorrecta o archivo .p12 dañado: ${e.message}`);
+  }
 
   const privateKey = p12.getBags({ bagType: forge.pki.oids.pkcs8ShroudedKeyBag })
     [forge.pki.oids.pkcs8ShroudedKeyBag]?.[0]?.key as forge.pki.rsa.PrivateKey | undefined;
   const cert = p12.getBags({ bagType: forge.pki.oids.certBag })
     [forge.pki.oids.certBag]?.[0]?.cert;
 
-  if (!privateKey || !cert) {
-    throw new Error("No se pudo extraer clave o certificado del .p12. Verifique la contraseña.");
+  if (!privateKey) {
+    throw new Error("No se encontró clave privada en el .p12. Verifica que la contraseña sea correcta.");
+  }
+  if (!cert) {
+    throw new Error("No se encontró certificado en el .p12.");
+  }
+
+  // Verificar que la clave privada es válida haciendo una operación básica
+  try {
+    const testMd = forge.md.sha1.create();
+    testMd.update("test");
+    privateKey.sign(testMd);
+  } catch (e: any) {
+    throw new Error(`La clave privada del .p12 no es válida (posible contraseña incorrecta): ${e.message}`);
   }
 
   // ── 2. Datos del certificado ─────────────────────────────────────────────
