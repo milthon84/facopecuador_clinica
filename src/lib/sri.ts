@@ -249,5 +249,12 @@ export function generarXMLFactura(data: SRIInvoiceData): string {
   }
 
   xml += `</factura>`;
-  return xml;
+
+  // ── Minificar: eliminar saltos de línea y espacios de indentación ──────────
+  // El SRI requiere XML sin whitespace entre tags para que la firma no se rompa.
+  // El parser Java del SRI normaliza el whitespace al re-serializar, causando
+  // diferencias en el hash si el XML está indentado.
+  return xml
+    .replace(/\n\s*/g, "")    // eliminar newlines y la indentación que sigue
+    .replace(/>\s+</g, "><"); // eliminar espacios entre tags (por si quedan)
 }
