@@ -136,48 +136,49 @@ export function signXMLWithP12(xmlString: string, p12Buffer: Buffer, password: s
   // llegan después de aplicar enveloped-signature (sin C14N explícita en el Reference)
   const docDigest = sha1b64(xmlString);
 
-  // ── 5. SignedInfo ────────────────────────────────────────────────────────
+  // ── 5. SignedInfo con prefijo ds: (estándar referencia SRI Ecuador) ───────
+  // Usamos ds: en lugar de namespace por defecto — algunos validadores Java
+  // del SRI tienen mejor compatibilidad con el prefijo explícito.
+  const DS = "http://www.w3.org/2000/09/xmldsig#";
   const signedInfoXml = [
-    `<SignedInfo xmlns="http://www.w3.org/2000/09/xmldsig#" Id="Signature-SignedInfo">`,
-    `<CanonicalizationMethod Algorithm="http://www.w3.org/TR/2001/REC-xml-c14n-20010315"/>`,
-    `<SignatureMethod Algorithm="http://www.w3.org/2000/09/xmldsig#rsa-sha1"/>`,
-    `<Reference Id="SignedProperties-Reference" Type="http://uri.etsi.org/01903#SignedProperties" URI="#Signature-SignedProperties">`,
-    `<DigestMethod Algorithm="http://www.w3.org/2000/09/xmldsig#sha1"/>`,
-    `<DigestValue>${signedPropsDigest}</DigestValue>`,
-    `</Reference>`,
-    `<Reference URI="">`,
-    `<Transforms>`,
-    `<Transform Algorithm="http://www.w3.org/2000/09/xmldsig#enveloped-signature"/>`,
-    `</Transforms>`,
-    `<DigestMethod Algorithm="http://www.w3.org/2000/09/xmldsig#sha1"/>`,
-    `<DigestValue>${docDigest}</DigestValue>`,
-    `</Reference>`,
-    `</SignedInfo>`,
+    `<ds:SignedInfo xmlns:ds="${DS}" Id="Signature-SignedInfo">`,
+    `<ds:CanonicalizationMethod Algorithm="http://www.w3.org/TR/2001/REC-xml-c14n-20010315"/>`,
+    `<ds:SignatureMethod Algorithm="${DS}rsa-sha1"/>`,
+    `<ds:Reference Id="Signature-Reference-SignedProperties" Type="http://uri.etsi.org/01903#SignedProperties" URI="#Signature-SignedProperties">`,
+    `<ds:DigestMethod Algorithm="${DS}sha1"/>`,
+    `<ds:DigestValue>${signedPropsDigest}</ds:DigestValue>`,
+    `</ds:Reference>`,
+    `<ds:Reference Id="Signature-Reference-comprobante" URI="">`,
+    `<ds:Transforms>`,
+    `<ds:Transform Algorithm="${DS}enveloped-signature"/>`,
+    `</ds:Transforms>`,
+    `<ds:DigestMethod Algorithm="${DS}sha1"/>`,
+    `<ds:DigestValue>${docDigest}</ds:DigestValue>`,
+    `</ds:Reference>`,
+    `</ds:SignedInfo>`,
   ].join("");
 
   // ── 6. Firmar SignedInfo con RSA-SHA1 ────────────────────────────────────
-  // Firmamos signedInfoXml tal cual (sin xmlns) = lo que C14N produce dentro de <Signature>
   const md = forge.md.sha1.create();
   md.update(signedInfoXml, "utf8");
   const signatureBase64 = forge.util.encode64(privateKey.sign(md));
 
-  // ── 7. Ensamblar Signature ───────────────────────────────────────────────
-  // <Signature> declara el xmlns; todos los elementos hijo heredan y no necesitan redeclararlo.
+  // ── 7. Ensamblar Signature con prefijo ds: ────────────────────────────────
   const signatureXml = [
-    `<Signature xmlns="http://www.w3.org/2000/09/xmldsig#" Id="Signature">`,
+    `<ds:Signature xmlns:ds="${DS}" Id="Signature">`,
     signedInfoXml,
-    `<SignatureValue Id="SignatureValue">${signatureBase64}</SignatureValue>`,
-    `<KeyInfo Id="Certificate">`,
-    `<X509Data>`,
-    `<X509Certificate>${certBase64}</X509Certificate>`,
-    `</X509Data>`,
-    `</KeyInfo>`,
-    `<Object Id="QualifyingProperties">`,
+    `<ds:SignatureValue Id="SignatureValue">${signatureBase64}</ds:SignatureValue>`,
+    `<ds:KeyInfo Id="Certificate">`,
+    `<ds:X509Data>`,
+    `<ds:X509Certificate>${certBase64}</ds:X509Certificate>`,
+    `</ds:X509Data>`,
+    `</ds:KeyInfo>`,
+    `<ds:Object Id="QualifyingProperties">`,
     `<xades:QualifyingProperties xmlns:xades="http://uri.etsi.org/01903/v1.3.2#" Target="#Signature">`,
     signedPropsXml,
     `</xades:QualifyingProperties>`,
-    `</Object>`,
-    `</Signature>`,
+    `</ds:Object>`,
+    `</ds:Signature>`,
   ].join("");
 
   // ── 8. Insertar firma antes de </factura> ────────────────────────────────
