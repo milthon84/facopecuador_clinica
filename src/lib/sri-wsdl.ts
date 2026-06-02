@@ -75,6 +75,16 @@ export async function enviarComprobante(
   signedXml: string,
   ambiente: "1" | "2"
 ): Promise<SriRecepcionResult> {
+  // Verificar que el XML no fue modificado después de firmar (debe tener <Signature>)
+  if (!signedXml.includes("<Signature ") && !signedXml.includes("<ds:Signature ")) {
+    throw new Error("El XML no contiene firma digital. El proceso de firma falló.");
+  }
+  // Log del XML firmado para diagnóstico (primeros 500 chars)
+  console.log("=== XML FIRMADO (inicio) ===");
+  console.log(signedXml.slice(0, 300));
+  console.log("=== XML FIRMADO (fin) ===");
+  console.log(signedXml.slice(-200));
+  console.log("=== FIN XML ===");
   const xmlBase64 = Buffer.from(signedXml, "utf8").toString("base64");
 
   // Prefijo "rec" para recepción (igual que "aut" para autorización)

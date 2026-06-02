@@ -192,7 +192,12 @@ export async function POST(req: Request) {
       const p12Buffer = Buffer.from(await p12Data.arrayBuffer());
 
       // Firmar XML con XAdES-BES
-      const xmlFirmado = signXMLWithP12(xmlFactura, p12Buffer, config.signature_password);
+      // .trim() elimina espacios/saltos de línea que se cuelan desde la DB
+      const password = (config.signature_password || "").trim();
+      if (!password) {
+        return NextResponse.json({ error: "Contraseña del certificado no configurada." }, { status: 400 });
+      }
+      const xmlFirmado = signXMLWithP12(xmlFactura, p12Buffer, password);
 
       // Enviar al SRI (pruebas: celcer.sri.gob.ec | producción: cel.sri.gob.ec)
       const { recepcion, autorizacion } = await enviarYAutorizar(
