@@ -104,19 +104,15 @@ export function signXMLWithP12(xmlString: string, p12Buffer: Buffer, password: s
 
   const signedPropsDigest = sha1b64(signedPropsXml);
 
-  // 4. Inyectar QualifyingProperties en el XML antes de firmar
-  //    para que el xml-crypto lo incluya en el documento
+  // 4. El QualifyingProperties va DENTRO de <ds:Object> en la Signature,
+  //    NO directamente en <factura> (eso causaría error 35 por XSD inválido)
   const qualifyingBlock = [
+    `<ds:Object Id="QualifyingProperties">`,
     `<xades:QualifyingProperties xmlns:xades="http://uri.etsi.org/01903/v1.3.2#" Target="#Signature">`,
     signedPropsXml,
     `</xades:QualifyingProperties>`,
+    `</ds:Object>`,
   ].join("");
-
-  // Insertar el qualifying block al final de <factura> para que quede en el documento
-  const xmlConQualifying = xmlString.replace(
-    /<\/factura>\s*$/,
-    `${qualifyingBlock}</factura>`
-  );
 
   // 5. Configurar xml-crypto
   const sigOptions: any = {
@@ -153,8 +149,8 @@ export function signXMLWithP12(xmlString: string, p12Buffer: Buffer, password: s
   sig.getKeyInfoContent = () =>
     `<ds:X509Data><ds:X509Certificate>${certBase64}</ds:X509Certificate></ds:X509Data>`;
 
-  // 6. Calcular firma
-  sig.computeSignature(xmlConQualifying, {
+  // 6. Firmar el XML original (sin QualifyingProperties en <factura>)
+  sig.computeSignature(xmlString, {
     prefix: "ds",
     location: {
       reference: `//*[@id='comprobante']`,
@@ -162,5 +158,12 @@ export function signXMLWithP12(xmlString: string, p12Buffer: Buffer, password: s
     },
   });
 
-  return sig.getSignedXml();
+  // 7. Inyectar QualifyingProperties DENTRO de <ds:Signature> como <ds:Object>
+  //    La estructura correcta: <factura>...<ds:Signature>...<ds:Object>...</ds:Object></ds:Signature></factura>
+  const signedXml = sig.getSignedXml().replace(
+    `</ds:Signature>`,
+    `${qualifyingBlock}</ds:Signature>`
+  );
+
+  return signedXml;
 }
