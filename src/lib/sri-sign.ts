@@ -22,11 +22,6 @@ function sha1b64(data: Buffer | string): string {
   return createHash("sha1").update(buf).digest("base64");
 }
 
-/** C14N excluye la declaración XML – la quitamos antes de hashear el documento */
-function stripXmlDeclaration(xml: string): string {
-  return xml.replace(/^<\?xml[^?]*\?>\s*/m, "");
-}
-
 function nowEcuador(): string {
   const now    = new Date();
   const offset = -5 * 60;
@@ -54,8 +49,11 @@ export function parseCertInfo(p12Buffer: Buffer, password: string): CertInfo {
   const subject = cert.subject.attributes.map((a: any) => `${a.shortName}=${a.value}`).join(", ");
   const issuer  = cert.issuer.attributes.map((a: any)  => `${a.shortName}=${a.value}`).join(", ");
 
+  // También extraer atributos con OID (para RUC en extensiones personalizadas)
+  const allAttrs = cert.subject.attributes.map((a: any) => String(a.value || "")).join(" ");
+
   return {
-    subject,
+    subject: subject + " | ALL:" + allAttrs,
     issuer,
     serialNumber: parseInt(cert.serialNumber, 16).toString(),
     validFrom: (cert.validity.notBefore as Date).toISOString().split("T")[0],
@@ -115,13 +113,11 @@ export function signXMLWithP12(xmlString: string, p12Buffer: Buffer, password: s
   const signedPropsDigest = sha1b64(signedPropsXml);
 
   // ── 4. Document digest ───────────────────────────────────────────────────
-  // Se hashea el documento original SIN la declaración XML (C14N la excluye)
-  const docDigest = sha1b64(stripXmlDeclaration(xmlString));
+  // Incluimos la declaración XML completa — el SRI hashea los bytes tal cual
+  // llegan después de aplicar enveloped-signature (sin C14N explícita en el Reference)
+  const docDigest = sha1b64(xmlString);
 
   // ── 5. SignedInfo ────────────────────────────────────────────────────────
-  // C14N INCLUSIVA: cuando el SRI canonicaliza <SignedInfo> como nodo raíz,
-  // incluye TODOS los namespaces en scope, incluyendo el xmlns heredado del padre.
-  // Por eso DEBEMOS incluir xmlns al firmar — es lo que el SRI verificará.
   const signedInfoXml = [
     `<SignedInfo xmlns="http://www.w3.org/2000/09/xmldsig#" Id="Signature-SignedInfo">`,
     `<CanonicalizationMethod Algorithm="http://www.w3.org/TR/2001/REC-xml-c14n-20010315"/>`,
