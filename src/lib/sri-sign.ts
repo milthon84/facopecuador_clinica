@@ -90,19 +90,21 @@ export function signXMLWithP12(xmlString: string, p12Buffer: Buffer, password: s
   // Se calcula el digest sobre el texto completo (con xmlns:xades) ya que
   // la Reference a este elemento no especifica transforms, así el SRI usa
   // el fragmento tal cual aparece en el documento.
+  // xmlns:ds declarado UNA SOLA VEZ en la raíz — evita redundancias que
+  // pueden alterar el hash cuando el SRI aplica C14N al elemento.
   const signedPropsXml = [
-    `<xades:SignedProperties xmlns:xades="http://uri.etsi.org/01903/v1.3.2#" Id="Signature-SignedProperties">`,
+    `<xades:SignedProperties xmlns:xades="http://uri.etsi.org/01903/v1.3.2#" xmlns:ds="http://www.w3.org/2000/09/xmldsig#" Id="Signature-SignedProperties">`,
     `<xades:SignedSignatureProperties>`,
     `<xades:SigningTime>${signingTime}</xades:SigningTime>`,
     `<xades:SigningCertificate>`,
     `<xades:Cert>`,
     `<xades:CertDigest>`,
-    `<ds:DigestMethod xmlns:ds="http://www.w3.org/2000/09/xmldsig#" Algorithm="http://www.w3.org/2000/09/xmldsig#sha1"/>`,
-    `<ds:DigestValue xmlns:ds="http://www.w3.org/2000/09/xmldsig#">${certDigest}</ds:DigestValue>`,
+    `<ds:DigestMethod Algorithm="http://www.w3.org/2000/09/xmldsig#sha1"/>`,
+    `<ds:DigestValue>${certDigest}</ds:DigestValue>`,
     `</xades:CertDigest>`,
     `<xades:IssuerSerial>`,
-    `<ds:X509IssuerName xmlns:ds="http://www.w3.org/2000/09/xmldsig#">${issuerName}</ds:X509IssuerName>`,
-    `<ds:X509SerialNumber xmlns:ds="http://www.w3.org/2000/09/xmldsig#">${serialNumber}</ds:X509SerialNumber>`,
+    `<ds:X509IssuerName>${issuerName}</ds:X509IssuerName>`,
+    `<ds:X509SerialNumber>${serialNumber}</ds:X509SerialNumber>`,
     `</xades:IssuerSerial>`,
     `</xades:Cert>`,
     `</xades:SigningCertificate>`,
