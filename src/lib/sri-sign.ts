@@ -89,6 +89,7 @@ export function signXMLWithP12(xmlString: string, p12Buffer: Buffer, password: s
   const signingTime  = nowEcuador();
 
   // ── 3. XAdES SignedProperties ────────────────────────────────────────────
+  // signedPropsXml: con xmlns, se inyecta en el documento (válido standalone)
   const signedPropsXml = [
     `<xades:SignedProperties xmlns:xades="${XADES}" xmlns:ds="${DS}" Id="Signature-SignedProperties">`,
     `<xades:SignedSignatureProperties>`,
@@ -96,7 +97,7 @@ export function signXMLWithP12(xmlString: string, p12Buffer: Buffer, password: s
     `<xades:SigningCertificate>`,
     `<xades:Cert>`,
     `<xades:CertDigest>`,
-    `<ds:DigestMethod Algorithm="${DS}sha1"/>`,
+    `<ds:DigestMethod Algorithm="${DS}sha1"></ds:DigestMethod>`,
     `<ds:DigestValue>${certDigest}</ds:DigestValue>`,
     `</xades:CertDigest>`,
     `<xades:IssuerSerial>`,
@@ -109,7 +110,31 @@ export function signXMLWithP12(xmlString: string, p12Buffer: Buffer, password: s
     `</xades:SignedProperties>`,
   ].join("");
 
-  const signedPropsDigest = sha1b64(signedPropsXml);
+  // signedPropsC14n: forma C14N que el SRI calculará al verificar el digest.
+  // El padre <xades:QualifyingProperties xmlns:xades="..."> ya declara xmlns:xades,
+  // y el abuelo <ds:Signature xmlns:ds="..."> ya declara xmlns:ds.
+  // C14N: (1) elimina declaraciones de ns ya en scope, (2) self-closing → <tag></tag>
+  const signedPropsC14n = [
+    `<xades:SignedProperties Id="Signature-SignedProperties">`,
+    `<xades:SignedSignatureProperties>`,
+    `<xades:SigningTime>${signingTime}</xades:SigningTime>`,
+    `<xades:SigningCertificate>`,
+    `<xades:Cert>`,
+    `<xades:CertDigest>`,
+    `<ds:DigestMethod Algorithm="${DS}sha1"></ds:DigestMethod>`,
+    `<ds:DigestValue>${certDigest}</ds:DigestValue>`,
+    `</xades:CertDigest>`,
+    `<xades:IssuerSerial>`,
+    `<ds:X509IssuerName>${issuerName}</ds:X509IssuerName>`,
+    `<ds:X509SerialNumber>${serialNumber}</ds:X509SerialNumber>`,
+    `</xades:IssuerSerial>`,
+    `</xades:Cert>`,
+    `</xades:SigningCertificate>`,
+    `</xades:SignedSignatureProperties>`,
+    `</xades:SignedProperties>`,
+  ].join("");
+
+  const signedPropsDigest = sha1b64(signedPropsC14n);
 
   // ── 4. Document digest ───────────────────────────────────────────────────
   // URI="#comprobante" apunta al elemento <factura id="comprobante">
@@ -124,23 +149,24 @@ export function signXMLWithP12(xmlString: string, p12Buffer: Buffer, password: s
   // C14N del <ds:SignedInfo> como elemento hijo NO re-incluye xmlns:ds
   // porque el padre ya lo tiene en scope. Firmamos exactamente lo que
   // el SRI verificará con C14N.
+  // SignedInfo en forma C14N exacta que el SRI verificará:
+  // - Sin xmlns:ds (el padre <ds:Signature xmlns:ds="..."> ya lo tiene en scope)
+  // - Sin self-closing tags: C14N convierte <tag/> a <tag></tag>
   const signedInfoXml = [
     `<ds:SignedInfo Id="Signature-SignedInfo">`,
-    `<ds:CanonicalizationMethod Algorithm="${C14N}"/>`,
-    `<ds:SignatureMethod Algorithm="${DS}rsa-sha1"/>`,
-    // Referencia a SignedProperties (XAdES)
+    `<ds:CanonicalizationMethod Algorithm="${C14N}"></ds:CanonicalizationMethod>`,
+    `<ds:SignatureMethod Algorithm="${DS}rsa-sha1"></ds:SignatureMethod>`,
     `<ds:Reference Id="Signature-Reference-SignedProperties" Type="${XADES}SignedProperties" URI="#Signature-SignedProperties">`,
-    `<ds:Transforms><ds:Transform Algorithm="${C14N}"/></ds:Transforms>`,
-    `<ds:DigestMethod Algorithm="${DS}sha1"/>`,
+    `<ds:Transforms><ds:Transform Algorithm="${C14N}"></ds:Transform></ds:Transforms>`,
+    `<ds:DigestMethod Algorithm="${DS}sha1"></ds:DigestMethod>`,
     `<ds:DigestValue>${signedPropsDigest}</ds:DigestValue>`,
     `</ds:Reference>`,
-    // Referencia al documento (elemento <factura id="comprobante">)
     `<ds:Reference Id="Signature-Reference-comprobante" URI="#comprobante">`,
     `<ds:Transforms>`,
-    `<ds:Transform Algorithm="${DS}enveloped-signature"/>`,
-    `<ds:Transform Algorithm="${C14N}"/>`,
+    `<ds:Transform Algorithm="${DS}enveloped-signature"></ds:Transform>`,
+    `<ds:Transform Algorithm="${C14N}"></ds:Transform>`,
     `</ds:Transforms>`,
-    `<ds:DigestMethod Algorithm="${DS}sha1"/>`,
+    `<ds:DigestMethod Algorithm="${DS}sha1"></ds:DigestMethod>`,
     `<ds:DigestValue>${docDigest}</ds:DigestValue>`,
     `</ds:Reference>`,
     `</ds:SignedInfo>`,
