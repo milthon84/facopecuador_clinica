@@ -203,19 +203,17 @@ export default async function SriConfigPage() {
 
           {/* Diagnóstico del certificado */}
           {certInfo && (
-            <div className={`rounded-xl px-4 py-3 border text-xs space-y-1 ${certRucMatch ? "bg-green-50 border-green-200" : "bg-red-50 border-red-200"}`}>
-              <p className={`font-bold flex items-center gap-1.5 ${certRucMatch ? "text-green-800" : "text-red-800"}`}>
-                {certRucMatch ? "✅ Certificado compatible con el RUC" : "❌ ADVERTENCIA: el certificado NO coincide con el RUC"}
+            <div className="rounded-xl px-4 py-3 border text-xs space-y-1 bg-blue-50 border-blue-200">
+              <p className="font-bold text-blue-800 flex items-center gap-1.5">
+                ℹ Información del certificado cargado
               </p>
-              <p className="text-ink-600 font-mono text-[11px]">Subject: {certInfo.subject}</p>
+              <p className="text-ink-600 font-mono text-[11px] break-all">
+                CN: {certInfo.subject.split("CN=")[1]?.split(",")[0]?.split("|")[0]?.trim() ?? certInfo.subject}
+              </p>
               <p className="text-ink-500 text-[11px]">Vigencia: {certInfo.validFrom} → {certInfo.validTo}</p>
-              {!certRucMatch && (
-                <p className="text-red-700 font-semibold mt-1">
-                  ⚠ El RUC configurado ({config?.ruc}) no aparece en el certificado.
-                  Esto causa el error GenericJDBCException en el SRI.
-                  Verifica que el .p12 pertenece al RUC {config?.ruc}.
-                </p>
-              )}
+              <p className="text-blue-700 text-[11px]">
+                ✓ El RUC del certificado se verifica directamente en el SRI — si la factura llega como "Rechazado" (no GenericJDBCException) el certificado es correcto.
+              </p>
             </div>
           )}
 
