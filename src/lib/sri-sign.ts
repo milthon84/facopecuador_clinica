@@ -98,8 +98,15 @@ export function signXMLWithP12(xmlString: string, p12Buffer: Buffer, password: s
   const serialNumber = BigInt("0x" + cert.serialNumber).toString(10);
   const signingTime  = nowEcuador();
 
-  const modulus      = forge.util.encode64(cert.publicKey.n.toByteArray());
-  const exponent     = forge.util.encode64(cert.publicKey.e.toByteArray());
+  // Para KeyValue, necesitamos extraer el módulo y exponente.
+  // Como cert.publicKey.n es un BigInteger, lo pasamos a Hex -> Bytes -> Base64
+  let hexModulus = cert.publicKey.n.toString(16);
+  if (hexModulus.length % 2 !== 0) hexModulus = "0" + hexModulus;
+  const modulus = forge.util.encode64(forge.util.hexToBytes(hexModulus));
+
+  let hexExponent = cert.publicKey.e.toString(16);
+  if (hexExponent.length % 2 !== 0) hexExponent = "0" + hexExponent;
+  const exponent = forge.util.encode64(forge.util.hexToBytes(hexExponent));
 
   // ── 3. SignedProperties (C14N) ───────────────────────────────────────────
   const signedPropsC14n = [
