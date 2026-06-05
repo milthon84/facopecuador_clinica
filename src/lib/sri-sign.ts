@@ -115,7 +115,7 @@ export function signXMLWithP12(xmlString: string, p12Buffer: Buffer, password: s
   // y el abuelo <ds:Signature xmlns:ds="..."> ya declara xmlns:ds.
   // C14N: (1) elimina declaraciones de ns ya en scope, (2) self-closing → <tag></tag>
   const signedPropsC14n = [
-    `<xades:SignedProperties Id="Signature-SignedProperties">`,
+    `<xades:SignedProperties xmlns:ds="${DS}" xmlns:xades="${XADES}" Id="Signature-SignedProperties">`,
     `<xades:SignedSignatureProperties>`,
     `<xades:SigningTime>${signingTime}</xades:SigningTime>`,
     `<xades:SigningCertificate>`,
@@ -153,7 +153,7 @@ export function signXMLWithP12(xmlString: string, p12Buffer: Buffer, password: s
   // - Sin xmlns:ds (el padre <ds:Signature xmlns:ds="..."> ya lo tiene en scope)
   // - Sin self-closing tags: C14N convierte <tag/> a <tag></tag>
   const signedInfoXml = [
-    `<ds:SignedInfo Id="Signature-SignedInfo">`,
+    `<ds:SignedInfo xmlns:ds="${DS}" Id="Signature-SignedInfo">`,
     `<ds:CanonicalizationMethod Algorithm="${C14N}"></ds:CanonicalizationMethod>`,
     `<ds:SignatureMethod Algorithm="${DS}rsa-sha1"></ds:SignatureMethod>`,
     `<ds:Reference Id="Signature-Reference-SignedProperties" Type="${XADES}SignedProperties" URI="#Signature-SignedProperties">`,
