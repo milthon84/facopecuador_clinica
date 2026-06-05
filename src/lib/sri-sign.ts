@@ -139,7 +139,9 @@ export function signXMLWithP12(xmlString: string, p12Buffer: Buffer, password: s
   const signedPropsXml = signedPropsC14n;
 
   // ── 4. Document digest ───────────────────────────────────────────────────
-  const xmlSinDeclaracion = xmlString.replace(/^<\?xml[^?]*\?>/, "");
+  // Para que C14N coincida perfectamente, no debe haber saltos de línea sueltos
+  // antes del tag raíz. El regex remueve la declaración XML y cualquier espacio/salto posterior.
+  const xmlSinDeclaracion = xmlString.replace(/^<\?xml[^?]*\?>\s*/, "");
   const docDigest = sha1b64(xmlSinDeclaracion);
 
   // ── 5. SignedInfo SIN xmlns:ds explícito en el XML final ─────────────────
