@@ -85,7 +85,7 @@ export function signXMLWithP12(xmlString: string, p12Buffer: Buffer, password: s
   const certBase64   = forge.util.encode64(certDer);
   const certDigest   = sha1b64(Buffer.from(certDer, "binary"));
   const issuerName   = cert.issuer.attributes.map((a: any) => `${a.shortName}=${a.value}`).join(",");
-  const serialNumber = parseInt(cert.serialNumber, 16).toString();
+  const serialNumber = BigInt("0x" + cert.serialNumber).toString(10);
   const signingTime  = nowEcuador();
 
   // ── 3. XAdES SignedProperties ────────────────────────────────────────────
