@@ -63,14 +63,23 @@ export function signXMLWithP12(xmlString: string, p12Buffer: Buffer, password: s
   const XADES = "http://uri.etsi.org/01903/v1.3.2#";
   const C14N  = "http://www.w3.org/TR/2001/REC-xml-c14n-20010315";
 
-  // ── 1. Extraer clave y certificado ───────────────────────────────────────
+  // ── 1. Interceptar el parseo para capturar el ASN.1 original del certificado ──
+  const originalCertFromAsn1 = forge.pki.certificateFromAsn1;
+  let rawCertAsn1: any = null;
+  forge.pki.certificateFromAsn1 = function(obj: any, computeHash?: boolean) {
+    if (!rawCertAsn1) rawCertAsn1 = obj;
+    return originalCertFromAsn1.apply(this, arguments as any);
+  };
+
   let p12: any;
   try {
     const asn1 = forge.asn1.fromDer(forge.util.createBuffer(p12Buffer.toString("binary")));
     p12 = forge.pkcs12.pkcs12FromAsn1(asn1, false, password);
   } catch (e: any) {
+    forge.pki.certificateFromAsn1 = originalCertFromAsn1;
     throw new Error(`Contraseña del certificado incorrecta: ${e.message}`);
   }
+  forge.pki.certificateFromAsn1 = originalCertFromAsn1;
 
   const privateKey = p12.getBags({ bagType: forge.pki.oids.pkcs8ShroudedKeyBag })
     [forge.pki.oids.pkcs8ShroudedKeyBag]?.[0]?.key as forge.pki.rsa.PrivateKey | undefined;
@@ -81,7 +90,8 @@ export function signXMLWithP12(xmlString: string, p12Buffer: Buffer, password: s
   if (!cert)       throw new Error("No se encontró certificado en el .p12.");
 
   // ── 2. Datos del certificado ─────────────────────────────────────────────
-  const certDer      = forge.asn1.toDer(forge.pki.certificateToAsn1(cert)).bytes();
+  // Usamos el ASN.1 capturado para preservar los bytes originales exactamente
+  const certDer      = forge.asn1.toDer(rawCertAsn1).bytes();
   const certBase64   = forge.util.encode64(certDer);
   const certDigest   = sha1b64(Buffer.from(certDer, "binary"));
   const issuerName   = cert.issuer.attributes.map((a: any) => `${a.shortName}=${a.value}`).join(",");
