@@ -131,10 +131,7 @@ export function generarXMLFactura(data: SRIInvoiceData): string {
   const formatNum6 = (num: number) => num.toFixed(6); // Para precios unitarios si es necesario
 
   let xml = `<?xml version="1.0" encoding="UTF-8"?>\n`;
-  // Para C14N, los namespaces (xmlns) SIEMPRE van antes que los atributos.
-  // Orden alfabético de prefijos: xmlns:ds, xmlns:xades
-  // Orden alfabético de atributos: id, version
-  xml += `<factura xmlns:ds="http://www.w3.org/2000/09/xmldsig#" xmlns:xades="http://uri.etsi.org/01903/v1.3.2#" id="comprobante" version="1.0.0">\n`;
+  xml += `<factura id="comprobante" version="1.0.0">\n`;
   
   // infoTributaria
   xml += `  <infoTributaria>\n`;

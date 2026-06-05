@@ -142,9 +142,9 @@ export function signXMLWithP12(xmlString: string, p12Buffer: Buffer, password: s
   const xmlSinDeclaracion = xmlString.replace(/^<\?xml[^?]*\?>/, "");
   const docDigest = sha1b64(xmlSinDeclaracion);
 
-  // ── 5. SignedInfo SIN xmlns:ds ───────────────────────────────────────────
+  // ── 5. SignedInfo SIN xmlns:ds explícito en el XML final ─────────────────
   const signedInfoXml = [
-    `<ds:SignedInfo xmlns:ds="${DS}" Id="Signature-SignedInfo">`,
+    `<ds:SignedInfo xmlns:ds="${DS}" xmlns:etsi="${XADES}" Id="Signature-SignedInfo">`,
     `<ds:CanonicalizationMethod Algorithm="${C14N}"></ds:CanonicalizationMethod>`,
     `<ds:SignatureMethod Algorithm="${DS}rsa-sha1"></ds:SignatureMethod>`,
     `<ds:Reference Id="Signature-Reference-SignedProperties" Type="http://uri.etsi.org/01903#SignedProperties" URI="#Signature-SignedProperties">`,
@@ -170,7 +170,7 @@ export function signXMLWithP12(xmlString: string, p12Buffer: Buffer, password: s
 
   // ── 7. Ensamblar Signature completa ──────────────────────────────────────
   const signatureXml = [
-    `<ds:Signature xmlns:ds="${DS}" Id="Signature">`,
+    `<ds:Signature xmlns:ds="${DS}" xmlns:etsi="${XADES}" Id="Signature">`,
     signedInfoXml,
     `<ds:SignatureValue Id="SignatureValue">${signatureBase64}</ds:SignatureValue>`,
     `<ds:KeyInfo Id="Certificate">`,
