@@ -98,75 +98,49 @@ export function signXMLWithP12(xmlString: string, p12Buffer: Buffer, password: s
   const serialNumber = BigInt("0x" + cert.serialNumber).toString(10);
   const signingTime  = nowEcuador();
 
-  // ── 3. XAdES SignedProperties ────────────────────────────────────────────
-  // signedPropsXml: con xmlns, se inyecta en el documento (válido standalone)
-  const signedPropsXml = [
-    `<xades:SignedProperties xmlns:xades="${XADES}" xmlns:ds="${DS}" Id="Signature-SignedProperties">`,
-    `<xades:SignedSignatureProperties>`,
-    `<xades:SigningTime>${signingTime}</xades:SigningTime>`,
-    `<xades:SigningCertificate>`,
-    `<xades:Cert>`,
-    `<xades:CertDigest>`,
-    `<ds:DigestMethod Algorithm="${DS}sha1"></ds:DigestMethod>`,
-    `<ds:DigestValue>${certDigest}</ds:DigestValue>`,
-    `</xades:CertDigest>`,
-    `<xades:IssuerSerial>`,
-    `<ds:X509IssuerName>${issuerName}</ds:X509IssuerName>`,
-    `<ds:X509SerialNumber>${serialNumber}</ds:X509SerialNumber>`,
-    `</xades:IssuerSerial>`,
-    `</xades:Cert>`,
-    `</xades:SigningCertificate>`,
-    `</xades:SignedSignatureProperties>`,
-    `</xades:SignedProperties>`,
-  ].join("");
+  const modulus      = forge.util.encode64(cert.publicKey.n.toByteArray());
+  const exponent     = forge.util.encode64(cert.publicKey.e.toByteArray());
 
-  // signedPropsC14n: forma C14N que el SRI calculará al verificar el digest.
-  // El padre <xades:QualifyingProperties xmlns:xades="..."> ya declara xmlns:xades,
-  // y el abuelo <ds:Signature xmlns:ds="..."> ya declara xmlns:ds.
-  // C14N: (1) elimina declaraciones de ns ya en scope, (2) self-closing → <tag></tag>
+  // ── 3. SignedProperties (C14N) ───────────────────────────────────────────
   const signedPropsC14n = [
-    `<xades:SignedProperties xmlns:ds="${DS}" xmlns:xades="${XADES}" Id="Signature-SignedProperties">`,
-    `<xades:SignedSignatureProperties>`,
-    `<xades:SigningTime>${signingTime}</xades:SigningTime>`,
-    `<xades:SigningCertificate>`,
-    `<xades:Cert>`,
-    `<xades:CertDigest>`,
+    `<etsi:SignedProperties xmlns:ds="${DS}" xmlns:etsi="${XADES}" Id="Signature-SignedProperties">`,
+    `<etsi:SignedSignatureProperties>`,
+    `<etsi:SigningTime>${signingTime}</etsi:SigningTime>`,
+    `<etsi:SigningCertificate>`,
+    `<etsi:Cert>`,
+    `<etsi:CertDigest>`,
     `<ds:DigestMethod Algorithm="${DS}sha1"></ds:DigestMethod>`,
     `<ds:DigestValue>${certDigest}</ds:DigestValue>`,
-    `</xades:CertDigest>`,
-    `<xades:IssuerSerial>`,
+    `</etsi:CertDigest>`,
+    `<etsi:IssuerSerial>`,
     `<ds:X509IssuerName>${issuerName}</ds:X509IssuerName>`,
     `<ds:X509SerialNumber>${serialNumber}</ds:X509SerialNumber>`,
-    `</xades:IssuerSerial>`,
-    `</xades:Cert>`,
-    `</xades:SigningCertificate>`,
-    `</xades:SignedSignatureProperties>`,
-    `</xades:SignedProperties>`,
+    `</etsi:IssuerSerial>`,
+    `</etsi:Cert>`,
+    `</etsi:SigningCertificate>`,
+    `</etsi:SignedSignatureProperties>`,
+    `<etsi:SignedDataObjectProperties>`,
+    `<etsi:DataObjectFormat ObjectReference="#Signature-Reference-comprobante">`,
+    `<etsi:Description>contenido comprobante</etsi:Description>`,
+    `<etsi:MimeType>text/xml</etsi:MimeType>`,
+    `</etsi:DataObjectFormat>`,
+    `</etsi:SignedDataObjectProperties>`,
+    `</etsi:SignedProperties>`,
   ].join("");
 
   const signedPropsDigest = sha1b64(signedPropsC14n);
+  const signedPropsXml = signedPropsC14n;
 
   // ── 4. Document digest ───────────────────────────────────────────────────
-  // URI="#comprobante" apunta al elemento <factura id="comprobante">
-  // → hash del elemento SIN la declaración XML (C14N la excluye)
-  // → SIN la Signature (enveloped-signature la remueve)
-  // Para XML minificado sin namespaces complejos, C14N ≈ texto plano
   const xmlSinDeclaracion = xmlString.replace(/^<\?xml[^?]*\?>/, "");
   const docDigest = sha1b64(xmlSinDeclaracion);
 
   // ── 5. SignedInfo SIN xmlns:ds ───────────────────────────────────────────
-  // El padre <ds:Signature xmlns:ds="..."> ya declara xmlns:ds.
-  // C14N del <ds:SignedInfo> como elemento hijo NO re-incluye xmlns:ds
-  // porque el padre ya lo tiene en scope. Firmamos exactamente lo que
-  // el SRI verificará con C14N.
-  // SignedInfo en forma C14N exacta que el SRI verificará:
-  // - Sin xmlns:ds (el padre <ds:Signature xmlns:ds="..."> ya lo tiene en scope)
-  // - Sin self-closing tags: C14N convierte <tag/> a <tag></tag>
   const signedInfoXml = [
     `<ds:SignedInfo xmlns:ds="${DS}" Id="Signature-SignedInfo">`,
     `<ds:CanonicalizationMethod Algorithm="${C14N}"></ds:CanonicalizationMethod>`,
     `<ds:SignatureMethod Algorithm="${DS}rsa-sha1"></ds:SignatureMethod>`,
-    `<ds:Reference Id="Signature-Reference-SignedProperties" Type="${XADES}SignedProperties" URI="#Signature-SignedProperties">`,
+    `<ds:Reference Id="Signature-Reference-SignedProperties" Type="http://uri.etsi.org/01903#SignedProperties" URI="#Signature-SignedProperties">`,
     `<ds:Transforms><ds:Transform Algorithm="${C14N}"></ds:Transform></ds:Transforms>`,
     `<ds:DigestMethod Algorithm="${DS}sha1"></ds:DigestMethod>`,
     `<ds:DigestValue>${signedPropsDigest}</ds:DigestValue>`,
@@ -194,11 +168,17 @@ export function signXMLWithP12(xmlString: string, p12Buffer: Buffer, password: s
     `<ds:SignatureValue Id="SignatureValue">${signatureBase64}</ds:SignatureValue>`,
     `<ds:KeyInfo Id="Certificate">`,
     `<ds:X509Data><ds:X509Certificate>${certBase64}</ds:X509Certificate></ds:X509Data>`,
+    `<ds:KeyValue>`,
+    `<ds:RSAKeyValue>`,
+    `<ds:Modulus>${modulus}</ds:Modulus>`,
+    `<ds:Exponent>${exponent}</ds:Exponent>`,
+    `</ds:RSAKeyValue>`,
+    `</ds:KeyValue>`,
     `</ds:KeyInfo>`,
     `<ds:Object Id="QualifyingProperties">`,
-    `<xades:QualifyingProperties xmlns:xades="${XADES}" Target="#Signature">`,
+    `<etsi:QualifyingProperties xmlns:etsi="${XADES}" Target="#Signature">`,
     signedPropsXml,
-    `</xades:QualifyingProperties>`,
+    `</etsi:QualifyingProperties>`,
     `</ds:Object>`,
     `</ds:Signature>`,
   ].join("");
