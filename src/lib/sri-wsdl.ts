@@ -85,7 +85,9 @@ export async function enviarComprobante(
   console.log("=== XML FIRMADO (fin) ===");
   console.log(signedXml.slice(-200));
   console.log("=== FIN XML ===");
-  const xmlBase64 = Buffer.from(signedXml, "utf8").toString("base64");
+  // Limpiar posible BOM invisible antes de la conversión a Base64 (Causa #1 AI)
+  const cleanXml = signedXml.replace(/^\uFEFF/, '');
+  const xmlBase64 = Buffer.from(cleanXml, "utf8").toString("base64");
 
   // Prefijo "rec" para recepción (igual que "aut" para autorización)
   // SOAPAction vacío — el SRI lee el Body directamente
