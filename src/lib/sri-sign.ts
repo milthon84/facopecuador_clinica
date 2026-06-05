@@ -84,11 +84,7 @@ export function signXMLWithP12(xmlString: string, p12Buffer: Buffer, password: s
   const certDer      = forge.asn1.toDer(forge.pki.certificateToAsn1(cert)).bytes();
   const certBase64   = forge.util.encode64(certDer);
   const certDigest   = sha1b64(Buffer.from(certDer, "binary"));
-  const issuerName   = cert.issuer.attributes
-    .slice()
-    .reverse()
-    .map((a: any) => `${a.shortName || a.name}=${a.value}`)
-    .join(",");
+  const issuerName   = cert.issuer.attributes.map((a: any) => `${a.shortName}=${a.value}`).join(",");
   const serialNumber = BigInt("0x" + cert.serialNumber).toString(10);
   const signingTime  = nowEcuador();
 
