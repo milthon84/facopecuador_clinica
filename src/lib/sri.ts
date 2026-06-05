@@ -106,10 +106,16 @@ export function generarClaveAcceso(data: {
   return `${cadena48}${digito}`;
 }
 
-/** Escapa caracteres especiales XML — el SRI prefiere escape sobre CDATA */
+/** Normaliza caracteres para evitar corrupción de UTF-8 en los servidores del SRI */
+function normalizeStr(s: string): string {
+  return s.normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/ñ/g, "n").replace(/Ñ/g, "N");
+}
+
+/** Escapa caracteres especiales XML y normaliza para evitar errores de codificación */
 function xe(s: string | undefined | null): string {
   if (!s) return "";
-  return String(s)
+  const normalized = normalizeStr(String(s));
+  return normalized
     .replace(/&/g, "&amp;")
     .replace(/</g, "&lt;")
     .replace(/>/g, "&gt;")
