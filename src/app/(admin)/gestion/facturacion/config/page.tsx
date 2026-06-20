@@ -40,6 +40,7 @@ export default async function SriConfigPage() {
       direccion_matriz: formData.get("direccion_matriz") as string,
       ambiente,
       obligado_contabilidad: formData.get("obligado_contabilidad") === "on",
+      card_surcharge_percent: Number(formData.get("card_surcharge_percent") || 0),
     };
 
     const id = formData.get("id") as string;
@@ -172,6 +173,20 @@ export default async function SriConfigPage() {
                   />
                   <span className="text-xs font-medium text-ink-700">Obligado contabilidad</span>
                 </label>
+              </div>
+            </div>
+ 
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              <div className="space-y-1">
+                <label className="text-xs font-semibold text-ink-700">Recargo por Pago con Tarjeta (%) *</label>
+                <div className="relative">
+                  <input
+                    type="number" name="card_surcharge_percent" min="0" max="100" step="0.01" required
+                    defaultValue={config?.card_surcharge_percent ?? 5.00}
+                    className="w-full bg-lilac-50/50 border border-lilac-100 rounded-xl px-3 py-2 pr-8 text-sm focus:outline-none focus:ring-2 focus:ring-lilac-500 font-mono text-right"
+                  />
+                  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-ink-400 text-sm">%</span>
+                </div>
               </div>
             </div>
 

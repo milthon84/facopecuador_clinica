@@ -51,11 +51,13 @@ export default function NewInvoiceForm({
   initialPatient,
   services = [],
   bankAccounts = [],
+  cardSurchargePercent = 5.0,
 }: {
   patients: Patient[];
   initialPatient: Patient | null;
   services?: Service[];
   bankAccounts?: BankAccount[];
+  cardSurchargePercent?: number;
 }) {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
@@ -184,7 +186,9 @@ export default function NewInvoiceForm({
   const subtotal0      = items.filter(i => i.iva_code === "0").reduce((acc, i) => acc + ((i.quantity * i.unit_price) - i.discount), 0);
   const totalDescuento = items.reduce((acc, i) => acc + i.discount, 0);
   const ivaAmount      = subtotal15 * 0.15;
-  const totalFactura   = subtotal15 + subtotal0 + ivaAmount;
+  const isCard         = paymentMethod === "tarjeta_credito";
+  const cardSurchargeAmount = isCard ? (subtotal15 + subtotal0) * (cardSurchargePercent / 100) : 0;
+  const totalFactura   = subtotal15 + subtotal0 + cardSurchargeAmount + ivaAmount;
 
   const requiresBankConfirmation = paymentMethod !== "efectivo";
 
@@ -211,16 +215,17 @@ export default function NewInvoiceForm({
       e.items = "El total de la factura debe ser mayor a $0.00";
     }
 
-    // Para pagos no en efectivo: cuenta bancaria y comprobante son obligatorios
-    if (requiresBankConfirmation) {
+    // Transferencia/Depósito requiere cuenta y número de referencia
+    if (paymentMethod === "transferencia") {
       if (!bankAccountId) e.bankAccountId = "Selecciona la cuenta donde recibiste el pago";
-      if (paymentMethod === "tarjeta_credito") {
-        if (!cardType) e.cardType = "Selecciona o escribe el tipo de tarjeta";
-        if (!cardLote.trim()) e.cardLote = "El número de lote es obligatorio";
-        if (!cardVoucher.trim()) e.cardVoucher = "El número de baucher es obligatorio";
-      } else {
-        if (!paymentReference.trim()) e.paymentReference = "El número de comprobante/referencia es obligatorio";
-      }
+      if (!paymentReference.trim()) e.paymentReference = "El número de comprobante/referencia es obligatorio";
+    }
+
+    // Tarjeta de Crédito requiere datos de tarjeta
+    if (paymentMethod === "tarjeta_credito") {
+      if (!cardType) e.cardType = "Selecciona o escribe el tipo de tarjeta";
+      if (!cardLote.trim()) e.cardLote = "El número de lote es obligatorio";
+      if (!cardVoucher.trim()) e.cardVoucher = "El número de baucher es obligatorio";
     }
 
     setFormErrors(e);
@@ -453,8 +458,8 @@ export default function NewInvoiceForm({
             </div>
           )}
 
-          {/* Transferencia / Tarjeta */}
-          {requiresBankConfirmation && (
+          {/* Transferencia */}
+          {paymentMethod === "transferencia" && (
             <div className="space-y-3 mt-1">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div className="space-y-1">
@@ -472,105 +477,108 @@ export default function NewInvoiceForm({
                   {formErrors.bankAccountId && <p className="text-xs text-red-500">{formErrors.bankAccountId}</p>}
                 </div>
 
-                {paymentMethod === "tarjeta_credito" ? (
-                  <div className="space-y-1">
-                    <label className="text-xs font-semibold text-ink-700">Tipo de Tarjeta *</label>
-                    <input type="text" value={cardType} list="tarjetas-ec"
-                      onChange={e => { setCardType(e.target.value); setFormErrors(p => ({ ...p, cardType: "" })); }}
-                      placeholder="Ej. Visa, Mastercard..."
-                      className={`w-full bg-white border rounded-xl px-3 py-2 text-sm focus:ring-2 focus:ring-amber-400 focus:outline-none ${formErrors.cardType ? "border-red-400" : "border-amber-300"}`} />
-                    <datalist id="tarjetas-ec">
-                      <option value="Visa" />
-                      <option value="Mastercard" />
-                      <option value="American Express" />
-                      <option value="Diners Club" />
-                      <option value="Discover" />
-                      <option value="Alia" />
-                      <option value="PacifiCard" />
-                    </datalist>
-                    {formErrors.cardType && <p className="text-xs text-red-500">{formErrors.cardType}</p>}
-                  </div>
-                ) : (
-                  <div className="space-y-1">
-                    <label className="text-xs font-semibold text-ink-700">N° Referencia *</label>
-                    <input type="text" value={paymentReference}
-                      onChange={e => { setPaymentReference(e.target.value); setFormErrors(p => ({ ...p, paymentReference: "" })); }}
-                      placeholder="TRF-001234"
-                      className={`w-full bg-white border rounded-xl px-3 py-2 text-sm focus:ring-2 focus:ring-amber-400 focus:outline-none font-mono ${formErrors.paymentReference ? "border-red-400" : "border-amber-300"}`} />
-                    {formErrors.paymentReference && <p className="text-xs text-red-500">{formErrors.paymentReference}</p>}
-                  </div>
-                )}
+                <div className="space-y-1">
+                  <label className="text-xs font-semibold text-ink-700">N° Referencia *</label>
+                  <input type="text" value={paymentReference}
+                    onChange={e => { setPaymentReference(e.target.value); setFormErrors(p => ({ ...p, paymentReference: "" })); }}
+                    placeholder="TRF-001234"
+                    className={`w-full bg-white border rounded-xl px-3 py-2 text-sm focus:ring-2 focus:ring-amber-400 focus:outline-none font-mono ${formErrors.paymentReference ? "border-red-400" : "border-amber-300"}`} />
+                  {formErrors.paymentReference && <p className="text-xs text-red-500">{formErrors.paymentReference}</p>}
+                </div>
               </div>
 
-              {paymentMethod === "tarjeta_credito" ? (
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                  <div className="space-y-1">
-                    <label className="text-xs font-semibold text-ink-700">N° Lote *</label>
-                    <input type="text" value={cardLote}
-                      onChange={e => { setCardLote(e.target.value); setFormErrors(p => ({ ...p, cardLote: "" })); }}
-                      placeholder="0012"
-                      className={`w-full bg-white border rounded-xl px-3 py-2 text-sm focus:ring-2 focus:ring-amber-400 focus:outline-none font-mono ${formErrors.cardLote ? "border-red-400" : "border-amber-300"}`} />
-                    {formErrors.cardLote && <p className="text-xs text-red-500">{formErrors.cardLote}</p>}
-                  </div>
-
-                  <div className="space-y-1">
-                    <label className="text-xs font-semibold text-ink-700">N° Baucher *</label>
-                    <input type="text" value={cardVoucher}
-                      onChange={e => { setCardVoucher(e.target.value); setFormErrors(p => ({ ...p, cardVoucher: "" })); }}
-                      placeholder="000123"
-                      className={`w-full bg-white border rounded-xl px-3 py-2 text-sm focus:ring-2 focus:ring-amber-400 focus:outline-none font-mono ${formErrors.cardVoucher ? "border-red-400" : "border-amber-300"}`} />
-                    {formErrors.cardVoucher && <p className="text-xs text-red-500">{formErrors.cardVoucher}</p>}
-                  </div>
-
-                  <div className="space-y-1">
-                    <label className="text-xs font-semibold text-ink-700 flex items-center gap-1">
-                      <Paperclip size={11} /> Comprobante
-                    </label>
-                    <div className="flex items-center gap-2">
-                      <input ref={fileInputRef} type="file" accept="image/*,.pdf"
-                        className="hidden"
-                        onChange={e => setComprobanteFile(e.target.files?.[0] ?? null)} />
-                      <button type="button"
-                        onClick={() => fileInputRef.current?.click()}
-                        className={`flex-1 flex items-center gap-1.5 border rounded-xl px-3 py-2 text-xs transition-colors ${comprobanteFile ? "border-green-400 bg-green-50 text-green-700" : "border-amber-300 bg-white text-ink-500 hover:bg-amber-50"}`}>
-                        <Paperclip size={12} />
-                        {comprobanteFile ? comprobanteFile.name.slice(0, 18) + "…" : "Adjuntar archivo"}
+              <div className="grid grid-cols-1 gap-3">
+                <div className="space-y-1">
+                  <label className="text-xs font-semibold text-ink-700 flex items-center gap-1">
+                    <Paperclip size={11} /> Comprobante
+                  </label>
+                  <div className="flex items-center gap-2 max-w-xs">
+                    <input ref={fileInputRef} type="file" accept="image/*,.pdf"
+                      className="hidden"
+                      onChange={e => setComprobanteFile(e.target.files?.[0] ?? null)} />
+                    <button type="button"
+                      onClick={() => fileInputRef.current?.click()}
+                      className={`flex-1 flex items-center gap-1.5 border rounded-xl px-3 py-2 text-xs transition-colors ${comprobanteFile ? "border-green-400 bg-green-50 text-green-700" : "border-amber-300 bg-white text-ink-500 hover:bg-amber-50"}`}>
+                      <Paperclip size={12} />
+                      {comprobanteFile ? comprobanteFile.name.slice(0, 18) + "…" : "Adjuntar archivo"}
+                    </button>
+                    {comprobanteFile && (
+                      <button type="button" onClick={() => { setComprobanteFile(null); if (fileInputRef.current) fileInputRef.current.value = ""; }}
+                        className="text-ink-400 hover:text-red-500">
+                        <X size={14} />
                       </button>
-                      {comprobanteFile && (
-                        <button type="button" onClick={() => { setComprobanteFile(null); if (fileInputRef.current) fileInputRef.current.value = ""; }}
-                          className="text-ink-400 hover:text-red-500">
-                          <X size={14} />
-                        </button>
-                      )}
-                    </div>
+                    )}
                   </div>
                 </div>
-              ) : (
-                <div className="grid grid-cols-1 gap-3">
-                  <div className="space-y-1">
-                    <label className="text-xs font-semibold text-ink-700 flex items-center gap-1">
-                      <Paperclip size={11} /> Comprobante
-                    </label>
-                    <div className="flex items-center gap-2 max-w-xs">
-                      <input ref={fileInputRef} type="file" accept="image/*,.pdf"
-                        className="hidden"
-                        onChange={e => setComprobanteFile(e.target.files?.[0] ?? null)} />
-                      <button type="button"
-                        onClick={() => fileInputRef.current?.click()}
-                        className={`flex-1 flex items-center gap-1.5 border rounded-xl px-3 py-2 text-xs transition-colors ${comprobanteFile ? "border-green-400 bg-green-50 text-green-700" : "border-amber-300 bg-white text-ink-500 hover:bg-amber-50"}`}>
-                        <Paperclip size={12} />
-                        {comprobanteFile ? comprobanteFile.name.slice(0, 18) + "…" : "Adjuntar archivo"}
+              </div>
+            </div>
+          )}
+
+          {/* Tarjeta */}
+          {paymentMethod === "tarjeta_credito" && (
+            <div className="space-y-3 mt-1">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="space-y-1 sm:col-span-2">
+                  <label className="text-xs font-semibold text-ink-700">Tipo de Tarjeta *</label>
+                  <input type="text" value={cardType} list="tarjetas-ec"
+                    onChange={e => { setCardType(e.target.value); setFormErrors(p => ({ ...p, cardType: "" })); }}
+                    placeholder="Ej. Visa, Mastercard..."
+                    className={`w-full bg-white border rounded-xl px-3 py-2 text-sm focus:ring-2 focus:ring-amber-400 focus:outline-none ${formErrors.cardType ? "border-red-400" : "border-amber-300"}`} />
+                  <datalist id="tarjetas-ec">
+                    <option value="Visa" />
+                    <option value="Mastercard" />
+                    <option value="American Express" />
+                    <option value="Diners Club" />
+                    <option value="Discover" />
+                    <option value="Alia" />
+                    <option value="PacifiCard" />
+                  </datalist>
+                  {formErrors.cardType && <p className="text-xs text-red-500">{formErrors.cardType}</p>}
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div className="space-y-1">
+                  <label className="text-xs font-semibold text-ink-700">N° Lote *</label>
+                  <input type="text" value={cardLote}
+                    onChange={e => { setCardLote(e.target.value); setFormErrors(p => ({ ...p, cardLote: "" })); }}
+                    placeholder="0012"
+                    className={`w-full bg-white border rounded-xl px-3 py-2 text-sm focus:ring-2 focus:ring-amber-400 focus:outline-none font-mono ${formErrors.cardLote ? "border-red-400" : "border-amber-300"}`} />
+                  {formErrors.cardLote && <p className="text-xs text-red-500">{formErrors.cardLote}</p>}
+                </div>
+
+                <div className="space-y-1">
+                  <label className="text-xs font-semibold text-ink-700">N° Baucher *</label>
+                  <input type="text" value={cardVoucher}
+                    onChange={e => { setCardVoucher(e.target.value); setFormErrors(p => ({ ...p, cardVoucher: "" })); }}
+                    placeholder="000123"
+                    className={`w-full bg-white border rounded-xl px-3 py-2 text-sm focus:ring-2 focus:ring-amber-400 focus:outline-none font-mono ${formErrors.cardVoucher ? "border-red-400" : "border-amber-300"}`} />
+                  {formErrors.cardVoucher && <p className="text-xs text-red-500">{formErrors.cardVoucher}</p>}
+                </div>
+
+                <div className="space-y-1">
+                  <label className="text-xs font-semibold text-ink-700 flex items-center gap-1">
+                    <Paperclip size={11} /> Comprobante
+                  </label>
+                  <div className="flex items-center gap-2">
+                    <input ref={fileInputRef} type="file" accept="image/*,.pdf"
+                      className="hidden"
+                      onChange={e => setComprobanteFile(e.target.files?.[0] ?? null)} />
+                    <button type="button"
+                      onClick={() => fileInputRef.current?.click()}
+                      className={`flex-1 flex items-center gap-1.5 border rounded-xl px-3 py-2 text-xs transition-colors ${comprobanteFile ? "border-green-400 bg-green-50 text-green-700" : "border-amber-300 bg-white text-ink-500 hover:bg-amber-50"}`}>
+                      <Paperclip size={12} />
+                      {comprobanteFile ? comprobanteFile.name.slice(0, 18) + "…" : "Adjuntar archivo"}
+                    </button>
+                    {comprobanteFile && (
+                      <button type="button" onClick={() => { setComprobanteFile(null); if (fileInputRef.current) fileInputRef.current.value = ""; }}
+                        className="text-ink-400 hover:text-red-500">
+                        <X size={14} />
                       </button>
-                      {comprobanteFile && (
-                        <button type="button" onClick={() => { setComprobanteFile(null); if (fileInputRef.current) fileInputRef.current.value = ""; }}
-                          className="text-ink-400 hover:text-red-500">
-                          <X size={14} />
-                        </button>
-                      )}
-                    </div>
+                    )}
                   </div>
                 </div>
-              )}
+              </div>
             </div>
           )}
         </div>
@@ -728,7 +736,12 @@ export default function NewInvoiceForm({
               <div className="flex justify-between text-ink-600 border-b border-lilac-200 pb-1.5">
                 <span>IVA 15%</span><span>${ivaAmount.toFixed(2)}</span>
               </div>
-              <div className="flex justify-between text-base font-bold text-ink-900 pt-0.5">
+              {isCard && cardSurchargeAmount > 0 && (
+                <div className="flex justify-between text-ink-600">
+                  <span>Recargo Tarjeta ({cardSurchargePercent}%)</span><span>${cardSurchargeAmount.toFixed(2)}</span>
+                </div>
+              )}
+              <div className="flex justify-between text-base font-bold text-ink-900 pt-0.5 border-t border-lilac-200 mt-1">
                 <span>TOTAL</span><span className="text-lilac-700">${totalFactura.toFixed(2)}</span>
               </div>
             </div>

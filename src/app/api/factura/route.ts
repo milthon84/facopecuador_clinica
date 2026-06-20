@@ -51,10 +51,32 @@ export async function POST(req: Request) {
     }
 
     // 3. Calcular totales con redondeo para evitar errores de punto flotante
+    let invoiceItems = [...items];
+    if (payment_method === "tarjeta_credito") {
+      const surchargePercent = Number(config.card_surcharge_percent ?? 5.0);
+      if (surchargePercent > 0) {
+        const tempSub15 = items.filter((i: any) => i.iva_code === "4").reduce((acc: number, i: any) => acc + ((Number(i.quantity) * Number(i.unit_price)) - Number(i.discount || 0)), 0);
+        const tempSub0  = items.filter((i: any) => i.iva_code === "0").reduce((acc: number, i: any) => acc + ((Number(i.quantity) * Number(i.unit_price)) - Number(i.discount || 0)), 0);
+        const surchargeAmount = round2((tempSub15 + tempSub0) * (surchargePercent / 100));
+
+        if (surchargeAmount > 0) {
+          invoiceItems.push({
+            code: "COM-TARJETA",
+            description: `Recargo por Pago con Tarjeta (${surchargePercent}%)`,
+            quantity: 1,
+            unit_price: surchargeAmount,
+            discount: 0,
+            iva_code: "0",
+            category: "Otros",
+          });
+        }
+      }
+    }
+
     let subtotal15 = 0;
     let subtotal0 = 0;
 
-    const detalles: SRIInvoiceData["detalles"] = items.map((item: any, index: number) => {
+    const detalles: SRIInvoiceData["detalles"] = invoiceItems.map((item: any, index: number) => {
       const q = Number(item.quantity);
       const pu = Number(item.unit_price);
       const desc = round2(Number(item.discount || 0));
@@ -89,7 +111,7 @@ export async function POST(req: Request) {
     const totalSinImpuestos = round2(subtotal15 + subtotal0);
     const iva15 = round2(subtotal15 * 0.15);
     const importeTotal = round2(totalSinImpuestos + iva15);
-    const totalDescuento = round2(items.reduce((acc: number, i: any) => acc + round2(Number(i.discount || 0)), 0));
+    const totalDescuento = round2(invoiceItems.reduce((acc: number, i: any) => acc + round2(Number(i.discount || 0)), 0));
 
     // 4. Generar Secuencial ATÓMICO usando la función de PostgreSQL (sin race condition)
     const { data: secData, error: secError } = await supabase.rpc("next_invoice_secuencial");
