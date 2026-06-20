@@ -170,6 +170,7 @@ export async function POST(req: Request) {
     let sri_authorization_number: string = claveAcceso;
     let sri_authorization_date: string   = new Date().toISOString();
     let sri_error_messages: object | null = null;
+    let finalXmlToSave = xmlFactura;
 
     if (enviarAlSRI) {
       // Verificar certificado
@@ -198,6 +199,7 @@ export async function POST(req: Request) {
         return NextResponse.json({ error: "Contraseña del certificado no configurada." }, { status: 400 });
       }
       const xmlFirmado = signXMLWithP12(xmlFactura, p12Buffer, password);
+      finalXmlToSave = xmlFirmado;
 
       // Enviar al SRI (pruebas: celcer.sri.gob.ec | producción: cel.sri.gob.ec)
       const { recepcion, autorizacion } = await enviarYAutorizar(
@@ -262,6 +264,32 @@ export async function POST(req: Request) {
     }));
 
     await supabase.from("invoice_items").insert(itemsToInsert);
+
+    // 12. Generar RIDE y enviar por correo si fue autorizado
+    if (sri_status === "authorized") {
+      try {
+        const { generateRidePdf } = await import("@/lib/pdf-ride");
+        const { sendInvoiceEmail } = await import("@/lib/email");
+
+        const pdfBuffer = await generateRidePdf(invoiceData, {
+          invoiceNumber,
+          authorizationNumber: sri_authorization_number,
+          authorizationDate: sri_authorization_date
+        });
+        
+        const xmlBuffer = Buffer.from(finalXmlToSave, "utf-8");
+
+        await sendInvoiceEmail(
+          client_email,
+          client_name,
+          invoiceNumber,
+          xmlBuffer,
+          pdfBuffer
+        );
+      } catch (err) {
+        console.error("Error al generar RIDE o enviar correo:", err);
+      }
+    }
 
     // 11. Actualizar payment_status
     // Efectivo = cobrado inmediatamente; con cuenta bancaria = cobrado; resto = pendiente

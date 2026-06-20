@@ -10,9 +10,12 @@ import ReintentoSriButton from "@/components/ReintentoSriButton";
 
 export const dynamic = "force-dynamic";
 
-function StatusBadge({ status }: { status: string }) {
+function StatusBadge({ status, env }: { status: string; env?: string }) {
+  const isProd = env === "2";
+  const authLabel = env ? `Autorizado (${isProd ? "Producción" : "Pruebas"})` : "Autorizado";
+  
   const map: Record<string, { bg: string; icon: React.ReactNode; label: string }> = {
-    authorized: { bg: "bg-green-100 text-green-700 border-green-200", icon: <CheckCircle2 size={14} />, label: "Autorizado" },
+    authorized: { bg: "bg-green-100 text-green-700 border-green-200", icon: <CheckCircle2 size={14} />, label: authLabel },
     rejected:   { bg: "bg-red-100 text-red-700 border-red-200",       icon: <XCircle size={14} />,      label: "Rechazado"  },
     error:      { bg: "bg-red-100 text-red-700 border-red-200",       icon: <AlertCircle size={14} />,  label: "Error"      },
     submitted:  { bg: "bg-blue-100 text-blue-700 border-blue-200",    icon: <Clock size={14} />,        label: "Enviado"    },
@@ -80,7 +83,7 @@ export default async function InvoiceDetailPage({ params }: { params: { id: stri
             <h1 className="text-xl font-bold text-ink-900">
               Factura {invoice.invoice_number || "Borrador"}
             </h1>
-            <StatusBadge status={invoice.sri_status} />
+            <StatusBadge status={invoice.sri_status || "draft"} env={invoice.sri_environment} />
             {invoice.payment_status && <PaymentBadge status={invoice.payment_status} />}
           </div>
           <p className="text-xs text-ink-500 mt-0.5">{issuedAt}</p>

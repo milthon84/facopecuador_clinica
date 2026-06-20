@@ -15,9 +15,11 @@ export default async function BillingDashboard() {
 
   const items = invoices || [];
   
-  const getStatusStyle = (status: string) => {
+  const getStatusStyle = (status: string, env?: string) => {
     switch(status) {
-      case 'authorized': return { bg: 'bg-green-100 text-green-700', icon: <CheckCircle2 size={14} />, text: 'Autorizado' };
+      case 'authorized': 
+        const suffix = env === "2" ? "Producción" : "Pruebas";
+        return { bg: 'bg-green-100 text-green-700', icon: <CheckCircle2 size={14} />, text: `Autorizado (${suffix})` };
       case 'rejected': return { bg: 'bg-red-100 text-red-700', icon: <XCircle size={14} />, text: 'Rechazado' };
       case 'error': return { bg: 'bg-red-100 text-red-700', icon: <AlertCircle size={14} />, text: 'Error' };
       case 'draft': return { bg: 'bg-amber-100 text-amber-700', icon: <Clock size={14} />, text: 'Borrador' };
@@ -73,7 +75,7 @@ export default async function BillingDashboard() {
                 </tr>
               ) : (
                 items.map((inv) => {
-                  const style = getStatusStyle(inv.sri_status);
+                  const style = getStatusStyle(inv.sri_status, inv.sri_environment);
                   const dateStr = new Date(inv.created_at).toLocaleDateString('es-EC');
                   
                   return (

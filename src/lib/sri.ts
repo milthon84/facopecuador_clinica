@@ -160,9 +160,7 @@ export function generarXMLFactura(data: SRIInvoiceData): string {
   xml += `    <tipoIdentificacionComprador>${data.tipoIdentificacionComprador}</tipoIdentificacionComprador>\n`;
   xml += `    <razonSocialComprador>${xe(data.razonSocialComprador)}</razonSocialComprador>\n`;
   xml += `    <identificacionComprador>${data.identificacionComprador}</identificacionComprador>\n`;
-  if (data.direccionComprador) {
-    xml += `    <direccionComprador>${xe(data.direccionComprador)}</direccionComprador>\n`;
-  }
+
   xml += `    <totalSinImpuestos>${formatNum(data.totalSinImpuestos)}</totalSinImpuestos>\n`;
   xml += `    <totalDescuento>${formatNum(data.totalDescuento)}</totalDescuento>\n`;
   
@@ -246,9 +244,14 @@ export function generarXMLFactura(data: SRIInvoiceData): string {
   xml += `  </detalles>\n`;
 
   // Info Adicional
-  if (data.infoAdicional && Object.keys(data.infoAdicional).length > 0) {
+  const infoAdic: Record<string, string> = { ...data.infoAdicional };
+  if (data.direccionComprador && !infoAdic["Direccion"] && !infoAdic["Dirección"]) {
+    infoAdic["Direccion"] = data.direccionComprador;
+  }
+
+  if (Object.keys(infoAdic).length > 0) {
     xml += `  <infoAdicional>\n`;
-    Object.entries(data.infoAdicional).forEach(([key, val]) => {
+    Object.entries(infoAdic).forEach(([key, val]) => {
       xml += `    <campoAdicional nombre="${xe(key)}">${xe(val)}</campoAdicional>\n`;
     });
     xml += `  </infoAdicional>\n`;

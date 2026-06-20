@@ -740,3 +740,64 @@ export async function sendDentalConsultationEmail(d: DentalEmailData) {
   }
 }
 
+export async function sendInvoiceEmail(
+  clientEmail: string,
+  clientName: string,
+  invoiceNumber: string,
+  xmlBuffer: Buffer,
+  pdfBuffer: Buffer
+): Promise<boolean> {
+  if (!resend) {
+    console.warn("⚠️ Envío de correo cancelado: Resend no está configurado.");
+    return false;
+  }
+  if (!clientEmail) return false;
+
+  const body = `
+    <h2 style="color:#7E5DB4; margin:0 0 8px; font-size:22px; font-weight:700;">Comprobante Electrónico Autorizado 🧾</h2>
+    <p style="font-size:15px; line-height:1.6; margin:0 0 4px;">Estimado/a <strong>${clientName}</strong>,</p>
+    <p style="font-size:15px; line-height:1.6; margin:0 0 24px; color:#444;">Le informamos que se ha emitido un nuevo comprobante electrónico a su nombre.</p>
+
+    <table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-bottom:16px;">
+      <tr>
+        <td style="background:#fbf7ee; border-left:4px solid #C9A961; padding:16px 20px; border-radius:0 8px 8px 0;">
+          <div style="font-size:13px; font-weight:700; color:#9e7920; margin-bottom:4px;">Emisor: <span style="color:#1a1a1a; font-weight:600;">${CLINIC}</span></div>
+          <div style="font-size:13px; font-weight:700; color:#9e7920; margin-bottom:4px;">Factura N°: <span style="color:#1a1a1a; font-weight:600;">${invoiceNumber}</span></div>
+          <div style="font-size:13px; font-weight:700; color:#9e7920;">Fecha: <span style="color:#1a1a1a; font-weight:600;">${new Date().toLocaleDateString("es-EC")}</span></div>
+        </td>
+      </tr>
+    </table>
+
+    <p style="font-size:14px; color:#555; background:#f9f9f9; padding:12px 16px; border-radius:8px; margin:0 0 16px;">
+      Adjunto a este correo encontrará la representación impresa (RIDE) en formato PDF y el comprobante electrónico en formato XML, los cuales tienen total validez tributaria ante el SRI.
+    </p>
+  `;
+
+  try {
+    const response = await resend.emails.send({
+      from: FROM,
+      to: clientEmail,
+      subject: `Factura Electrónica ${invoiceNumber} - ${CLINIC}`,
+      html: baseHtml("Comprobante Electrónico", body),
+      attachments: [
+        {
+          filename: `Factura_${invoiceNumber}.pdf`,
+          content: pdfBuffer,
+        },
+        {
+          filename: `Factura_${invoiceNumber}.xml`,
+          content: xmlBuffer,
+        }
+      ]
+    });
+    
+    if (response.error) {
+      console.error(`❌ Error retornado por Resend al enviar factura a ${clientEmail}:`, response.error);
+      return false;
+    }
+    return true;
+  } catch (error) {
+    console.error(`❌ Excepción de red/sistema en Resend al enviar factura a ${clientEmail}:`, error);
+    return false;
+  }
+}
