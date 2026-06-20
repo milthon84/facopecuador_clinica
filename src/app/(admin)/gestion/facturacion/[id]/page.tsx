@@ -177,10 +177,13 @@ export default async function InvoiceDetailPage({ params }: { params: { id: stri
             {invoice.payment_method && (
               <div>
                 <span className="text-[11px] text-ink-400 uppercase tracking-wide">Forma de pago</span>
-                <p className="text-sm text-ink-800 flex items-center gap-1.5">
+                <p className="text-sm text-ink-800 flex items-center gap-1.5 flex-wrap">
                   <CreditCard size={13} className="text-ink-400" />
                   {PAYMENT_METHOD_LABELS[invoice.payment_method] ?? invoice.payment_method}
-                  {invoice.payment_reference && <span className="text-ink-400 font-mono text-xs">· {invoice.payment_reference}</span>}
+                  {invoice.card_type && <span className="text-lilac-700 font-semibold text-xs">({invoice.card_type})</span>}
+                  {invoice.card_voucher && <span className="text-ink-500 font-mono text-xs">· Voucher: {invoice.card_voucher}</span>}
+                  {invoice.card_lote && <span className="text-ink-500 font-mono text-xs">· Lote: {invoice.card_lote}</span>}
+                  {invoice.payment_reference && !invoice.card_voucher && <span className="text-ink-400 font-mono text-xs">· Ref: {invoice.payment_reference}</span>}
                 </p>
               </div>
             )}

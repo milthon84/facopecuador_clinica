@@ -43,6 +43,7 @@ export async function POST(req: Request) {
     const {
       patient_id, client_name, client_document, client_email, client_phone, client_address, items,
       payment_method = "efectivo", bank_account_id, payment_reference,
+      card_type, card_lote, card_voucher,
     } = body;
 
     if (!client_name || !client_document || !items || items.length === 0) {
@@ -247,6 +248,9 @@ export async function POST(req: Request) {
       payment_method:    payment_method    || null,
       bank_account_id:   bank_account_id   || null,
       payment_reference: payment_reference || null,
+      card_type:         card_type         || null,
+      card_lote:         card_lote         || null,
+      card_voucher:      card_voucher      || null,
       ...(sri_error_messages ? { sri_error_messages } : {}),
     }).select().single();
 
@@ -316,6 +320,9 @@ export async function POST(req: Request) {
           invoice_id:     invoice.id,
           status:         "confirmado",
           origin:         "automatico",
+          card_type:      card_type         || null,
+          card_lote:      card_lote         || null,
+          card_voucher:   card_voucher      || null,
         });
       } catch (bankErr) {
         console.error("Transacción bancaria no registrada:", bankErr);
