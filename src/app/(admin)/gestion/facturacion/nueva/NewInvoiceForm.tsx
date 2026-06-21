@@ -38,6 +38,7 @@ interface BankAccount {
   bank_name: string;
   account_number: string | null;
   account_type: string; // ahorros | corriente | caja
+  notes?: string | null;
 }
 
 const PAYMENT_METHODS = [
@@ -215,10 +216,9 @@ export default function NewInvoiceForm({
       e.items = "El total de la factura debe ser mayor a $0.00";
     }
 
-    // Transferencia/Depósito requiere cuenta y número de referencia
+    // Transferencia/Depósito requiere cuenta
     if (paymentMethod === "transferencia") {
       if (!bankAccountId) e.bankAccountId = "Selecciona la cuenta donde recibiste el pago";
-      if (!paymentReference.trim()) e.paymentReference = "El número de comprobante/referencia es obligatorio";
     }
 
     // Tarjeta de Crédito requiere datos de tarjeta
@@ -470,7 +470,7 @@ export default function NewInvoiceForm({
                     <option value="">— Cuenta destino —</option>
                     {bankAccounts.filter(b => b.account_type !== "caja").map(b => (
                       <option key={b.id} value={b.id}>
-                        {b.bank_name}{b.account_number ? ` · ${b.account_number}` : ""}
+                        {b.bank_name}{b.account_number ? ` · ${b.account_number}` : ""}{b.notes ? ` (${b.notes})` : ""}
                       </option>
                     ))}
                   </select>
@@ -478,10 +478,10 @@ export default function NewInvoiceForm({
                 </div>
 
                 <div className="space-y-1">
-                  <label className="text-xs font-semibold text-ink-700">N° Referencia *</label>
+                  <label className="text-xs font-semibold text-ink-700">N° Referencia</label>
                   <input type="text" value={paymentReference}
                     onChange={e => { setPaymentReference(e.target.value); setFormErrors(p => ({ ...p, paymentReference: "" })); }}
-                    placeholder="TRF-001234"
+                    placeholder="TRF-001234 (Opcional)"
                     className={`w-full bg-white border rounded-xl px-3 py-2 text-sm focus:ring-2 focus:ring-amber-400 focus:outline-none font-mono ${formErrors.paymentReference ? "border-red-400" : "border-amber-300"}`} />
                   {formErrors.paymentReference && <p className="text-xs text-red-500">{formErrors.paymentReference}</p>}
                 </div>
