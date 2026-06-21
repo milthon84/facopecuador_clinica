@@ -15,7 +15,7 @@ export default async function NewInvoicePage({
     searchParams.patient_id
       ? supabase.from("patients").select("id, full_name, document_number, email, phone").eq("id", searchParams.patient_id).single()
       : Promise.resolve({ data: null }),
-    supabase.from("services").select("id, name, description, price, iva_code, category").eq("active", true).order("category").order("sort_order"),
+    supabase.from("services").select("id, name, description, price, iva_code, category").eq("active", true).order("category").order("name"),
     supabase.from("bank_accounts").select("id, bank_name, account_number, account_type").eq("is_active", true).order("bank_name"),
     supabase.from("sri_configs").select("*").maybeSingle(),
   ]);

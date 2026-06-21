@@ -66,7 +66,7 @@ export default async function ServiciosPage({
     .from("services")
     .select("*")
     .order("category")
-    .order("sort_order");
+    .order("name");
 
   type Service = {
     id: string;
