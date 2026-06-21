@@ -317,79 +317,82 @@ export async function POST(req: Request) {
       }
     }
 
-    // 11. Actualizar payment_status
-    // Efectivo = cobrado inmediatamente; con cuenta bancaria = cobrado; resto = pendiente
-    const isPaidImmediately = payment_method === "efectivo" || !!bank_account_id;
-    try {
-      await supabase.from("invoices").update({
-        payment_status: isPaidImmediately ? "paid" : "pending",
-      }).eq("id", invoice.id);
-    } catch { /* columna aún no existe — ejecutar migration_cuentas_cobrar_pagar.sql */ }
-
-    const today = new Date().toISOString().split("T")[0];
-
-    if (bank_account_id) {
-      // Transferencia/Tarjeta → registra en la cuenta bancaria seleccionada
+    // 11. Registrar en bancos y contabilidad SOLO si la factura fue autorizada o enviada con éxito al SRI
+    if (sri_status === "authorized" || sri_status === "submitted") {
+      // Actualizar payment_status
+      // Efectivo = cobrado inmediatamente; con cuenta bancaria = cobrado; resto = pendiente
+      const isPaidImmediately = payment_method === "efectivo" || !!bank_account_id;
       try {
-        await supabase.from("bank_transactions").insert({
-          account_id:     bank_account_id,
-          type:           "ingreso",
-          amount:         importeTotal,
-          date:           today,
-          description:    `Factura ${invoiceNumber} — ${client_name}`,
-          reference:      payment_reference || claveAcceso.slice(-8),
-          payment_method,
-          invoice_id:     invoice.id,
-          status:         "confirmado",
-          origin:         "automatico",
-          card_type:      card_type         || null,
-          card_lote:      card_lote         || null,
-          card_voucher:   card_voucher      || null,
-        });
-      } catch (bankErr) {
-        console.error("Transacción bancaria no registrada:", bankErr);
-      }
-    } else if (payment_method === "efectivo") {
-      // Efectivo → registra automáticamente en la Caja General
-      try {
-        const { data: cajaGeneral } = await supabase
-          .from("bank_accounts")
-          .select("id")
-          .eq("is_caja_general", true)
-          .eq("is_active", true)
-          .maybeSingle();
+        await supabase.from("invoices").update({
+          payment_status: isPaidImmediately ? "paid" : "pending",
+        }).eq("id", invoice.id);
+      } catch { /* columna aún no existe — ejecutar migration_cuentas_cobrar_pagar.sql */ }
 
-        if (cajaGeneral) {
+      const today = new Date().toISOString().split("T")[0];
+
+      if (bank_account_id) {
+        // Transferencia/Tarjeta → registra en la cuenta bancaria seleccionada
+        try {
           await supabase.from("bank_transactions").insert({
-            account_id:     cajaGeneral.id,
+            account_id:     bank_account_id,
             type:           "ingreso",
             amount:         importeTotal,
             date:           today,
-            description:    `Cobro efectivo Factura ${invoiceNumber} — ${client_name}`,
-            payment_method: "efectivo",
+            description:    `Factura ${invoiceNumber} — ${client_name}`,
+            reference:      payment_reference || claveAcceso.slice(-8),
+            payment_method,
             invoice_id:     invoice.id,
             status:         "confirmado",
             origin:         "automatico",
+            card_type:      card_type         || null,
+            card_lote:      card_lote         || null,
+            card_voucher:   card_voucher      || null,
           });
+        } catch (bankErr) {
+          console.error("Transacción bancaria no registrada:", bankErr);
         }
-      } catch (cajaErr) {
-        console.error("Registro Caja General no creado:", cajaErr);
-      }
-    }
+      } else if (payment_method === "efectivo") {
+        // Efectivo → registra automáticamente en la Caja General
+        try {
+          const { data: cajaGeneral } = await supabase
+            .from("bank_accounts")
+            .select("id")
+            .eq("is_caja_general", true)
+            .eq("is_active", true)
+            .maybeSingle();
 
-    // 12. Generar asiento contable automático
-    try {
-      await createInvoiceJournalEntry({
-        invoice_id:   invoice.id,
-        invoice_date: new Date().toISOString().split("T")[0],
-        client_name,
-        subtotal_0:   subtotal0,
-        subtotal_15:  subtotal15,
-        iva_amount:   iva15,
-        total:        importeTotal,
-      });
-    } catch (accErr) {
-      console.error("Asiento contable no generado:", accErr);
+          if (cajaGeneral) {
+            await supabase.from("bank_transactions").insert({
+              account_id:     cajaGeneral.id,
+              type:           "ingreso",
+              amount:         importeTotal,
+              date:           today,
+              description:    `Cobro efectivo Factura ${invoiceNumber} — ${client_name}`,
+              payment_method: "efectivo",
+              invoice_id:     invoice.id,
+              status:         "confirmado",
+              origin:         "automatico",
+            });
+          }
+        } catch (cajaErr) {
+          console.error("Registro Caja General no creado:", cajaErr);
+        }
+      }
+
+      // 12. Generar asiento contable automático
+      try {
+        await createInvoiceJournalEntry({
+          invoice_id:   invoice.id,
+          invoice_date: new Date().toISOString().split("T")[0],
+          client_name,
+          subtotal_0:   subtotal0,
+          subtotal_15:  subtotal15,
+          iva_amount:   iva15,
+          total:        importeTotal,
+        });
+      } catch (accErr) {
+        console.error("Asiento contable no generado:", accErr);
+      }
     }
 
     return NextResponse.json({
