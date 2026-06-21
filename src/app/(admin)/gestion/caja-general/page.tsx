@@ -23,8 +23,12 @@ async function transferFromCajaGeneral(formData: FormData) {
   const date           = formData.get("date") as string;
   const reference      = (formData.get("reference") as string)?.trim() || null;
   const destino_nombre = (formData.get("destino_nombre") as string) || "cuenta destino";
+  const notes          = (formData.get("notes") as string)?.trim();
 
   if (amount <= 0) throw new Error("Monto inválido");
+
+  const descEgreso  = notes ? `Transferencia a ${destino_nombre} — ${notes}` : `Transferencia a ${destino_nombre}`;
+  const descIngreso = notes ? `Transferencia desde Caja General — ${notes}` : `Transferencia desde Caja General`;
 
   // Egreso de Caja General
   await supabase.from("bank_transactions").insert({
@@ -32,7 +36,7 @@ async function transferFromCajaGeneral(formData: FormData) {
     type:           "egreso",
     amount,
     date,
-    description:    `Transferencia a ${destino_nombre}`,
+    description:    descEgreso,
     reference,
     payment_method: "efectivo",
     status:         "confirmado",
@@ -45,7 +49,7 @@ async function transferFromCajaGeneral(formData: FormData) {
     type:           "ingreso",
     amount,
     date,
-    description:    `Transferencia desde Caja General`,
+    description:    descIngreso,
     reference,
     payment_method: "efectivo",
     status:         "confirmado",
@@ -211,6 +215,12 @@ export default async function CajaGeneralPage({
               <label className="text-xs font-semibold text-ink-700">N° Referencia / Comprobante</label>
               <input type="text" name="reference" placeholder="Comprobante de depósito, cheque..."
                 className="w-full border border-green-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-green-400 bg-white font-mono" />
+            </div>
+
+            <div className="sm:col-span-2 space-y-1">
+              <label className="text-xs font-semibold text-ink-700">Notas (opcional)</label>
+              <textarea name="notes" placeholder="Notas adicionales sobre la transferencia..." rows={2}
+                className="w-full border border-green-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-400 bg-white" />
             </div>
 
             <div className="sm:col-span-2 flex justify-end">
