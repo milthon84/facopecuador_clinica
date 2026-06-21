@@ -16,16 +16,31 @@ async function transferFromCajaGeneral(formData: FormData) {
   const { data: { user } } = await session.auth.getUser();
   if (!["admin", "contador"].includes(user?.app_metadata?.role as string)) throw new Error("Sin permisos");
 
-  const supabase       = createAdminClient();
-  const caja_id        = formData.get("caja_id") as string;
-  const destino_id     = formData.get("destino_id") as string;
-  const amount         = Number(formData.get("amount"));
-  const date           = formData.get("date") as string;
-  const reference      = (formData.get("reference") as string)?.trim() || null;
-  const destino_nombre = (formData.get("destino_nombre") as string) || "cuenta destino";
-  const notes          = (formData.get("notes") as string)?.trim();
+  const supabase   = createAdminClient();
+  const caja_id    = formData.get("caja_id") as string;
+  const destino_id = formData.get("destino_id") as string;
+  const amount     = Number(formData.get("amount"));
+  const date       = formData.get("date") as string;
+  const reference  = (formData.get("reference") as string)?.trim() || null;
+  const notes      = (formData.get("notes") as string)?.trim();
 
   if (amount <= 0) throw new Error("Monto inválido");
+
+  // Consultar información del destino para armar el nombre real de la cuenta
+  const { data: destAccount } = await supabase
+    .from("bank_accounts")
+    .select("bank_name, account_number, account_type")
+    .eq("id", destino_id)
+    .maybeSingle();
+
+  let destino_nombre = "cuenta destino";
+  if (destAccount) {
+    if (destAccount.account_type === "caja") {
+      destino_nombre = `Caja Chica — ${destAccount.bank_name}`;
+    } else {
+      destino_nombre = `${destAccount.bank_name}${destAccount.account_number ? ` · ${destAccount.account_number}` : ""}`;
+    }
+  }
 
   const descEgreso  = notes ? `Transferencia a ${destino_nombre} — ${notes}` : `Transferencia a ${destino_nombre}`;
   const descIngreso = notes ? `Transferencia desde Caja General — ${notes}` : `Transferencia desde Caja General`;
@@ -190,8 +205,6 @@ export default async function CajaGeneralPage({
                   <option key={d.id} value={d.id}>{d.label}</option>
                 ))}
               </select>
-              {/* destino_nombre oculto - lo ponemos como descripción en el insert */}
-              <input type="hidden" name="destino_nombre" value="cuenta seleccionada" />
             </div>
 
             <div className="space-y-1">
