@@ -57,10 +57,11 @@ async function updateService(formData: FormData) {
 }
 
 export default async function ServiciosPage({
-  searchParams,
+  searchParams: searchParamsPromise,
 }: {
-  searchParams: { edit?: string };
+  searchParams: Promise<{ edit?: string }>;
 }) {
+  const searchParams = await searchParamsPromise;
   const supabase = createAdminClient();
   const { data: services } = await supabase
     .from("services")

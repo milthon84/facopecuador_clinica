@@ -32,8 +32,9 @@ function getSection(map: Map<string, AccountBalance>, prefix: string, invert = f
 }
 
 export default async function BalanceGeneralPage({
-  searchParams,
-}: { searchParams: { to?: string } }) {
+  searchParams: searchParamsPromise,
+}: { searchParams: Promise<{ to?: string }> }) {
+  const searchParams = await searchParamsPromise;
   const now = new Date();
   const toDate = searchParams.to ?? new Date(now.getFullYear(), now.getMonth() + 1, 0).toISOString().split("T")[0];
 

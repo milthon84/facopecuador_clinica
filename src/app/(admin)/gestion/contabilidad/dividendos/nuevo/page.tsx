@@ -44,11 +44,12 @@ async function saveDividend(formData: FormData) {
   redirect(`/gestion/contabilidad/dividendos?year=${year}`);
 }
 
-export default function NuevoDividendoPage({
-  searchParams,
+export default async function NuevoDividendoPage({
+  searchParams: searchParamsPromise,
 }: {
-  searchParams: { year?: string };
+  searchParams: Promise<{ year?: string }>;
 }) {
+  const searchParams = await searchParamsPromise;
   const year = searchParams.year ?? String(new Date().getFullYear());
   const today = new Date().toISOString().split("T")[0];
 

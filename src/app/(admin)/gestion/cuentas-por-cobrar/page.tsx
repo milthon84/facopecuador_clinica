@@ -118,8 +118,9 @@ async function recordPartialPayment(formData: FormData) {
 // ── Page ───────────────────────────────────────────────────────────────────
 
 export default async function CuentasPorCobrarPage({
-  searchParams,
-}: { searchParams: { pay?: string } }) {
+  searchParams: searchParamsPromise,
+}: { searchParams: Promise<{ pay?: string }> }) {
+  const searchParams = await searchParamsPromise;
   const supabase = createAdminClient();
 
   const [{ data: invoices }, { data: allPayments }, { data: bankAccounts }] = await Promise.all([

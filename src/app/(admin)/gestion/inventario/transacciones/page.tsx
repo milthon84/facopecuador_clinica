@@ -9,10 +9,11 @@ import type { UserRole } from "@/lib/roles";
 export const dynamic = "force-dynamic";
 
 export default async function TransactionsPage({
-  searchParams,
+  searchParams: searchParamsPromise,
 }: {
-  searchParams: { product?: string };
+  searchParams: Promise<{ product?: string }>;
 }) {
+  const searchParams = await searchParamsPromise;
   const supabase = createAdminClient();
   const preselectedProduct = searchParams.product || "";
 

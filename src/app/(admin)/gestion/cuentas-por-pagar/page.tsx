@@ -60,8 +60,9 @@ async function recordExpensePayment(formData: FormData) {
 // ── Page ───────────────────────────────────────────────────────────────────
 
 export default async function CuentasPorPagarPage({
-  searchParams,
-}: { searchParams: { pay?: string } }) {
+  searchParams: searchParamsPromise,
+}: { searchParams: Promise<{ pay?: string }> }) {
+  const searchParams = await searchParamsPromise;
   const supabase = createAdminClient();
 
   const [{ data: expenses }, { data: allPayments }, { data: bankAccounts }] = await Promise.all([

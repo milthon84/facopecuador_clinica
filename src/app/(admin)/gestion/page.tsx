@@ -9,15 +9,17 @@ import {
   FileText,
   ChevronLeft,
   ChevronRight,
+  Plus,
 } from "lucide-react";
 
 export const dynamic = "force-dynamic";
 
 export default async function AdminDashboard({
-  searchParams,
+  searchParams: searchParamsPromise,
 }: {
-  searchParams: { date?: string };
+  searchParams: Promise<{ date?: string }>;
 }) {
+  const searchParams = await searchParamsPromise;
   const supabase = createAdminClient();
 
   // Determinar la fecha objetivo
@@ -113,6 +115,8 @@ export default async function AdminDashboard({
     },
   ].filter((g) => g.items.length > 0);
 
+  const targetDateStr = `${targetDate.getFullYear()}-${String(targetDate.getMonth() + 1).padStart(2, '0')}-${String(targetDate.getDate()).padStart(2, '0')}`;
+
   return (
     <div>
       {/* Encabezado */}
@@ -147,19 +151,27 @@ export default async function AdminDashboard({
           </div>
         </div>
 
-        {total > 0 && (
-          <div className="shrink-0 text-right">
-            <div className="w-36 bg-lilac-100 rounded-full h-2 overflow-hidden">
-              <div
-                className="bg-lilac-500 h-2 rounded-full"
-                style={{ width: `${processPct}%` }}
-              />
+        <div className="flex items-center gap-4 shrink-0">
+          {total > 0 && (
+            <div className="shrink-0 text-right hidden sm:block">
+              <div className="w-36 bg-lilac-100 rounded-full h-2 overflow-hidden">
+                <div
+                  className="bg-lilac-500 h-2 rounded-full"
+                  style={{ width: `${processPct}%` }}
+                />
+              </div>
+              <div className="text-xs font-medium text-lilac-700 mt-1">
+                {processPct}% del día completado
+              </div>
             </div>
-            <div className="text-xs font-medium text-lilac-700 mt-1">
-              {processPct}% del día completado
-            </div>
-          </div>
-        )}
+          )}
+          <Link
+            href={`/gestion/citas/nueva?date=${targetDateStr}`}
+            className="flex items-center gap-1.5 bg-lilac-600 text-white text-xs sm:text-sm px-3.5 py-2 rounded-xl hover:bg-lilac-700 transition font-medium shadow-sm"
+          >
+            <Plus size={15} /> Nueva Cita
+          </Link>
+        </div>
       </div>
 
       {/* Stats compactas */}

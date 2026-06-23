@@ -7,10 +7,11 @@ import InventoryImportExport from "@/components/InventoryImportExport";
 export const dynamic = "force-dynamic";
 
 export default async function InventoryDashboard({
-  searchParams,
+  searchParams: searchParamsPromise,
 }: {
-  searchParams: { q?: string; category?: string };
+  searchParams: Promise<{ q?: string; category?: string }>;
 }) {
+  const searchParams = await searchParamsPromise;
   const supabase = createAdminClient();
   const q = searchParams.q || "";
   const category = searchParams.category || "";

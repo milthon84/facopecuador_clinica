@@ -30,14 +30,16 @@ const PAYMENT_LABELS: Record<string, string> = {
   efectivo:     "Efectivo",
   transferencia:"Transferencia",
   tarjeta:      "Tarjeta",
+  tarjeta_credito: "Tarjeta",
   credito:      "Crédito",
 };
 
 export default async function GastosPage({
-  searchParams,
+  searchParams: searchParamsPromise,
 }: {
-  searchParams: { month?: string };
+  searchParams: Promise<{ month?: string }>;
 }) {
+  const searchParams = await searchParamsPromise;
   const supabase = createAdminClient();
 
   // Mes activo (default: mes actual)
@@ -75,13 +77,13 @@ export default async function GastosPage({
       <div className="flex items-center justify-between gap-3 mb-5">
         <div className="flex items-center gap-2">
           <ShoppingCart size={20} className="text-lilac-600 shrink-0" />
-          <h1 className="text-xl font-bold text-ink-900">Compras</h1>
+          <h1 className="text-xl font-bold text-ink-900">Gastos / Compras</h1>
         </div>
         <Link
           href="/gestion/gastos/nuevo"
           className="flex items-center gap-1.5 text-sm bg-lilac-600 hover:bg-lilac-700 text-white px-3 py-1.5 rounded-xl transition-colors font-medium shadow-sm"
         >
-          <Plus size={15} /> Registrar compra
+          <Plus size={15} /> Registrar Gasto / Compra
         </Link>
       </div>
 

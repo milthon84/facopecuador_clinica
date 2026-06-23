@@ -30,8 +30,17 @@ export async function POST(req: Request) {
   const { patient, starts_at, ends_at, reason } = parse.data;
 
   const startsDate = new Date(starts_at);
-  if (isNaN(startsDate.getTime()) || startsDate.getTime() < Date.now()) {
-    return NextResponse.json({ error: "Horario inválido o pasado" }, { status: 400 });
+  if (isNaN(startsDate.getTime())) {
+    return NextResponse.json({ error: "Horario inválido" }, { status: 400 });
+  }
+
+  // Si no es personal de la clínica autenticado, no permitir agendar en el pasado
+  const { getSessionUser } = await import("@/lib/supabase/auth");
+  const user = await getSessionUser(req);
+  const isClinicStaff = !!user && (user.app_metadata?.role === "admin" || user.app_metadata?.role === "recepcionista");
+
+  if (!isClinicStaff && startsDate.getTime() < Date.now()) {
+    return NextResponse.json({ error: "No se puede agendar citas en el pasado" }, { status: 400 });
   }
 
   const supabase = createAdminClient();

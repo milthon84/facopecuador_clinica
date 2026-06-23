@@ -8,7 +8,7 @@ const CATEGORIES = [
   "Salarios", "Suministros oficina", "Mantenimiento", "Publicidad", "Otros",
 ];
 
-type Account = { id: string; bank_name: string; account_number: string | null; account_type: string };
+type Account = { id: string; bank_name: string; account_number: string | null; account_type: string; notes?: string | null };
 
 interface Props {
   today: string;
@@ -19,41 +19,76 @@ interface Props {
 
 export default function NuevaCompraForm({ today, bankAccounts, cajaAccounts, saveExpense }: Props) {
   const [method, setMethod] = useState("efectivo");
+  const [docType, setDocType] = useState("factura"); // "factura" | "nota_venta" | "sin_documento"
 
   const needsAccount   = method === "efectivo" || method === "transferencia";
-  const needsReference = method === "transferencia" || method === "tarjeta_credito";
+  const needsReference = method === "transferencia";
   const accountOptions = method === "efectivo" ? cajaAccounts : bankAccounts;
   const accountLabel   = method === "efectivo" ? "Caja chica" : "Cuenta bancaria destino";
+
+  const isSinDocumento = docType === "sin_documento";
 
   return (
     <form action={saveExpense} noValidate className="space-y-3">
 
-      {/* Proveedor + RUC */}
+      {/* Tipo de Comprobante */}
+      <div className="space-y-1">
+        <label className="text-xs font-semibold text-ink-700">Tipo de Comprobante *</label>
+        <select
+          value={docType}
+          onChange={(e) => setDocType(e.target.value)}
+          className="w-full border border-lilac-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-lilac-400 bg-white"
+        >
+          <option value="factura">Factura</option>
+          <option value="nota_venta">Nota de Venta</option>
+          <option value="sin_documento">Sin Documento / Gasto Directo</option>
+        </select>
+      </div>
+
+      {/* Proveedor / Beneficiario + RUC */}
       <div className="grid grid-cols-2 gap-3">
         <div className="space-y-1">
-          <label className="text-xs font-semibold text-ink-700">Proveedor *</label>
-          <input name="supplier_name" required placeholder="Nombre del proveedor"
+          <label className="text-xs font-semibold text-ink-700">
+            {isSinDocumento ? "Concepto / Beneficiario *" : "Proveedor / Beneficiario *"}
+          </label>
+          <input name="supplier_name" required placeholder={isSinDocumento ? "Ej. Taxi, Almuerzo, Caja Chica" : "Nombre del proveedor"}
             className="w-full border border-lilac-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-lilac-400 bg-white" />
         </div>
         <div className="space-y-1">
-          <label className="text-xs font-semibold text-ink-700">RUC</label>
+          <label className="text-xs font-semibold text-ink-700">
+            {isSinDocumento ? "RUC / Cédula (opcional)" : "RUC / Cédula"}
+          </label>
           <input name="supplier_ruc" maxLength={13} placeholder="0000000000001"
             className="w-full border border-lilac-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-lilac-400 bg-white font-mono" />
         </div>
       </div>
 
-      {/* Factura + Fecha */}
+      {/* Factura / Documento + Fecha */}
       <div className="grid grid-cols-2 gap-3">
-        <div className="space-y-1">
-          <label className="text-xs font-semibold text-ink-700">N° Factura</label>
-          <input name="document_number" placeholder="001-001-000000001"
-            className="w-full border border-lilac-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-lilac-400 bg-white font-mono" />
-        </div>
-        <div className="space-y-1">
-          <label className="text-xs font-semibold text-ink-700">Fecha *</label>
-          <input type="date" name="expense_date" required defaultValue={today}
-            className="w-full border border-lilac-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-lilac-400 bg-white" />
-        </div>
+        {!isSinDocumento ? (
+          <>
+            <div className="space-y-1">
+              <label className="text-xs font-semibold text-ink-700">
+                N° {docType === "factura" ? "Factura" : "Nota de Venta"} (opcional)
+              </label>
+              <input name="document_number" placeholder={docType === "factura" ? "001-001-000000001" : "001-001-000001"}
+                className="w-full border border-lilac-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-lilac-400 bg-white font-mono" />
+            </div>
+            <div className="space-y-1">
+              <label className="text-xs font-semibold text-ink-700">Fecha *</label>
+              <input type="date" name="expense_date" required defaultValue={today}
+                className="w-full border border-lilac-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-lilac-400 bg-white" />
+            </div>
+          </>
+        ) : (
+          <div className="col-span-2 space-y-1">
+            <label className="text-xs font-semibold text-ink-700">Fecha *</label>
+            <input type="date" name="expense_date" required defaultValue={today}
+              className="w-full border border-lilac-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-lilac-400 bg-white" />
+            {/* Input oculto para document_number */}
+            <input type="hidden" name="document_number" value="" />
+          </div>
+        )}
       </div>
 
       {/* Categoría + Descripción */}
@@ -67,7 +102,7 @@ export default function NuevaCompraForm({ today, bankAccounts, cajaAccounts, sav
         </div>
         <div className="space-y-1">
           <label className="text-xs font-semibold text-ink-700">Descripción</label>
-          <input name="description" placeholder="Detalle de la compra"
+          <input name="description" placeholder="Detalle del gasto"
             className="w-full border border-lilac-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-lilac-400 bg-white" />
         </div>
       </div>
@@ -128,7 +163,7 @@ export default function NuevaCompraForm({ today, bankAccounts, cajaAccounts, sav
               <option value="">— Seleccionar —</option>
               {accountOptions.map(a => (
                 <option key={a.id} value={a.id}>
-                  {a.bank_name}{a.account_number ? ` · ${a.account_number}` : ""}
+                  {a.bank_name}{a.account_number ? ` · ${a.account_number}` : ""}{a.notes ? ` (${a.notes})` : ""}
                 </option>
               ))}
             </select>
@@ -142,16 +177,51 @@ export default function NuevaCompraForm({ today, bankAccounts, cajaAccounts, sav
           </div>
         )}
 
-        {/* N° Referencia (transferencia o tarjeta) */}
+        {/* N° Referencia (transferencia) */}
         {needsReference && (
           <div className="space-y-1">
             <label className="text-xs font-semibold text-ink-700">
-              N° Referencia / Comprobante {method === "transferencia" ? "*" : ""}
+              N° Referencia / Comprobante *
             </label>
             <input type="text" name="payment_reference"
-              required={method === "transferencia"}
-              placeholder={method === "transferencia" ? "TRF-001234" : "N° autorización tarjeta"}
+              required
+              placeholder="TRF-001234"
               className="w-full border border-lilac-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-lilac-400 bg-white font-mono" />
+          </div>
+        )}
+
+        {/* Detalles de Tarjeta */}
+        {method === "tarjeta_credito" && (
+          <div className="space-y-3 mt-1">
+            <div className="space-y-1">
+              <label className="text-xs font-semibold text-ink-700">Tipo de Tarjeta *</label>
+              <input type="text" name="card_type" required list="tarjetas-ec"
+                placeholder="Ej. Visa, Mastercard..."
+                className="w-full border border-lilac-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-lilac-400 bg-white" />
+              <datalist id="tarjetas-ec">
+                <option value="Visa" />
+                <option value="Mastercard" />
+                <option value="American Express" />
+                <option value="Diners Club" />
+                <option value="Discover" />
+                <option value="Alia" />
+                <option value="PacifiCard" />
+              </datalist>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1">
+                <label className="text-xs font-semibold text-ink-700">N° Lote *</label>
+                <input type="text" name="card_lote" required placeholder="0012"
+                  className="w-full border border-lilac-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-lilac-400 bg-white font-mono" />
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-xs font-semibold text-ink-700">N° Baucher / Autorización *</label>
+                <input type="text" name="card_voucher" required placeholder="000123"
+                  className="w-full border border-lilac-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-lilac-400 bg-white font-mono" />
+              </div>
+            </div>
           </div>
         )}
 
@@ -166,7 +236,7 @@ export default function NuevaCompraForm({ today, bankAccounts, cajaAccounts, sav
       <div className="flex justify-end pt-1">
         <button type="submit"
           className="flex items-center gap-2 bg-lilac-600 hover:bg-lilac-700 text-white px-6 py-2.5 rounded-xl transition-colors font-semibold text-sm shadow-md shadow-lilac-200">
-          <Save size={16} /> Guardar Compra
+          <Save size={16} /> Guardar Gasto
         </button>
       </div>
     </form>

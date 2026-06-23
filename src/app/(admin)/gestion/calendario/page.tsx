@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { formatTimeLocal } from "@/lib/availability";
-import { ChevronLeft, ChevronRight, Calendar, LayoutGrid } from "lucide-react";
+import { ChevronLeft, ChevronRight, Calendar, LayoutGrid, Plus } from "lucide-react";
 
 export const dynamic = "force-dynamic";
 
@@ -36,7 +36,12 @@ const STATUS_COLOR: Record<string, string> = {
   scheduled: "bg-lilac-50 text-lilac-800",
 };
 
-export default async function CalendarioPage({ searchParams }: { searchParams: SearchParams }) {
+export default async function CalendarioPage({
+  searchParams: searchParamsPromise,
+}: {
+  searchParams: Promise<SearchParams>;
+}) {
+  const searchParams = await searchParamsPromise;
   const view    = searchParams.view ?? "month"; // "month" | "week"
   const base    = parseDate(searchParams.date);
   const supabase = createAdminClient();
@@ -147,10 +152,19 @@ export default async function CalendarioPage({ searchParams }: { searchParams: S
                   hasAppts  ? "border-lilac-100 bg-white" :
                               "border-gray-100 bg-white"
                 }`}>
-                <div className={`text-xs font-bold w-6 h-6 flex items-center justify-center rounded-full mb-0.5 ${
-                  isToday ? "bg-lilac-600 text-white" : inMonth ? "text-ink-800" : "text-ink-300"
-                }`}>
-                  {d.getDate()}
+                <div className="flex items-center justify-between mb-0.5">
+                  <div className={`text-xs font-bold w-6 h-6 flex items-center justify-center rounded-full ${
+                    isToday ? "bg-lilac-600 text-white" : inMonth ? "text-ink-800" : "text-ink-300"
+                  }`}>
+                    {d.getDate()}
+                  </div>
+                  {inMonth && (
+                    <Link href={`/gestion/citas/nueva?date=${str}`}
+                      className="p-1 text-lilac-400 hover:text-lilac-700 hover:bg-lilac-100 rounded-lg transition"
+                      title="Añadir cita">
+                      <Plus size={12} />
+                    </Link>
+                  )}
                 </div>
                 {inMonth && <ApptList dateStr={str} max={3} />}
               </div>
@@ -229,6 +243,11 @@ export default async function CalendarioPage({ searchParams }: { searchParams: S
           <Link href={`/gestion/calendario?view=${view}&date=${fmtDate(nextDate)}`}
             className="w-8 h-8 flex items-center justify-center rounded-lg border border-lilac-200 hover:bg-lilac-50 transition-colors">
             <ChevronRight size={16} />
+          </Link>
+          
+          <Link href={`/gestion/citas/nueva?date=${fmtDate(base)}`}
+            className="flex items-center gap-1.5 bg-lilac-600 text-white text-xs px-3.5 py-2 rounded-xl hover:bg-lilac-700 transition font-medium shadow-sm ml-2">
+            <Plus size={14} /> Nueva Cita
           </Link>
         </div>
       </div>

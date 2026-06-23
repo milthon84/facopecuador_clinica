@@ -24,7 +24,14 @@ async function saveExpense(formData: FormData) {
   const expense_date      = formData.get("expense_date") as string;
   const supplier_name     = (formData.get("supplier_name") as string).trim();
   const bank_account_id   = (formData.get("bank_account_id") as string) || null;
-  const payment_reference = (formData.get("payment_reference") as string)?.trim() || null;
+  let payment_reference = (formData.get("payment_reference") as string)?.trim() || null;
+
+  if (payment_method === "tarjeta_credito") {
+    const card_type = (formData.get("card_type") as string)?.trim() || "";
+    const card_lote = (formData.get("card_lote") as string)?.trim() || "";
+    const card_voucher = (formData.get("card_voucher") as string)?.trim() || "";
+    payment_reference = `Tarj: ${card_type} | Lote: ${card_lote} | Baucher: ${card_voucher}`;
+  }
 
   const { data: expense, error: expenseError } = await supabase.from("expenses").insert({
     supplier_name,
@@ -91,7 +98,7 @@ export default async function NuevoGastoPage() {
 
   const { data: allAccounts } = await supabase
     .from("bank_accounts")
-    .select("id, bank_name, account_number, account_type")
+    .select("id, bank_name, account_number, account_type, notes")
     .eq("is_active", true)
     .order("bank_name");
 
@@ -105,7 +112,7 @@ export default async function NuevoGastoPage() {
           className="w-9 h-9 flex items-center justify-center rounded-xl bg-white border border-lilac-200 text-ink-600 hover:bg-lilac-50 transition-colors shrink-0">
           <ArrowLeft size={18} />
         </Link>
-        <h1 className="text-xl font-bold text-ink-900">Registrar Compra</h1>
+        <h1 className="text-xl font-bold text-ink-900">Registrar Gasto / Compra</h1>
       </div>
 
       <div className="bg-white border border-lilac-100 rounded-2xl shadow-sm p-4 sm:p-5">

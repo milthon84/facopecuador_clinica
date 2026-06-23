@@ -84,8 +84,9 @@ type Tx = {
 };
 
 export default async function CajaGeneralPage({
-  searchParams,
-}: { searchParams: { action?: string } }) {
+  searchParams: searchParamsPromise,
+}: { searchParams: Promise<{ action?: string }> }) {
+  const searchParams = await searchParamsPromise;
   const supabase    = createAdminClient();
   const showForm    = searchParams.action === "transferir";
   const today       = new Date().toISOString().split("T")[0];
@@ -102,7 +103,7 @@ export default async function CajaGeneralPage({
     ["efectivo", "general"].some(k => (a.bank_name as string).toLowerCase().includes(k));
 
   const cajaGeneral = (allCajas || []).find(esCajaGeneral);
-  const cajaChica   = (allCajas || []).find(a => !esCajaGeneral(a));
+  const otrasCajas  = (allCajas || []).filter(a => a.id !== cajaGeneral?.id);
 
   // Otras cuentas bancarias para transferir
   const { data: bancos } = await supabase
@@ -137,7 +138,11 @@ export default async function CajaGeneralPage({
       label: `${b.bank_name}${b.account_number ? ` · ${b.account_number}` : ""}`,
       tipo: "banco",
     })),
-    ...(cajaChica ? [{ id: cajaChica.id, label: `Caja Chica — ${cajaChica.bank_name}`, tipo: "caja_chica" }] : []),
+    ...otrasCajas.map(c => ({
+      id: c.id,
+      label: `Caja Chica — ${c.bank_name}`,
+      tipo: "caja_chica",
+    })),
   ];
 
   if (!cajaGeneral) {

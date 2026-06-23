@@ -4,10 +4,11 @@ import NewInvoiceForm from "./NewInvoiceForm";
 export const dynamic = "force-dynamic";
 
 export default async function NewInvoicePage({
-  searchParams,
+  searchParams: searchParamsPromise,
 }: {
-  searchParams: { patient_id?: string };
+  searchParams: Promise<{ patient_id?: string }>;
 }) {
+  const searchParams = await searchParamsPromise;
   const supabase = createAdminClient();
 
   const [{ data: patients }, preselectedResult, { data: services }, { data: bankAccounts }, { data: sriConfig }] = await Promise.all([

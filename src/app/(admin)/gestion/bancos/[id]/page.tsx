@@ -113,15 +113,20 @@ async function transferToBankAction(formData: FormData) {
 export default async function BancoDetailPage({
   params,
   searchParams,
-}: { params: { id: string }; searchParams: { action?: string } }) {
-  const showForm = searchParams.action === "manual";
+}: {
+  params: Promise<{ id: string }>;
+  searchParams: Promise<{ action?: string }>;
+}) {
+  const { id } = await params;
+  const resolvedSearchParams = await searchParams;
+  const showForm = resolvedSearchParams.action === "manual";
   const supabase = createAdminClient();
 
   const [{ data: account }, { data: rawTransactions }, { data: allBanks }] = await Promise.all([
-    supabase.from("bank_accounts").select("*").eq("id", params.id).single(),
+    supabase.from("bank_accounts").select("*").eq("id", id).single(),
     supabase.from("bank_transactions")
       .select("*, invoices(invoice_number), expenses(supplier_name, document_number)")
-      .eq("account_id", params.id)
+      .eq("account_id", id)
       .order("date", { ascending: false })
       .order("created_at", { ascending: false }),
     supabase.from("bank_accounts")
@@ -166,19 +171,19 @@ export default async function BancoDetailPage({
         {isCajaGeneral ? (
           /* Caja General: solo permite depositar en banco */
           <Link
-            href={showForm ? `/gestion/bancos/${params.id}` : `/gestion/bancos/${params.id}?action=depositar`}
+            href={showForm ? `/gestion/bancos/${id}` : `/gestion/bancos/${id}?action=depositar`}
             className={`flex items-center gap-2 px-4 py-2 rounded-xl font-semibold text-sm transition-colors shrink-0 ${
-              searchParams.action === "depositar"
+              resolvedSearchParams.action === "depositar"
                 ? "bg-ink-100 text-ink-700 border border-ink-200"
                 : "bg-green-600 hover:bg-green-700 text-white shadow-md shadow-green-200"
             }`}>
             <Plus size={16} />
-            {searchParams.action === "depositar" ? "Cancelar" : "Depositar en banco"}
+            {resolvedSearchParams.action === "depositar" ? "Cancelar" : "Depositar en banco"}
           </Link>
         ) : (
           /* Otras cuentas: movimiento manual */
           <Link
-            href={showForm ? `/gestion/bancos/${params.id}` : `/gestion/bancos/${params.id}?action=manual`}
+            href={showForm ? `/gestion/bancos/${id}` : `/gestion/bancos/${id}?action=manual`}
             className={`flex items-center gap-2 px-4 py-2 rounded-xl font-semibold text-sm transition-colors shrink-0 ${
               showForm
                 ? "bg-ink-100 text-ink-700 border border-ink-200 hover:bg-ink-200"
@@ -226,7 +231,7 @@ export default async function BancoDetailPage({
       )}
 
       {/* Formulario: Depositar en banco (solo Caja General) */}
-      {isCajaGeneral && searchParams.action === "depositar" && (
+      {isCajaGeneral && resolvedSearchParams.action === "depositar" && (
         <div className="bg-white border border-green-200 rounded-2xl shadow-sm p-5 mb-6">
           <h2 className="font-semibold text-ink-900 mb-4 flex items-center gap-2 text-sm">
             <TrendingUp size={16} className="text-green-600" />

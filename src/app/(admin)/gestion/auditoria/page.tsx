@@ -29,10 +29,11 @@ const RESOURCE_LABELS: Record<string, string> = {
 };
 
 export default async function AuditoriaPage({
-  searchParams,
+  searchParams: searchParamsPromise,
 }: {
-  searchParams: { resource?: string; action?: string; page?: string };
+  searchParams: Promise<{ resource?: string; action?: string; page?: string }>;
 }) {
+  const searchParams = await searchParamsPromise;
   // Solo admin
   const sessionSupabase = createClient();
   const { data: { user: sessionUser } } = await sessionSupabase.auth.getUser();

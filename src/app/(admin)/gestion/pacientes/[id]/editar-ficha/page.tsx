@@ -4,13 +4,14 @@ import EditarFichaClientPage from "./EditarFichaClientPage";
 
 export const dynamic = "force-dynamic";
 
-export default async function EditarFichaPage({ params }: { params: { id: string } }) {
+export default async function EditarFichaPage({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
   const supabase = createAdminClient();
 
   const { data: patient } = await supabase
     .from("patients")
     .select("*")
-    .eq("id", params.id)
+    .eq("id", id)
     .single();
 
   if (!patient) return notFound();

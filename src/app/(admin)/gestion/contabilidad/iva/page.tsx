@@ -13,8 +13,9 @@ function periodLabel(p: string) {
 }
 
 export default async function ResumenIvaPage({
-  searchParams,
-}: { searchParams: { period?: string } }) {
+  searchParams: searchParamsPromise,
+}: { searchParams: Promise<{ period?: string }> }) {
+  const searchParams = await searchParamsPromise;
   const now    = new Date();
   const period = searchParams.period ?? `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
   const [y, m] = period.split("-").map(Number);

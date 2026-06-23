@@ -17,13 +17,20 @@ const PAYMENT_LABELS: Record<string, string> = {
   efectivo:      "Efectivo",
   transferencia: "Transferencia",
   tarjeta:       "Tarjeta",
+  tarjeta_credito: "Tarjeta",
   credito:       "Crédito (por pagar)",
 };
 
-export default async function GastoDetailPage({ params }: { params: { id: string } }) {
+export default async function GastoDetailPage({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
   const supabase = createAdminClient();
-  const { data: expense } = await supabase.from("expenses").select("*").eq("id", params.id).single();
-  if (!expense) notFound();
+  const { data: rawExpense } = await supabase
+    .from("expenses")
+    .select("*, bank_accounts(bank_name, account_number, notes)")
+    .eq("id", id)
+    .single();
+  if (!rawExpense) notFound();
+  const expense = rawExpense as any;
 
   const dateStr = new Date(expense.expense_date + "T12:00:00").toLocaleDateString("es-EC", {
     weekday: "long", day: "numeric", month: "long", year: "numeric",
@@ -54,19 +61,19 @@ export default async function GastoDetailPage({ params }: { params: { id: string
 
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <span className="text-[11px] text-ink-400 uppercase tracking-wide">Proveedor</span>
+              <span className="text-[11px] text-ink-400 uppercase tracking-wide">Proveedor / Beneficiario</span>
               <p className="text-sm font-medium text-ink-900 mt-0.5">{expense.supplier_name}</p>
             </div>
             {expense.supplier_ruc && (
               <div>
-                <span className="text-[11px] text-ink-400 uppercase tracking-wide">RUC Proveedor</span>
+                <span className="text-[11px] text-ink-400 uppercase tracking-wide">RUC / Cédula</span>
                 <p className="text-sm font-mono text-ink-900 mt-0.5">{expense.supplier_ruc}</p>
               </div>
             )}
             {expense.document_number && (
               <div>
                 <span className="text-[11px] text-ink-400 uppercase tracking-wide flex items-center gap-1">
-                  <FileText size={10} /> N° Factura
+                  <FileText size={10} /> N° Comprobante
                 </span>
                 <p className="text-sm font-mono text-ink-900 mt-0.5">{expense.document_number}</p>
               </div>
@@ -89,8 +96,22 @@ export default async function GastoDetailPage({ params }: { params: { id: string
               <span className="text-[11px] text-ink-400 uppercase tracking-wide flex items-center gap-1">
                 <CreditCard size={10} /> Forma de pago
               </span>
-              <p className="text-sm text-ink-900 mt-0.5">{PAYMENT_LABELS[expense.payment_method] ?? expense.payment_method}</p>
+              <p className="text-sm text-ink-900 mt-0.5">
+                {PAYMENT_LABELS[expense.payment_method] ?? expense.payment_method}
+                {expense.bank_accounts && (
+                  <span className="block text-xs text-ink-500 mt-0.5">
+                    {expense.bank_accounts.bank_name}
+                    {expense.bank_accounts.account_number ? ` · ${expense.bank_accounts.account_number}` : ""}
+                  </span>
+                )}
+              </p>
             </div>
+            {expense.payment_reference && (
+              <div className="col-span-2">
+                <span className="text-[11px] text-ink-400 uppercase tracking-wide">Referencia / Detalles de Pago</span>
+                <p className="text-sm font-mono text-ink-800 mt-0.5">{expense.payment_reference}</p>
+              </div>
+            )}
           </div>
 
           {expense.description && (

@@ -8,13 +8,14 @@ import AppointmentActions from "@/components/AppointmentActions";
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
-export default async function CitaDetalle({ params }: { params: { id: string } }) {
+export default async function CitaDetalle({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
   const supabase = createAdminClient();
 
   const { data: appt } = await supabase
     .from("appointments")
     .select("*, patient:patients(*)")
-    .eq("id", params.id)
+    .eq("id", id)
     .single();
 
   if (!appt) return notFound();

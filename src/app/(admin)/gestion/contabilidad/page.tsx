@@ -14,10 +14,11 @@ function periodLabel(period: string) {
 
 // ── Page ───────────────────────────────────────────────────────────────────
 export default async function ContabilidadPage({
-  searchParams,
+  searchParams: searchParamsPromise,
 }: {
-  searchParams: { tab?: string; period?: string };
+  searchParams: Promise<{ tab?: string; period?: string }>;
 }) {
+  const searchParams = await searchParamsPromise;
   const tab    = searchParams.tab    ?? "diario";
   const now    = new Date();
   const period = searchParams.period

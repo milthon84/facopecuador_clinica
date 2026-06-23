@@ -18,14 +18,15 @@ import { formatTimeLocal } from "@/lib/availability";
 
 export const dynamic = "force-dynamic";
 
-export default async function PacienteDetalle({ params }: { params: { id: string } }) {
+export default async function PacienteDetalle({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
   const supabase = createAdminClient();
   
   // 1) Fetch patient core details
   const { data: patient } = await supabase
     .from("patients")
     .select("*")
-    .eq("id", params.id)
+    .eq("id", id)
     .single();
     
   if (!patient) return notFound();

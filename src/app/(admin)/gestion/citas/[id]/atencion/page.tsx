@@ -4,13 +4,14 @@ import AtencionClientPage from "./AtencionClientPage";
 
 export const dynamic = "force-dynamic";
 
-export default async function AtencionPage({ params }: { params: { id: string } }) {
+export default async function AtencionPage({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
   const supabase = createAdminClient();
 
   const { data: appt } = await supabase
     .from("appointments")
     .select("*, patient:patients(*)")
-    .eq("id", params.id)
+    .eq("id", id)
     .single();
 
   if (!appt) return notFound();

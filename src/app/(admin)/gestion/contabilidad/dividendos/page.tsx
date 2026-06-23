@@ -30,10 +30,11 @@ const STATUS_MAP: Record<string, { label: string; cls: string; icon: React.React
 };
 
 export default async function DividendosPage({
-  searchParams,
+  searchParams: searchParamsPromise,
 }: {
-  searchParams: { year?: string };
+  searchParams: Promise<{ year?: string }>;
 }) {
+  const searchParams = await searchParamsPromise;
   const currentYear = new Date().getFullYear();
   const year = Number(searchParams.year ?? currentYear);
 

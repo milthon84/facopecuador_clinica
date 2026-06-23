@@ -55,15 +55,28 @@ async function replenishCajaChica(formData: FormData) {
   const bank_id = formData.get("bank_id") as string;
   const amount  = Number(formData.get("amount"));
   const date    = formData.get("date") as string;
+
+  // Consultar si la cuenta origen es de tipo caja (Caja General)
+  const { data: sourceAcc } = await supabase
+    .from("bank_accounts")
+    .select("account_type")
+    .eq("id", bank_id)
+    .single();
+
+  const isCashSource = sourceAcc?.account_type === "caja";
+  const paymentMethod = isCashSource ? "efectivo" : "transferencia";
+  const descriptionEgreso = isCashSource ? "Transferencia a caja chica — Reposición" : "Reposición caja chica";
+  const descriptionIngreso = isCashSource ? "Reposición desde Caja General" : "Reposición desde banco";
+
   await supabase.from("bank_transactions").insert({
     account_id: bank_id, type: "egreso", amount, date,
-    description: "Reposición caja chica",
-    payment_method: "transferencia", status: "confirmado",
+    description: descriptionEgreso,
+    payment_method: paymentMethod, status: "confirmado",
     origin: "manual", categoria: "Reposición caja chica",
   });
   await supabase.from("bank_transactions").insert({
     account_id: caja_id, type: "ingreso", amount, date,
-    description: "Reposición desde banco",
+    description: descriptionIngreso,
     payment_method: "efectivo", status: "confirmado",
     origin: "manual", categoria: "Reposición caja chica",
   });
@@ -76,8 +89,9 @@ type BankAccount = { id: string; bank_name: string; account_number: string | nul
 type BankTx = { id: string; account_id: string; type: "ingreso" | "egreso"; amount: number; date: string; description: string; reference: string | null; status: string };
 
 export default async function CajaChicaPage({
-  searchParams,
-}: { searchParams: { action?: string } }) {
+  searchParams: searchParamsPromise,
+}: { searchParams: Promise<{ action?: string }> }) {
+  const searchParams = await searchParamsPromise;
   const supabase = createAdminClient();
   const [{ data: allAccounts }, { data: allTx }] = await Promise.all([
     supabase.from("bank_accounts").select("*").eq("is_active", true).order("bank_name"),
@@ -94,6 +108,12 @@ export default async function CajaChicaPage({
     a.account_type === "caja" && !esCajaGeneral(a)
   );
   const bankAccounts = (allAccounts as BankAccount[] || []).filter(a => a.account_type !== "caja");
+  const cajaGeneral = (allAccounts as BankAccount[] || []).find(esCajaGeneral);
+
+  const sourceAccounts = [
+    ...(cajaGeneral ? [{ id: cajaGeneral.id, bank_name: `Caja General — ${cajaGeneral.bank_name}`, account_number: null, account_type: "caja" }] : []),
+    ...bankAccounts,
+  ];
 
   const txMap = new Map<string, BankTx[]>();
   (allTx as BankTx[] || []).forEach(tx => {
@@ -240,16 +260,16 @@ export default async function CajaChicaPage({
                 <form action={replenishCajaChica} className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                   <input type="hidden" name="caja_id" value={caja.id} />
                   <div className="col-span-2 space-y-1">
-                    <label className="text-xs font-semibold text-ink-700">Cuenta bancaria origen *</label>
+                    <label className="text-xs font-semibold text-ink-700">Cuenta de origen *</label>
                     <select name="bank_id" required
                       className="w-full border border-green-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-400 bg-white">
-                      <option value="">— Seleccionar cuenta —</option>
-                      {bankAccounts.map(b => (
+                      <option value="">— Seleccionar cuenta origen —</option>
+                      {sourceAccounts.map(b => (
                         <option key={b.id} value={b.id}>{b.bank_name}{b.account_number ? ` · ${b.account_number}` : ""}</option>
                       ))}
                     </select>
-                    {bankAccounts.length === 0 && (
-                      <p className="text-[11px] text-amber-600"><a href="/gestion/bancos" className="underline">Registra una cuenta bancaria</a> primero.</p>
+                    {sourceAccounts.length === 0 && (
+                      <p className="text-[11px] text-amber-600"><a href="/gestion/bancos" className="underline">Registra una cuenta</a> primero.</p>
                     )}
                   </div>
                   <div className="space-y-1">

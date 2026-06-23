@@ -6,7 +6,12 @@ export const dynamic = "force-dynamic";
 
 interface SearchParams { q?: string }
 
-export default async function PacientesPage({ searchParams }: { searchParams: SearchParams }) {
+export default async function PacientesPage({
+  searchParams: searchParamsPromise,
+}: {
+  searchParams: Promise<SearchParams>;
+}) {
+  const searchParams = await searchParamsPromise;
   const supabase = createAdminClient();
   const q = searchParams.q?.trim() || "";
 

@@ -51,12 +51,13 @@ const PAYMENT_METHOD_LABELS: Record<string, string> = {
   tarjeta_credito: "Tarjeta Crédito",
 };
 
-export default async function InvoiceDetailPage({ params }: { params: { id: string } }) {
+export default async function InvoiceDetailPage({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
   const supabase = createAdminClient();
 
   const [{ data: invoice }, { data: items }] = await Promise.all([
-    supabase.from("invoices").select("*").eq("id", params.id).single(),
-    supabase.from("invoice_items").select("*").eq("invoice_id", params.id).order("id"),
+    supabase.from("invoices").select("*").eq("id", id).single(),
+    supabase.from("invoice_items").select("*").eq("invoice_id", id).order("id"),
   ]);
 
   if (!invoice) notFound();

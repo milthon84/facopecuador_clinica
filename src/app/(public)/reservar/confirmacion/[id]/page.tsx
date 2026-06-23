@@ -4,12 +4,13 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { formatTimeLocal } from "@/lib/availability";
 import { notFound } from "next/navigation";
 
-export default async function ConfirmacionPage({ params }: { params: { id: string } }) {
+export default async function ConfirmacionPage({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
   const supabase = createAdminClient();
   const { data: appt } = await supabase
     .from("appointments")
     .select("id, starts_at, ends_at, reason, status, patient:patients(full_name, email)")
-    .eq("id", params.id)
+    .eq("id", id)
     .single();
 
   if (!appt) return notFound();

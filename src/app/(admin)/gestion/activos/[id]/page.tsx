@@ -93,12 +93,13 @@ async function disposeAsset(formData: FormData) {
   redirect("/gestion/activos");
 }
 
-export default async function AssetDetailPage({ params }: { params: { id: string } }) {
+export default async function AssetDetailPage({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
   const supabase = createAdminClient();
 
   const [{ data: asset }, { data: regPeriods }] = await Promise.all([
-    supabase.from("fixed_assets").select("*").eq("id", params.id).single(),
-    supabase.from("asset_depreciations").select("period").eq("asset_id", params.id),
+    supabase.from("fixed_assets").select("*").eq("id", id).single(),
+    supabase.from("asset_depreciations").select("period").eq("asset_id", id),
   ]);
 
   if (!asset) notFound();

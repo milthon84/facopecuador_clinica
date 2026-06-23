@@ -15,8 +15,9 @@ function periodLabel(p: string) {
 }
 
 export default async function EstadoResultadosPage({
-  searchParams,
-}: { searchParams: { period?: string; from?: string; to?: string; mode?: string } }) {
+  searchParams: searchParamsPromise,
+}: { searchParams: Promise<{ period?: string; from?: string; to?: string; mode?: string }> }) {
+  const searchParams = await searchParamsPromise;
   const now = new Date();
   const mode = searchParams.mode ?? "period";
 

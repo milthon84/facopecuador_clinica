@@ -14,10 +14,11 @@ function getTipoId(doc: string): string {
 }
 
 export default async function ATSPage({
-  searchParams,
+  searchParams: searchParamsPromise,
 }: {
-  searchParams: { period?: string };
+  searchParams: Promise<{ period?: string }>;
 }) {
+  const searchParams = await searchParamsPromise;
   const now = new Date();
   const period = searchParams.period
     ?? `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
