@@ -1,6 +1,6 @@
 import { createAdminClient } from "@/lib/supabase/admin";
-import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
+import { assertPermission } from "@/lib/auth-action";
 import { Wallet, Plus, TrendingDown, RefreshCw, ArrowRight, X } from "lucide-react";
 import Link from "next/link";
 
@@ -12,9 +12,7 @@ const r2 = (n: number) => Math.round(n * 100) / 100;
 
 async function setupCajaChica(formData: FormData) {
   "use server";
-  const session = createClient();
-  const { data: { user } } = await session.auth.getUser();
-  if ((user?.app_metadata?.role as string) !== "admin") throw new Error("Sin permisos");
+  await assertPermission("/gestion/caja-chica");
   const supabase = createAdminClient();
   await supabase.from("bank_accounts").insert({
     bank_name: (formData.get("bank_name") as string).trim(),
@@ -28,9 +26,7 @@ async function setupCajaChica(formData: FormData) {
 
 async function addCashExpense(formData: FormData) {
   "use server";
-  const session = createClient();
-  const { data: { user } } = await session.auth.getUser();
-  if ((user?.app_metadata?.role as string) !== "admin") throw new Error("Sin permisos");
+  await assertPermission("/gestion/caja-chica");
   const supabase = createAdminClient();
   await supabase.from("bank_transactions").insert({
     account_id:  formData.get("account_id") as string,
@@ -47,9 +43,7 @@ async function addCashExpense(formData: FormData) {
 
 async function replenishCajaChica(formData: FormData) {
   "use server";
-  const session = createClient();
-  const { data: { user } } = await session.auth.getUser();
-  if ((user?.app_metadata?.role as string) !== "admin") throw new Error("Sin permisos");
+  await assertPermission("/gestion/caja-chica");
   const supabase = createAdminClient();
   const caja_id = formData.get("caja_id") as string;
   const bank_id = formData.get("bank_id") as string;

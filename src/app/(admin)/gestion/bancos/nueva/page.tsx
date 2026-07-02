@@ -1,8 +1,8 @@
 import { createAdminClient } from "@/lib/supabase/admin";
-import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import { ArrowLeft, Building2, Save, AlertCircle } from "lucide-react";
+import { assertPermission } from "@/lib/auth-action";
 
 export const dynamic = "force-dynamic";
 
@@ -23,9 +23,7 @@ const BANKS_EC = [
 
 async function createAccount(formData: FormData) {
   "use server";
-  const session = createClient();
-  const { data: { user } } = await session.auth.getUser();
-  if ((user?.app_metadata?.role as string) !== "admin") throw new Error("Sin permisos");
+  await assertPermission("/gestion/bancos");
 
   const account_type = formData.get("account_type") as string;
   const supabase = createAdminClient();

@@ -1,6 +1,6 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import { redirect } from "next/navigation";
-import { createClient } from "@/lib/supabase/server";
+import { assertPermission } from "@/lib/auth-action";
 import { Building2, Plus, TrendingUp, TrendingDown, Wallet } from "lucide-react";
 import Link from "next/link";
 
@@ -14,9 +14,7 @@ const ACCOUNT_TYPE_LABELS: Record<string, string> = {
 
 async function createAccount(formData: FormData) {
   "use server";
-  const session = createClient();
-  const { data: { user } } = await session.auth.getUser();
-  if ((user?.app_metadata?.role as string) !== "admin") throw new Error("Sin permisos");
+  await assertPermission("/gestion/bancos");
 
   const supabase = createAdminClient();
   await supabase.from("bank_accounts").insert({
@@ -32,9 +30,7 @@ async function createAccount(formData: FormData) {
 
 async function toggleAccount(formData: FormData) {
   "use server";
-  const session = createClient();
-  const { data: { user } } = await session.auth.getUser();
-  if ((user?.app_metadata?.role as string) !== "admin") throw new Error("Sin permisos");
+  await assertPermission("/gestion/bancos");
 
   const supabase = createAdminClient();
   const id = formData.get("id") as string;
@@ -45,9 +41,7 @@ async function toggleAccount(formData: FormData) {
 
 async function setCajaGeneral(formData: FormData) {
   "use server";
-  const session = createClient();
-  const { data: { user } } = await session.auth.getUser();
-  if ((user?.app_metadata?.role as string) !== "admin") throw new Error("Sin permisos");
+  await assertPermission("/gestion/bancos");
 
   const supabase = createAdminClient();
   const id = formData.get("id") as string;

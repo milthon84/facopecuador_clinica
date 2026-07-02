@@ -1,8 +1,8 @@
 import { createAdminClient } from "@/lib/supabase/admin";
-import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
-import { CreditCard, CheckCircle2, AlertCircle, Clock } from "lucide-react";
 import Link from "next/link";
+import { CreditCard, CheckCircle2, AlertCircle, Clock } from "lucide-react";
+import { assertPermission } from "@/lib/auth-action";
 
 export const dynamic = "force-dynamic";
 
@@ -13,10 +13,7 @@ const fmt = (n: number) => n.toLocaleString("es-EC", { minimumFractionDigits: 2,
 
 async function recordExpensePayment(formData: FormData) {
   "use server";
-  const session = createClient();
-  const { data: { user } } = await session.auth.getUser();
-  const role = user?.app_metadata?.role as string;
-  if (!["admin", "contador"].includes(role)) throw new Error("Sin permisos");
+  await assertPermission("/gestion/cuentas-por-pagar");
 
   const supabase        = createAdminClient();
   const expense_id      = formData.get("expense_id") as string;

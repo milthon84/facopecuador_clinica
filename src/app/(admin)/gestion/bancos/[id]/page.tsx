@@ -1,6 +1,6 @@
 import { createAdminClient } from "@/lib/supabase/admin";
-import { createClient } from "@/lib/supabase/server";
 import { redirect, notFound } from "next/navigation";
+import { assertPermission } from "@/lib/auth-action";
 import { ArrowLeft, Plus, TrendingUp, TrendingDown, Building2 } from "lucide-react";
 import Link from "next/link";
 
@@ -22,9 +22,7 @@ const ACCOUNT_TYPE_LABELS: Record<string, string> = {
 
 async function addTransaction(formData: FormData) {
   "use server";
-  const session = createClient();
-  const { data: { user } } = await session.auth.getUser();
-  if ((user?.app_metadata?.role as string) !== "admin") throw new Error("Sin permisos");
+  const user = await assertPermission("/gestion/bancos");
 
   const account_id     = formData.get("account_id") as string;
   const type           = formData.get("type") as string;
@@ -81,9 +79,7 @@ type Transaction = {
 
 async function transferToBankAction(formData: FormData) {
   "use server";
-  const session = createClient();
-  const { data: { user } } = await session.auth.getUser();
-  if ((user?.app_metadata?.role as string) !== "admin") throw new Error("Sin permisos");
+  await assertPermission("/gestion/bancos");
 
   const supabase    = createAdminClient();
   const caja_id     = formData.get("caja_id") as string;

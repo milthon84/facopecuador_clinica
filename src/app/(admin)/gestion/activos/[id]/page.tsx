@@ -1,6 +1,6 @@
 import { createAdminClient } from "@/lib/supabase/admin";
-import { createClient } from "@/lib/supabase/server";
 import { redirect, notFound } from "next/navigation";
+import { assertPermission } from "@/lib/auth-action";
 import { ArrowLeft, TrendingDown, CheckCircle2, Clock, AlertTriangle } from "lucide-react";
 import Link from "next/link";
 import { createDepreciationJournalEntry } from "@/lib/accounting";
@@ -37,9 +37,7 @@ function buildSchedule(asset: {
 // Registra un período de depreciación
 async function registerDepreciation(formData: FormData) {
   "use server";
-  const authClient = createClient();
-  const { data: { user } } = await authClient.auth.getUser();
-  if ((user?.app_metadata?.role as string) !== "admin") throw new Error("Sin permisos");
+  const user = await assertPermission("/gestion/activos");
 
   const supabase       = createAdminClient();
   const asset_id       = formData.get("asset_id") as string;
@@ -76,9 +74,7 @@ async function registerDepreciation(formData: FormData) {
 // Dar de baja el activo
 async function disposeAsset(formData: FormData) {
   "use server";
-  const authClient = createClient();
-  const { data: { user } } = await authClient.auth.getUser();
-  if ((user?.app_metadata?.role as string) !== "admin") throw new Error("Sin permisos");
+  await assertPermission("/gestion/activos");
 
   const supabase      = createAdminClient();
   const asset_id      = formData.get("asset_id") as string;

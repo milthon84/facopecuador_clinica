@@ -1,6 +1,6 @@
 import { createAdminClient } from "@/lib/supabase/admin";
-import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
+import { assertPermission } from "@/lib/auth-action";
 import { CircleDollarSign, CheckCircle2, Clock, AlertCircle, FileText, Zap } from "lucide-react";
 import Link from "next/link";
 
@@ -18,9 +18,7 @@ const PM_LABELS: Record<string, string> = {
 
 async function confirmFullPayment(formData: FormData) {
   "use server";
-  const session = createClient();
-  const { data: { user } } = await session.auth.getUser();
-  if (!["admin", "contador"].includes(user?.app_metadata?.role as string)) throw new Error("Sin permisos");
+  await assertPermission("/gestion/cuentas-por-cobrar");
 
   const supabase       = createAdminClient();
   const invoice_id     = formData.get("invoice_id") as string;
@@ -73,9 +71,7 @@ async function confirmFullPayment(formData: FormData) {
 
 async function recordPartialPayment(formData: FormData) {
   "use server";
-  const session = createClient();
-  const { data: { user } } = await session.auth.getUser();
-  if (!["admin", "contador"].includes(user?.app_metadata?.role as string)) throw new Error("Sin permisos");
+  await assertPermission("/gestion/cuentas-por-cobrar");
 
   const supabase       = createAdminClient();
   const invoice_id     = formData.get("invoice_id") as string;

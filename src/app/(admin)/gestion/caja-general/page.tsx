@@ -1,6 +1,6 @@
 import { createAdminClient } from "@/lib/supabase/admin";
-import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
+import { assertPermission } from "@/lib/auth-action";
 import { Banknote, TrendingUp, TrendingDown, ArrowRight, X } from "lucide-react";
 import Link from "next/link";
 
@@ -12,9 +12,7 @@ const r2 = (n: number) => Math.round(n * 100) / 100;
 
 async function transferFromCajaGeneral(formData: FormData) {
   "use server";
-  const session = createClient();
-  const { data: { user } } = await session.auth.getUser();
-  if (!["admin", "contador"].includes(user?.app_metadata?.role as string)) throw new Error("Sin permisos");
+  await assertPermission("/gestion/caja-general");
 
   const supabase   = createAdminClient();
   const caja_id    = formData.get("caja_id") as string;
