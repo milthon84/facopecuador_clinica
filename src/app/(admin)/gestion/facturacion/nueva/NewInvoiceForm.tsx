@@ -119,6 +119,7 @@ export default function NewInvoiceForm({
           .catch(err => console.error("Error al buscar dirección de cliente:", err));
       }
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [clientDocument]);
 
   // Búsqueda de paciente

@@ -10,6 +10,15 @@ interface Props { appointment: any; isBilled?: boolean; invoiceNumber?: string |
 export default function AppointmentActions({ appointment, isBilled = false, invoiceNumber = null }: Props) {
   const router = useRouter();
 
+  const [cancelReason, setCancelReason] = useState("");
+  const [showCancel, setShowCancel] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [activeStatus, setActiveStatus] = useState<string | null>(null);
+  const [errorModal, setErrorModal] = useState<{
+    show: boolean;
+    message: string;
+  } | null>(null);
+
   if (appointment.status !== "scheduled" && appointment.status !== "attended") {
     return null;
   }
@@ -35,15 +44,6 @@ export default function AppointmentActions({ appointment, isBilled = false, invo
       </div>
     );
   }
-
-  const [cancelReason, setCancelReason] = useState("");
-  const [showCancel, setShowCancel] = useState(false);
-  const [loading, setLoading] = useState(false);
-  const [activeStatus, setActiveStatus] = useState<string | null>(null);
-  const [errorModal, setErrorModal] = useState<{
-    show: boolean;
-    message: string;
-  } | null>(null);
 
   async function updateStatus(status: string, extra: Record<string, any> = {}) {
     setLoading(true);

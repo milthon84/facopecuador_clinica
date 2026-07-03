@@ -34,7 +34,6 @@ function buildSupabaseClient(req: NextRequest, res: NextResponse) {
 // Verifica acceso usando permisos almacenados en DB.
 // Si la tabla no existe aún, hace fallback al canAccess hardcodeado.
 async function checkAccess(
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   supabase: any,
   role: string,
   pathname: string
