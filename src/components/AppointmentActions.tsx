@@ -2,17 +2,48 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { CheckCircle2, XCircle, AlertCircle, MessageSquare } from "lucide-react";
+import { CheckCircle2, XCircle, AlertCircle, Receipt } from "lucide-react";
+import Link from "next/link";
 
-interface Props { appointment: any }
+interface Props { appointment: any; isBilled?: boolean; invoiceNumber?: string | null }
 
-export default function AppointmentActions({ appointment }: Props) {
+export default function AppointmentActions({ appointment, isBilled = false, invoiceNumber = null }: Props) {
   const router = useRouter();
-  const [notes, setNotes] = useState(appointment.admin_notes || "");
+
+  if (appointment.status !== "scheduled" && appointment.status !== "attended") {
+    return null;
+  }
+
+  if (appointment.status === "attended") {
+    const patient = Array.isArray(appointment.patient) ? appointment.patient[0] : appointment.patient;
+    if (isBilled) {
+      return (
+        <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold border border-green-200 bg-green-50 text-green-700 shadow-sm w-fit whitespace-nowrap">
+          <CheckCircle2 size={13} className="text-green-600" />
+          <span>Facturado {invoiceNumber ? `— № ${invoiceNumber}` : ""}</span>
+        </div>
+      );
+    }
+    return (
+      <div className="flex flex-wrap gap-2">
+        <Link
+          href={`/gestion/facturacion/nueva?patient_id=${patient?.id}&appointment_id=${appointment.id}`}
+          className="inline-flex items-center justify-center gap-1.5 bg-green-600 hover:bg-green-700 text-white font-semibold text-xs px-4 py-2 rounded-xl transition-all shadow-sm"
+        >
+          <Receipt size={14} /> Facturar
+        </Link>
+      </div>
+    );
+  }
+
   const [cancelReason, setCancelReason] = useState("");
   const [showCancel, setShowCancel] = useState(false);
   const [loading, setLoading] = useState(false);
   const [activeStatus, setActiveStatus] = useState<string | null>(null);
+  const [errorModal, setErrorModal] = useState<{
+    show: boolean;
+    message: string;
+  } | null>(null);
 
   async function updateStatus(status: string, extra: Record<string, any> = {}) {
     setLoading(true);
@@ -25,7 +56,7 @@ export default function AppointmentActions({ appointment }: Props) {
         body: JSON.stringify({
           id: appointment.id,
           status,
-          extra: { ...extra, admin_notes: notes },
+          extra,
         }),
       });
       const data = await res.json();
@@ -44,7 +75,10 @@ export default function AppointmentActions({ appointment }: Props) {
         router.push("/gestion");
       }
     } catch (err: any) {
-      alert(err.message);
+      setErrorModal({
+        show: true,
+        message: err.message || "Error al actualizar el estado de la cita.",
+      });
     } finally {
       if (!isRedirecting) {
         setLoading(false);
@@ -53,7 +87,7 @@ export default function AppointmentActions({ appointment }: Props) {
     }
   }
 
-  const disabled = loading || appointment.status === "cancelled";
+  const disabled = loading || appointment.status !== "scheduled";
 
   return (
     <div className="space-y-4">
@@ -87,25 +121,13 @@ export default function AppointmentActions({ appointment }: Props) {
         </div>
       )}
 
-      <div>
-        <label className="label flex items-center gap-2">
-          <MessageSquare size={14} /> Notas internas
-        </label>
-        <textarea
-          className="input min-h-[80px]"
-          value={notes}
-          onChange={(e) => setNotes(e.target.value)}
-          placeholder="Observaciones de la consulta..."
-        />
-      </div>
-
-      <div className="flex flex-wrap gap-2 pt-3 border-t border-lilac-100">
+      <div className="flex flex-wrap gap-2">
         <button
-          onClick={() => updateStatus("attended")}
+          onClick={() => router.push(`/gestion/citas/${appointment.id}/atencion`)}
           disabled={disabled}
           className="btn-secondary text-xs"
         >
-          <CheckCircle2 size={14} /> {activeStatus === "attended" ? "Procesando..." : "Marcar atendida"}
+          <CheckCircle2 size={14} /> Marcar atendida
         </button>
         <button
           onClick={() => updateStatus("no_show")}
@@ -147,6 +169,50 @@ export default function AppointmentActions({ appointment }: Props) {
             >
               {activeStatus === "cancelled" ? "Cancelando..." : "Confirmar cancelación"}
             </button>
+          </div>
+        </div>
+      )}
+
+      {errorModal?.show && (
+        <div 
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm transition-all duration-300 animate-in fade-in"
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            setErrorModal(null);
+          }}
+        >
+          <div 
+            className="bg-white border border-lilac-100 rounded-3xl p-6 max-w-sm w-full mx-4 shadow-2xl flex flex-col items-center text-center animate-in zoom-in-95 duration-200"
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+            }}
+          >
+            {/* Icono */}
+            <div className="flex items-center justify-center mb-4">
+              <div className="h-12 w-12 rounded-full bg-red-50 flex items-center justify-center text-red-600">
+                <AlertCircle size={24} />
+              </div>
+            </div>
+
+            {/* Titulo y Mensaje */}
+            <h3 className="text-lg font-bold text-ink-900 mb-2">Error</h3>
+            <p className="text-xs text-ink-600 leading-relaxed mb-6">{errorModal.message}</p>
+
+            {/* Accion */}
+            <div className="w-full">
+              <button
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  setErrorModal(null);
+                }}
+                className="w-full py-2.5 rounded-xl text-xs font-semibold text-white bg-red-600 hover:bg-red-700 shadow-md shadow-red-200 transition"
+              >
+                Aceptar
+              </button>
+            </div>
           </div>
         </div>
       )}

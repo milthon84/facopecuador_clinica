@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, FormEvent, useRef } from "react";
+import { useState, FormEvent, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { ArrowLeft, Plus, Trash2, Send, FileText, User, X, BookOpen, ChevronDown, Loader2, CheckCircle2, AlertCircle, ShieldCheck, Paperclip } from "lucide-react";
@@ -53,15 +53,23 @@ export default function NewInvoiceForm({
   services = [],
   bankAccounts = [],
   cardSurchargePercent = 5.0,
+  appointmentId = null,
 }: {
   patients: Patient[];
   initialPatient: Patient | null;
   services?: Service[];
   bankAccounts?: BankAccount[];
   cardSurchargePercent?: number;
+  appointmentId?: string | null;
 }) {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
+  const [alertModal, setAlertModal] = useState<{
+    show: boolean;
+    type: "success" | "error";
+    title: string;
+    message: string;
+  } | null>(null);
   const [showCatalog, setShowCatalog] = useState(false);
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
   const [hasSubmitted, setHasSubmitted] = useState(false);
@@ -91,6 +99,28 @@ export default function NewInvoiceForm({
   const [clientPhone,    setClientPhone]    = useState(initialPatient?.phone ?? "");
   const [clientAddress,  setClientAddress]  = useState("");
 
+  // Cargar dirección y datos desde última factura de forma automática
+  useEffect(() => {
+    if (clientDocument) {
+      const clean = clientDocument.replace(/[\s\-]/g, "");
+      if (/^\d{10}$/.test(clean) || /^\d{13}$/.test(clean)) {
+        fetch(`/api/admin/client-lookup?document=${clean}`)
+          .then(res => res.json())
+          .then(data => {
+            if (data.found) {
+              if (data.address) setClientAddress(data.address);
+              if (data.name && !clientName) setClientName(data.name);
+              if (data.email && !clientEmail) setClientEmail(data.email);
+              if (data.phone && !clientPhone) setClientPhone(data.phone);
+              setLookupStatus("found");
+              setLookupSource(data.source);
+            }
+          })
+          .catch(err => console.error("Error al buscar dirección de cliente:", err));
+      }
+    }
+  }, [clientDocument]);
+
   // Búsqueda de paciente
   const [search, setSearch] = useState("");
   const [showSearch, setShowSearch] = useState(false);
@@ -118,6 +148,7 @@ export default function NewInvoiceForm({
     setClientDocument("");
     setClientEmail("");
     setClientPhone("");
+    setClientAddress("");
     setSearch("");
     setLookupStatus("idle");
     setLookupSource(null);
@@ -270,6 +301,7 @@ export default function NewInvoiceForm({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           patient_id:        patientId || undefined,
+          appointment_id:    appointmentId || undefined,
           client_name:       clientName,
           client_document:   clientDocument,
           client_email:      clientEmail,
@@ -287,11 +319,20 @@ export default function NewInvoiceForm({
       });
       const result = await res.json();
       if (!res.ok) throw new Error(result.error || "Error al procesar la factura");
-      alert(`Factura emitida. Clave de acceso: ${result.clave_acceso}`);
-      router.refresh();
-      router.push("/gestion/facturacion");
+      
+      setAlertModal({
+        show: true,
+        type: "success",
+        title: "Factura Emitida con Éxito",
+        message: `La factura ha sido emitida, firmada y aprobada correctamente por el SRI Ecuador.\n\nClave de acceso:\n${result.clave_acceso}`,
+      });
     } catch (err: any) {
-      alert("Error: " + err.message);
+      setAlertModal({
+        show: true,
+        type: "error",
+        title: "Error al Procesar Factura",
+        message: err.message || "Ocurrió un error inesperado al emitir la factura.",
+      });
       setLoading(false);
     }
   };
@@ -785,6 +826,70 @@ export default function NewInvoiceForm({
         </div>
 
       </form>
+
+      {alertModal?.show && (
+        <div 
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm transition-all duration-300 animate-in fade-in"
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            if (alertModal.type === "error") {
+              setAlertModal(null);
+            } else {
+              setAlertModal(null);
+              router.refresh();
+              router.push("/gestion/facturacion");
+            }
+          }}
+        >
+          <div 
+            className="bg-white border border-lilac-100 rounded-3xl p-6 max-w-sm w-full mx-4 shadow-2xl flex flex-col items-center text-center animate-in zoom-in-95 duration-200"
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+            }}
+          >
+            {/* Icono */}
+            <div className="flex items-center justify-center mb-4">
+              {alertModal.type === "success" ? (
+                <div className="h-12 w-12 rounded-full bg-green-50 flex items-center justify-center text-green-600">
+                  <CheckCircle2 size={24} />
+                </div>
+              ) : (
+                <div className="h-12 w-12 rounded-full bg-red-50 flex items-center justify-center text-red-600">
+                  <AlertCircle size={24} />
+                </div>
+              )}
+            </div>
+
+            {/* Titulo y Mensaje */}
+            <h3 className="text-lg font-bold text-ink-900 mb-2">{alertModal.title}</h3>
+            <p className="text-xs text-ink-600 whitespace-pre-wrap leading-relaxed mb-6">{alertModal.message}</p>
+
+            {/* Accion */}
+            <div className="w-full">
+              <button
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  setAlertModal(null);
+                  if (alertModal.type === "success") {
+                    router.refresh();
+                    router.push("/gestion/facturacion");
+                  }
+                }}
+                className={`w-full py-2.5 rounded-xl text-xs font-semibold text-white transition shadow-md ${
+                  alertModal.type === "success" 
+                    ? "bg-green-600 hover:bg-green-700 shadow-green-200" 
+                    : "bg-red-600 hover:bg-red-700 shadow-red-200"
+                }`}
+              >
+                Aceptar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

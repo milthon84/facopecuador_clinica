@@ -6,7 +6,7 @@ export const dynamic = "force-dynamic";
 export default async function NewInvoicePage({
   searchParams: searchParamsPromise,
 }: {
-  searchParams: Promise<{ patient_id?: string }>;
+  searchParams: Promise<{ patient_id?: string; appointment_id?: string }>;
 }) {
   const searchParams = await searchParamsPromise;
   const supabase = createAdminClient();
@@ -33,6 +33,7 @@ export default async function NewInvoicePage({
       services={services ?? []}
       bankAccounts={bankAccounts ?? []}
       cardSurchargePercent={cardSurchargePercent}
+      appointmentId={searchParams.appointment_id ?? null}
     />
   );
 }

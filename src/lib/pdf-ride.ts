@@ -1,7 +1,3 @@
-const pdfMake = require("pdfmake/build/pdfmake.js");
-const pdfFonts = require("pdfmake/build/vfs_fonts.js");
-pdfMake.vfs = pdfFonts;
-
 import type { TDocumentDefinitions, Content, TableCell } from "pdfmake/interfaces";
 import { SRIInvoiceData } from "./sri";
 
@@ -13,9 +9,35 @@ export interface RideMetadata {
 
 /**
  * Genera el RIDE (Representación Impresa del Documento Electrónico)
- * en formato PDF buffer utilizando pdfmake y fuentes estándar (Helvetica).
+ * en formato PDF buffer utilizando pdfmake.
  */
 export async function generateRidePdf(data: SRIInvoiceData, meta: RideMetadata): Promise<Buffer> {
+  const pdfMake = require("pdfmake");
+  const pdfMakeBuild = require("pdfmake/build/pdfmake.js");
+  const pdfFonts = require("pdfmake/build/vfs_fonts.js");
+
+  // Garantizar asignación del vfs (soporte webpack/Next.js)
+  const vfsDict = pdfFonts.pdfMake ? pdfFonts.pdfMake.vfs : pdfFonts;
+  pdfMake.vfs = vfsDict;
+  pdfMakeBuild.vfs = vfsDict;
+
+  if (typeof pdfMake.addVirtualFileSystem === "function") {
+    pdfMake.addVirtualFileSystem(vfsDict);
+  }
+  if (typeof pdfMakeBuild.addVirtualFileSystem === "function") {
+    pdfMakeBuild.addVirtualFileSystem(vfsDict);
+  }
+
+  const fontsConfig = {
+    Roboto: {
+      normal: "Roboto-Regular.ttf",
+      bold: "Roboto-Medium.ttf",
+      italics: "Roboto-Italic.ttf",
+      bolditalics: "Roboto-MediumItalic.ttf"
+    }
+  };
+  pdfMake.fonts = fontsConfig;
+  pdfMakeBuild.fonts = fontsConfig;
 
   const formatCurrency = (val: number) => `$${val.toFixed(2)}`;
 
@@ -163,7 +185,7 @@ export async function generateRidePdf(data: SRIInvoiceData, meta: RideMetadata):
   };
 
   try {
-    const pdfDoc = pdfMake.createPdf(docDefinition);
+    const pdfDoc = pdfMakeBuild.createPdf(docDefinition);
     const rawData = await pdfDoc.getBuffer();
     return Buffer.from(rawData);
   } catch (e) {

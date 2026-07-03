@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import Link from "next/link";
 import { ArrowLeft, Mail, Phone, IdCard, Calendar, CheckCircle2, Receipt } from "lucide-react";
 import AppointmentActions from "@/components/AppointmentActions";
+import SendReminderButton from "@/components/SendReminderButton";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -40,6 +41,16 @@ export default async function CitaDetalle({ params }: { params: Promise<{ id: st
     .eq("appointment_id", appt.id)
     .single();
 
+  // Consultar si hay una factura directamente enlazada a esta cita (usando la columna xml_url que guarda el appointment_id)
+  const { data: invoice } = await supabase
+    .from("invoices")
+    .select("id, invoice_number")
+    .eq("xml_url", appt.id)
+    .limit(1);
+
+  const isBilled = !!(invoice && invoice.length > 0);
+  const invoiceNumber = invoice && invoice.length > 0 ? invoice[0].invoice_number : null;
+
   return (
     <div className="max-w-3xl">
       <Link href="/gestion/calendario" className="inline-flex items-center gap-1 text-sm text-ink-600 hover:text-ink-900 mb-4">
@@ -58,7 +69,16 @@ export default async function CitaDetalle({ params }: { params: Promise<{ id: st
               {formatTimeLocal(end)}
             </div>
           </div>
-          <StatusBadge status={appt.status} />
+          <div className="flex flex-col items-end gap-2 shrink-0">
+            <StatusBadge status={appt.status} />
+            {appt.status === "scheduled" && new Date().getTime() < new Date(appt.starts_at).getTime() && (
+              <SendReminderButton
+                appointmentId={appt.id}
+                reminderSentAt={appt.reminder_sent_at}
+                patientEmail={patient.email}
+              />
+            )}
+          </div>
         </div>
 
         <div className="grid sm:grid-cols-2 gap-3 mb-4">
@@ -76,7 +96,7 @@ export default async function CitaDetalle({ params }: { params: Promise<{ id: st
           </div>
         )}
 
-        <AppointmentActions appointment={JSON.parse(JSON.stringify(appt))} />
+        <AppointmentActions appointment={JSON.parse(JSON.stringify(appt))} isBilled={isBilled} invoiceNumber={invoiceNumber} />
       </div>
 
       {appt.status === "attended" && !consultation && (
@@ -90,12 +110,6 @@ export default async function CitaDetalle({ params }: { params: Promise<{ id: st
             </p>
           </div>
           <div className="flex gap-2 shrink-0">
-            <Link
-              href={`/gestion/facturacion/nueva?patient_id=${patient.id}`}
-              className="inline-flex items-center justify-center gap-1.5 bg-white border border-green-300 hover:bg-green-50 text-green-700 font-medium text-sm px-4 py-2 rounded-xl transition-all shadow-sm"
-            >
-              <Receipt size={15} /> Facturar
-            </Link>
             <Link
               href={`/gestion/citas/${appt.id}/atencion`}
               className="inline-flex items-center justify-center bg-gold-600 hover:bg-gold-700 text-white font-medium text-sm px-4 py-2 rounded-xl transition-all shadow-sm"
@@ -113,12 +127,6 @@ export default async function CitaDetalle({ params }: { params: Promise<{ id: st
               <CheckCircle2 className="text-green-600" size={20} /> Detalles de la Atención Registrada
             </h2>
             <div className="flex gap-2">
-              <Link
-                href={`/gestion/facturacion/nueva?patient_id=${patient.id}`}
-                className="inline-flex items-center gap-1.5 border border-green-300 hover:bg-green-50 text-green-700 font-semibold text-xs px-3.5 py-2 rounded-xl transition-all shadow-sm"
-              >
-                <Receipt size={13} /> Facturar
-              </Link>
               <Link
                 href={`/gestion/citas/${appt.id}/atencion`}
                 className="inline-flex items-center justify-center bg-gold-600 hover:bg-gold-700 text-white font-semibold text-xs px-3.5 py-2 rounded-xl transition-all shadow-sm hover:scale-[1.02] active:scale-[0.98]"

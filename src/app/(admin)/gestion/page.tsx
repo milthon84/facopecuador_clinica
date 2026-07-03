@@ -11,6 +11,9 @@ import {
   ChevronRight,
   Plus,
 } from "lucide-react";
+import SendReminderButton from "@/components/SendReminderButton";
+import QuickAppointmentActions from "@/components/QuickAppointmentActions";
+import BillingPendingButton from "@/components/BillingPendingButton";
 
 export const dynamic = "force-dynamic";
 
@@ -65,16 +68,32 @@ export default async function AdminDashboard({
   const todayRes = await supabase
     .from("appointments")
     .select(
-      "id, starts_at, ends_at, status, reason, patient:patients(full_name, phone, document_number), dental_consultation:dental_consultations(id)"
+      "id, starts_at, ends_at, status, reason, reminder_sent_at, patient:patients(id, full_name, phone, document_number, email), dental_consultation:dental_consultations(id)"
     )
     .gte("starts_at", startOfDay)
     .lte("starts_at", endOfDay)
     .order("starts_at");
 
   const todayAppts = todayRes.data;
+  const targetDateStr = `${targetDate.getFullYear()}-${String(targetDate.getMonth() + 1).padStart(2, '0')}-${String(targetDate.getDate()).padStart(2, '0')}`;
 
-  // Derivar stats
   const appts = todayAppts || [];
+  const apptIds = appts.map((a) => a.id);
+
+  // Consultar facturas enlazadas a las citas de este día (usando la columna xml_url que guarda el appointment_id)
+  const { data: matchedInvoices } = apptIds.length > 0
+    ? await supabase
+        .from("invoices")
+        .select("xml_url, invoice_number")
+        .in("xml_url", apptIds)
+    : { data: [] };
+  
+  const billedApptInvoices = new Map<string, string>();
+  matchedInvoices?.forEach((inv) => {
+    if (inv.xml_url && inv.invoice_number) {
+      billedApptInvoices.set(inv.xml_url, inv.invoice_number);
+    }
+  });
   const scheduled = appts.filter((a) => a.status === "scheduled");
   const attended = appts.filter((a) => a.status === "attended");
   const noShow = appts.filter((a) => a.status === "no_show");
@@ -114,8 +133,6 @@ export default async function AdminDashboard({
       headerColor: "bg-red-50 text-red-700",
     },
   ].filter((g) => g.items.length > 0);
-
-  const targetDateStr = `${targetDate.getFullYear()}-${String(targetDate.getMonth() + 1).padStart(2, '0')}-${String(targetDate.getDate()).padStart(2, '0')}`;
 
   return (
     <div>
@@ -192,7 +209,7 @@ export default async function AdminDashboard({
         ))}
       </div>
 
-      {/* Lista de citas agrupada */}
+      {/* Lista de citas */}
       <div className="card overflow-hidden">
         <div className="px-5 py-4 border-b border-lilac-100 flex items-center justify-between">
           <h2 className="font-semibold">
@@ -211,85 +228,89 @@ export default async function AdminDashboard({
             {isTargetToday ? "No hay citas programadas para hoy." : "No hay citas programadas para este día."}
           </div>
         ) : (
-          <div>
-            {groups.map((group) => (
-              <div key={group.key}>
-                {/* Encabezado de grupo */}
-                <div
-                  className={`px-5 py-2 flex items-center gap-2 text-xs font-semibold uppercase tracking-wide border-b border-lilac-50 ${group.headerColor}`}
-                >
-                  <span
-                    className={`inline-block w-2 h-2 rounded-full ${group.dotColor}`}
-                  />
-                  {group.label}
-                  <span className="ml-auto font-bold">{group.items.length}</span>
-                </div>
+          <ul className="divide-y divide-lilac-50">
+            {appts.map((appt) => {
+              const p = Array.isArray(appt.patient)
+                ? appt.patient[0]
+                : appt.patient;
+              const dt = new Date(appt.starts_at);
+              const hasFicha = Array.isArray(appt.dental_consultation)
+                ? appt.dental_consultation.length > 0
+                : !!appt.dental_consultation;
 
-                <ul className="divide-y divide-lilac-50">
-                  {group.items.map((appt) => {
-                    const p = Array.isArray(appt.patient)
-                      ? appt.patient[0]
-                      : appt.patient;
-                    const dt = new Date(appt.starts_at);
-                    const hasFicha = Array.isArray(appt.dental_consultation)
-                      ? appt.dental_consultation.length > 0
-                      : !!appt.dental_consultation;
+              const invoiceNumber = billedApptInvoices.get(appt.id);
+              const isBilled = !!invoiceNumber;
 
-                    return (
-                      <li key={appt.id}>
-                        <Link
-                          href={`/gestion/citas/${appt.id}`}
-                          className="flex items-center gap-4 px-5 py-3.5 hover:bg-lilac-50 transition"
-                        >
-                          {/* Hora */}
-                          <div className="w-12 shrink-0 text-center">
-                            <div className="font-bold text-sm leading-tight">
-                              {formatTimeLocal(dt)}
-                            </div>
-                          </div>
+              return (
+                <li key={appt.id}>
+                  <Link
+                    href={`/gestion/citas/${appt.id}`}
+                    className="flex items-center gap-4 px-5 py-3.5 hover:bg-lilac-50 transition flex-wrap md:flex-nowrap"
+                  >
+                    {/* Hora */}
+                    <div className="w-12 md:w-16 shrink-0 text-center md:text-left">
+                      <div className="font-bold text-sm leading-tight text-ink-900">
+                        {formatTimeLocal(dt)}
+                      </div>
+                    </div>
 
-                          {/* Info paciente */}
-                          <div className="flex-1 min-w-0">
-                            <div className="font-medium text-sm truncate">
-                              {p?.full_name}
-                            </div>
-                            <div className="flex items-center gap-2 mt-0.5 flex-wrap">
-                              {p?.phone && (
-                                <span className="text-xs text-ink-600">
-                                  {p.phone}
-                                </span>
-                              )}
-                              {(p as any)?.document_number && (
-                                <span className="text-xs text-ink-600 opacity-60">
-                                  CC {(p as any).document_number}
-                                </span>
-                              )}
-                            </div>
-                            {appt.reason && (
-                              <div className="text-xs text-ink-600 mt-0.5 line-clamp-1 italic">
-                                {appt.reason}
-                              </div>
-                            )}
-                          </div>
+                    {/* Info paciente */}
+                    <div className="flex-1 min-w-[200px]">
+                      <div className="font-medium text-sm text-ink-900 truncate">
+                        {p?.full_name}
+                      </div>
+                      <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+                        {p?.phone && (
+                          <span className="text-xs text-ink-600">
+                            {p.phone}
+                          </span>
+                        )}
+                        {(p as any)?.document_number && (
+                          <span className="text-xs text-ink-600 opacity-60">
+                            CC {(p as any).document_number}
+                          </span>
+                        )}
+                      </div>
+                      {appt.reason && (
+                        <div className="text-xs text-ink-600 mt-0.5 line-clamp-1 italic">
+                          {appt.reason}
+                        </div>
+                      )}
+                    </div>
 
-                          {/* Badges */}
-                          <div className="shrink-0 flex flex-col items-end gap-1.5">
-                            <StatusBadge status={appt.status} />
-                            {hasFicha && (
-                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium bg-gold-50 text-gold-700 border border-gold-200">
-                                <FileText size={10} />
-                                Ficha completa
-                              </span>
-                            )}
-                          </div>
-                        </Link>
-                      </li>
-                    );
-                  })}
-                </ul>
-              </div>
-            ))}
-          </div>
+                    {/* Botones de acción rápida (En el medio) */}
+                    <div className="shrink-0 w-full md:w-[320px] flex items-center md:justify-center mt-2 md:mt-0">
+                      {appt.status === "scheduled" && (
+                        <QuickAppointmentActions appointmentId={appt.id} />
+                      )}
+                    </div>
+
+                    {/* Badges */}
+                    <div className="shrink-0 w-[220px] flex flex-col items-end gap-1.5 ml-auto md:ml-0 mt-2 md:mt-0">
+                      <StatusBadge status={appt.status} />
+                      {appt.status === "scheduled" && new Date().getTime() < new Date(appt.starts_at).getTime() && (
+                        <SendReminderButton
+                          appointmentId={appt.id}
+                          reminderSentAt={appt.reminder_sent_at}
+                          patientEmail={p?.email}
+                        />
+                      )}
+                      {hasFicha && (
+                        isBilled ? (
+                          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl text-xs font-semibold border border-green-200 bg-green-50 text-green-700 shadow-sm whitespace-nowrap" title={`Factura No. ${invoiceNumber}`}>
+                            <CheckCircle2 size={12} className="text-green-600" />
+                            <span>Facturado ({invoiceNumber})</span>
+                          </span>
+                        ) : (
+                          <BillingPendingButton patientId={p?.id} appointmentId={appt.id} />
+                        )
+                      )}
+                    </div>
+                  </Link>
+                </li>
+              );
+            })}
+          </ul>
         )}
       </div>
     </div>

@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { RefreshCw, CheckCircle2, XCircle, Loader2, Search, X, AlertTriangle, Wifi } from "lucide-react";
+import { RefreshCw, CheckCircle2, XCircle, Loader2, Search, X, AlertTriangle, Wifi, AlertCircle } from "lucide-react";
 
 interface DiagResult {
   factura: string;
@@ -29,6 +29,12 @@ export default function ReintentoSriButton({ invoiceId }: { invoiceId: string })
   const [showDiag, setShowDiag] = useState(false);
   const [xmlContent, setXmlContent] = useState<string | null>(null);
   const [showXml, setShowXml] = useState(false);
+  const [alertModal, setAlertModal] = useState<{
+    show: boolean;
+    type: "success" | "error";
+    title: string;
+    message: string;
+  } | null>(null);
 
   async function reintentar() {
     setLoading(true);
@@ -44,7 +50,12 @@ export default function ReintentoSriButton({ invoiceId }: { invoiceId: string })
       setResult(data.estado);
       router.refresh();
     } catch (err: any) {
-      alert("Error al reintentar: " + err.message);
+      setAlertModal({
+        show: true,
+        type: "error",
+        title: "Error al reintentar",
+        message: err.message || "No se pudo realizar el reintento de envío al SRI.",
+      });
     } finally {
       setLoading(false);
     }
@@ -211,6 +222,60 @@ export default function ReintentoSriButton({ invoiceId }: { invoiceId: string })
               </pre>
             </>
           )}
+        </div>
+      )}
+
+      {alertModal?.show && (
+        <div 
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm transition-all duration-300 animate-in fade-in"
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            setAlertModal(null);
+          }}
+        >
+          <div 
+            className="bg-white border border-lilac-100 rounded-3xl p-6 max-w-sm w-full mx-4 shadow-2xl flex flex-col items-center text-center animate-in zoom-in-95 duration-200"
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+            }}
+          >
+            {/* Icono */}
+            <div className="flex items-center justify-center mb-4">
+              {alertModal.type === "success" ? (
+                <div className="h-12 w-12 rounded-full bg-green-50 flex items-center justify-center text-green-600">
+                  <CheckCircle2 size={24} />
+                </div>
+              ) : (
+                <div className="h-12 w-12 rounded-full bg-red-50 flex items-center justify-center text-red-600">
+                  <AlertCircle size={24} />
+                </div>
+              )}
+            </div>
+
+            {/* Titulo y Mensaje */}
+            <h3 className="text-lg font-bold text-ink-900 mb-2">{alertModal.title}</h3>
+            <p className="text-xs text-ink-600 leading-relaxed mb-6">{alertModal.message}</p>
+
+            {/* Accion */}
+            <div className="w-full">
+              <button
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  setAlertModal(null);
+                }}
+                className={`w-full py-2.5 rounded-xl text-xs font-semibold text-white transition shadow-md ${
+                  alertModal.type === "success" 
+                    ? "bg-green-600 hover:bg-green-700 shadow-green-200" 
+                    : "bg-red-600 hover:bg-red-700 shadow-red-200"
+                }`}
+              >
+                Aceptar
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>

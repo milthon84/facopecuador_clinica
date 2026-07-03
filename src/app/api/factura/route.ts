@@ -41,7 +41,7 @@ export async function POST(req: Request) {
 
     // 2. Extraer datos del body
     const {
-      patient_id, client_name, client_document, client_email, client_phone, client_address, items,
+      patient_id, appointment_id, client_name, client_document, client_email, client_phone, client_address, items,
       payment_method = "efectivo", bank_account_id, payment_reference,
       card_type, card_lote, card_voucher,
     } = body;
@@ -250,6 +250,7 @@ export async function POST(req: Request) {
     // 10. Guardar Factura en Base de Datos
     const { data: invoice, error: invoiceError } = await supabase.from("invoices").insert({
       patient_id: patient_id || null,
+      xml_url: appointment_id || null,
       client_name,
       client_document,
       client_email: client_email || null,

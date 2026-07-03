@@ -9,13 +9,15 @@ if (!resend) {
 }
 
 
-const FROM = process.env.RESEND_FROM_EMAIL || "Consultorio <onboarding@resend.dev>";
+const FROM_CLINICA = "Facop Clínica <clinica@facop.com.ec>";
+const FROM_CONTABILIDAD = "Facop Contabilidad <contabilidad@facop.com.ec>";
 const CLINIC = process.env.NEXT_PUBLIC_CLINIC_NAME || "Consultorio";
 const ADDRESS = process.env.NEXT_PUBLIC_CLINIC_ADDRESS || "";
 const PHONE = process.env.NEXT_PUBLIC_CLINIC_PHONE || "";
 
 function formatES(date: Date): string {
-  return date.toLocaleString("es-CO", {
+  return date.toLocaleString("es-EC", {
+    timeZone: "America/Guayaquil",
     weekday: "long",
     year: "numeric",
     month: "long",
@@ -125,7 +127,7 @@ export async function sendConfirmationEmail(d: ApptEmailData) {
   try {
     console.log(`✉️ Intentando enviar correo de confirmación de cita a: ${d.patientEmail}...`);
     const response = await resend.emails.send({
-      from: FROM,
+      from: FROM_CLINICA,
       to: d.patientEmail,
       subject: `Cita confirmada – ${dt}`,
       html: baseHtml("Cita confirmada", body),
@@ -175,7 +177,7 @@ export async function sendReminderEmail(d: ApptEmailData) {
   try {
     console.log(`✉️ Intentando enviar recordatorio de cita a: ${d.patientEmail}...`);
     const response = await resend.emails.send({
-      from: FROM,
+      from: FROM_CLINICA,
       to: d.patientEmail,
       subject: `Recordatorio: cita mañana ${dt}`,
       html: baseHtml("Recordatorio", body),
@@ -215,7 +217,7 @@ export async function sendCancellationEmail(d: ApptEmailData & { reason?: string
   try {
     console.log(`✉️ Intentando enviar correo de cancelación a: ${d.patientEmail}...`);
     const response = await resend.emails.send({
-      from: FROM,
+      from: FROM_CLINICA,
       to: d.patientEmail,
       subject: `Cita cancelada – ${dt}`,
       html: baseHtml("Cita cancelada", body),
@@ -273,7 +275,7 @@ export async function sendAdminNotification(d: ApptEmailData & { phone?: string;
   try {
     console.log(`✉️ Intentando enviar notificación de admin a: ${adminEmail}...`);
     const response = await resend.emails.send({
-      from: FROM,
+      from: FROM_CLINICA,
       to: adminEmail,
       subject: `Nueva cita: ${d.patientName} – ${dt}`,
       html: baseHtml("Nueva cita", body),
@@ -312,33 +314,31 @@ function renderToothHtmlTable(toothNum: number, state: any): string {
     if (cond === "caries") {
       return { css: "background-color: #ef4444; border: 1px solid #dc2626;", bgcolor: "#ef4444" };
     }
-    if (cond === "sellante_necesario") {
-      return { css: "background-color: #e0f2fe; border: 1px dashed #0ea5e9;", bgcolor: "#e0f2fe" };
-    }
-    if (cond === "sellante_realizado") {
+    if (cond === "obturacion") {
       return { css: "background-color: #3b82f6; border: 1px solid #2563eb;", bgcolor: "#3b82f6" };
     }
     return { css: "background-color: #fbfbfb; border: 1px solid #e1d6f2;", bgcolor: "#fbfbfb" };
   };
 
-  if (general === "perdida") {
+  if (general === "perdida" || general === "perdida_caries" || general === "perdida_otra") {
     return `
-      <div style="width: 32px; height: 32px; line-height: 30px; margin: 0 auto; text-align: center; font-size: 18px; font-weight: bold; color: #ef4444; font-family: Arial, sans-serif; border: 1px solid #ef4444; border-radius: 4px; background-color: #fff5f5; box-sizing: border-box;">
+      <div style="width: 32px; height: 32px; line-height: 30px; margin: 0 auto; text-align: center; font-size: 14px; font-weight: bold; color: #3b82f6; font-family: Arial, sans-serif; border: 1px solid #3b82f6; border-radius: 4px; background-color: #eff6ff; box-sizing: border-box; position: relative;">
         X
+        ${general === "perdida_otra" ? `<div style="position: absolute; border: 1.5px solid #3b82f6; border-radius: 50%; top: 2px; bottom: 2px; left: 2px; right: 2px;"></div>` : ""}
       </div>
     `;
   }
 
   if (general === "extraccion") {
     return `
-      <div style="width: 32px; height: 32px; line-height: 30px; margin: 0 auto; text-align: center; font-size: 18px; font-weight: bold; color: #ef4444; font-family: Arial, sans-serif; border: 1px solid #ef4444; border-radius: 4px; background-color: #fff5f5; box-sizing: border-box;">
-        /
+      <div style="width: 32px; height: 32px; line-height: 30px; margin: 0 auto; text-align: center; font-size: 14px; font-weight: bold; color: #ef4444; font-family: Arial, sans-serif; border: 1px solid #ef4444; border-radius: 4px; background-color: #fff5f5; box-sizing: border-box;">
+        X
       </div>
     `;
   }
 
   const tableStyle = general === "corona"
-    ? "width: 32px; height: 32px; border-collapse: collapse; margin: 0 auto; border: 2.5px solid #C9A961; border-radius: 4px; background-color: #fffcf6;"
+    ? "width: 32px; height: 32px; border-collapse: collapse; margin: 0 auto; border: 2px solid #3b82f6; border-radius: 4px; background-color: #eff6ff;"
     : "width: 32px; height: 32px; border-collapse: collapse; margin: 0 auto;";
 
   const topStyles = getSurfaceStyles("top");
@@ -346,6 +346,18 @@ function renderToothHtmlTable(toothNum: number, state: any): string {
   const centerStyles = getSurfaceStyles("center");
   const rightStyles = getSurfaceStyles("right");
   const bottomStyles = getSurfaceStyles("bottom");
+
+  const getCenterSymbol = (gen: string) => {
+    if (gen === "sellante_necesario" || gen === "sellante_realizado") return "*";
+    if (gen === "endodoncia_nec" || gen === "endodoncia_real") return "▲";
+    if (gen === "protesis_fija") return "—";
+    if (gen === "protesis_removible") return "=";
+    if (gen === "protesis_total") return "≡";
+    return "&nbsp;";
+  };
+
+  const isRealizedOrCorona = general.includes("real") || general === "corona" || general.includes("protesis");
+  const centerColor = isRealizedOrCorona ? "#3b82f6" : "#ef4444";
 
   return `
     <table style="${tableStyle}" cellpadding="0" cellspacing="0" border="0" width="32" height="32">
@@ -356,7 +368,9 @@ function renderToothHtmlTable(toothNum: number, state: any): string {
       </tr>
       <tr style="line-height: 12px; font-size: 1px;">
         <td width="10" height="12" bgcolor="${leftStyles.bgcolor}" style="width: 10px; height: 12px; padding: 0; ${leftStyles.css} line-height: 12px; font-size: 1px;">&nbsp;</td>
-        <td width="12" height="12" bgcolor="${centerStyles.bgcolor}" style="width: 12px; height: 12px; padding: 0; ${centerStyles.css} line-height: 12px; font-size: 1px;">&nbsp;</td>
+        <td width="12" height="12" bgcolor="${centerStyles.bgcolor}" align="center" style="width: 12px; height: 12px; padding: 0; ${centerStyles.css} line-height: 12px; font-size: 9px; font-family: Arial, sans-serif; font-weight: bold; color: ${centerColor};">
+          ${getCenterSymbol(general)}
+        </td>
         <td width="10" height="12" bgcolor="${rightStyles.bgcolor}" style="width: 10px; height: 12px; padding: 0; ${rightStyles.css} line-height: 12px; font-size: 1px;">&nbsp;</td>
       </tr>
       <tr style="line-height: 10px; font-size: 1px;">
@@ -725,7 +739,7 @@ export async function sendDentalConsultationEmail(d: DentalEmailData) {
   try {
     console.log(`✉️ Intentando enviar resumen dental a: ${d.patientEmail}...`);
     const response = await resend.emails.send({
-      from: FROM,
+      from: FROM_CLINICA,
       to: d.patientEmail,
       subject: `Resumen de tu atención odontológica – ${d.dateStr}`,
       html: baseHtml("Resumen de Atención", body),
@@ -775,7 +789,7 @@ export async function sendInvoiceEmail(
 
   try {
     const response = await resend.emails.send({
-      from: FROM,
+      from: FROM_CONTABILIDAD,
       to: clientEmail,
       subject: `Factura Electrónica ${invoiceNumber} - ${CLINIC}`,
       html: baseHtml("Comprobante Electrónico", body),

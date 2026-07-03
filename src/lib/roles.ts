@@ -52,7 +52,7 @@ export function canAccess(role: UserRole | undefined, pathname: string): boolean
 // ── Recursos configurables por rol ────────────────────────────────────────
 // Lista de todas las rutas que se pueden asignar a un rol desde el panel
 export const ALL_RESOURCES = [
-  { section: "Principal",     path: "/gestion",              label: "Dashboard (Hoy)" },
+  { section: "Principal",     path: "/gestion",              label: "Dashboard (Agenda)" },
   { section: "Principal",     path: "/gestion/calendario",   label: "Calendario" },
   { section: "Principal",     path: "/gestion/pacientes",    label: "Pacientes" },
   { section: "Configuración", path: "/gestion/horarios",    label: "Horarios" },
@@ -89,7 +89,7 @@ export interface NavItemDef {
 export const NAV_SECTIONS = ["Principal", "Configuración", "Clínica", "Sistema"] as const;
 
 export const NAV_ITEMS: NavItemDef[] = [
-  { href: "/gestion",              label: "Hoy",             icon: "LayoutDashboard", section: "Principal",     roles: ["admin", "recepcionista"] },
+  { href: "/gestion",              label: "Agenda",          icon: "LayoutDashboard", section: "Principal",     roles: ["admin", "recepcionista"] },
   { href: "/gestion/calendario",   label: "Calendario",      icon: "CalendarDays",    section: "Principal",     roles: ["admin", "recepcionista"] },
   { href: "/gestion/pacientes",    label: "Pacientes",       icon: "Users",           section: "Principal",     roles: ["admin", "recepcionista"] },
   { href: "/gestion/horarios",     label: "Horarios",            icon: "Clock",        section: "Configuración", roles: ["admin"] },

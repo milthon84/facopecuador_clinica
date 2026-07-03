@@ -41,6 +41,16 @@ export default function NewAppointmentForm({ initialDate }: { initialDate: strin
   const [customStart, setCustomStart] = useState("09:00");
   const [customEnd, setCustomEnd] = useState("09:30");
 
+  const handleCustomStartChange = (val: string) => {
+    setCustomStart(val);
+    if (!val) return;
+    const [hours, minutes] = val.split(":").map(Number);
+    if (isNaN(hours) || isNaN(minutes)) return;
+    const newHours = (hours + 1) % 24;
+    const endStr = `${String(newHours).padStart(2, "0")}:${String(minutes).padStart(2, "0")}`;
+    setCustomEnd(endStr);
+  };
+
   // Paciente
   const [documentNumber, setDocumentNumber] = useState("");
   const [fullName, setFullName] = useState("");
@@ -279,7 +289,7 @@ export default function NewAppointmentForm({ initialDate }: { initialDate: strin
                 <input
                   type="time"
                   value={customStart}
-                  onChange={(e) => setCustomStart(e.target.value)}
+                  onChange={(e) => handleCustomStartChange(e.target.value)}
                   className="w-full border border-lilac-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-lilac-400 bg-white"
                 />
               </div>
