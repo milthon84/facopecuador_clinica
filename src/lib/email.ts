@@ -55,7 +55,7 @@ function baseHtml(title: string, body: string): string {
 
           <!-- Header -->
           <tr>
-            <td style="background:#0f0f0f; padding:22px 32px; text-align:center;">
+            <td style="background:#ffffff; padding:22px 32px; text-align:center; border-bottom:1px solid #f0ebf8;">
               ${headerContent}
             </td>
           </tr>
@@ -151,7 +151,7 @@ export async function sendReminderEmail(d: ApptEmailData) {
   const body = `
     <h2 style="color:#7E5DB4; margin:0 0 8px; font-size:22px; font-weight:700;">Recordatorio de tu cita 🔔</h2>
     <p style="font-size:15px; line-height:1.6; margin:0 0 4px;">Hola <strong>${d.patientName}</strong>,</p>
-    <p style="font-size:15px; line-height:1.6; margin:0 0 24px; color:#444;">Te recordamos que mañana tenés tu cita en <strong>${CLINIC}</strong>.</p>
+    <p style="font-size:15px; line-height:1.6; margin:0 0 24px; color:#444;">Te recordamos tu cita en <strong>${CLINIC}</strong>.</p>
 
     <table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-bottom:16px;">
       <tr>
