@@ -76,6 +76,10 @@ export default async function CitaDetalle({ params }: { params: Promise<{ id: st
                 appointmentId={appt.id}
                 reminderSentAt={appt.reminder_sent_at}
                 patientEmail={patient.email}
+                patientName={patient.full_name}
+                patientPhone={patient.phone}
+                startsAt={appt.starts_at}
+                reason={appt.reason}
               />
             )}
           </div>

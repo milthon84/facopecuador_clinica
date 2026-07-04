@@ -293,6 +293,10 @@ export default async function AdminDashboard({
                           appointmentId={appt.id}
                           reminderSentAt={appt.reminder_sent_at}
                           patientEmail={p?.email}
+                          patientName={p?.full_name}
+                          patientPhone={p?.phone}
+                          startsAt={appt.starts_at}
+                          reason={appt.reason}
                         />
                       )}
                       {hasFicha && (

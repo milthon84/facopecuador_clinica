@@ -2,27 +2,87 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Bell, Check, Loader2, CheckCircle2, AlertCircle } from "lucide-react";
+import { Bell, Check, Loader2, CheckCircle2, AlertCircle, MessageCircle } from "lucide-react";
 
 interface Props {
   appointmentId: string;
   reminderSentAt: string | null;
   patientEmail: string | null;
+  patientName?: string | null;
+  patientPhone?: string | null;
+  startsAt?: string | null;
+  reason?: string | null;
+}
+
+/** Normaliza un teléfono ecuatoriano al formato 593XXXXXXXXX */
+function buildEcPhone(raw: string | null | undefined): string | null {
+  if (!raw) return null;
+  // Eliminar espacios, guiones, paréntesis
+  const digits = raw.replace(/[\s\-().+]/g, "");
+  // Si ya comienza con 593
+  if (digits.startsWith("593")) return digits;
+  // Si comienza con 0 (formato local Ecuador: 09XXXXXXXX → 5939XXXXXXXX)
+  if (digits.startsWith("0")) return "593" + digits.slice(1);
+  // Si empieza directo con 9 (sin prefijo)
+  if (digits.startsWith("9")) return "593" + digits;
+  return digits;
+}
+
+/** Construye el mensaje de WhatsApp reemplazando los datos de la cita */
+function buildWhatsAppUrl(
+  phone: string,
+  name: string,
+  startsAt: string,
+  reason: string
+): string {
+  const date = new Date(startsAt);
+
+  const fechaFormateada = date.toLocaleDateString("es-EC", {
+    weekday: "long",
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+  });
+
+  const horaFormateada = date.toLocaleTimeString("es-EC", {
+    hour: "numeric",
+    minute: "2-digit",
+    hour12: true,
+  });
+
+  const mensaje =
+    `Hola *${name}* 👋\n\n` +
+    `Le recordamos su cita en *Facop Quito Clinica* ✅\n\n` +
+    `📅 *Fecha y hora:*\n${fechaFormateada}, ${horaFormateada}\n\n` +
+    `📍 *Ubicacion:*\nJuan Leon Mera y La Pinta, Edificio Opladen, 3er piso - Quito\n` +
+    `🗺️ Ver en Google Maps: https://maps.app.goo.gl/rG2VKyLm5N4yr7s67\n\n` +
+    `🦷 *Motivo:* ${reason || "consulta odontológica"}\n\n` +
+    `⏰ Si necesita cancelar o reprogramar, contactenos al menos 24 horas antes.`;
+
+  return `https://wa.me/${phone}?text=${encodeURIComponent(mensaje)}`;
 }
 
 export default function SendReminderButton({
   appointmentId,
   reminderSentAt,
   patientEmail,
+  patientName,
+  patientPhone,
+  startsAt,
+  reason,
 }: Props) {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [alertModal, setAlertModal] = useState<{
     show: boolean;
-    type: "success" | "error";
+    type: "success" | "error" | "whatsapp";
     title: string;
     message: string;
+    whatsappUrl?: string;
   } | null>(null);
+
+  const ecPhone = buildEcPhone(patientPhone);
+  const hasWhatsApp = !!ecPhone;
 
   async function handleSend(e: React.MouseEvent) {
     // Prevent the parent card/row Link navigation
@@ -48,12 +108,26 @@ export default function SendReminderButton({
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Error al enviar recordatorio");
-      
+
+      // Construir URL de WhatsApp si tenemos los datos necesarios
+      let whatsappUrl: string | undefined;
+      if (hasWhatsApp && patientName && startsAt) {
+        whatsappUrl = buildWhatsAppUrl(
+          ecPhone!,
+          patientName,
+          startsAt,
+          reason || "consulta odontológica"
+        );
+      }
+
       setAlertModal({
         show: true,
-        type: "success",
+        type: whatsappUrl ? "whatsapp" : "success",
         title: "¡Recordatorio Enviado!",
-        message: "El correo electrónico de recordatorio ha sido enviado correctamente al paciente.",
+        message: whatsappUrl
+          ? "El correo electrónico fue enviado correctamente. ¿Desea también enviar el recordatorio por WhatsApp?"
+          : "El correo electrónico de recordatorio ha sido enviado correctamente al paciente.",
+        whatsappUrl,
       });
       router.refresh();
     } catch (err: any) {
@@ -85,7 +159,7 @@ export default function SendReminderButton({
             ? `Recordatorio enviado el ${new Date(reminderSentAt).toLocaleString(
                 "es-EC"
               )}`
-            : "Enviar recordatorio por correo"
+            : "Enviar recordatorio por correo y WhatsApp"
         }
       >
         {loading ? (
@@ -99,7 +173,7 @@ export default function SendReminderButton({
       </button>
 
       {alertModal?.show && (
-        <div 
+        <div
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm transition-all duration-300 animate-in fade-in"
           onClick={(e) => {
             e.preventDefault();
@@ -107,7 +181,7 @@ export default function SendReminderButton({
             setAlertModal(null);
           }}
         >
-          <div 
+          <div
             className="bg-white border border-lilac-100 rounded-3xl p-6 max-w-sm w-full mx-4 shadow-2xl flex flex-col items-center text-center animate-in zoom-in-95 duration-200"
             onClick={(e) => {
               e.preventDefault();
@@ -116,11 +190,17 @@ export default function SendReminderButton({
           >
             {/* Icono */}
             <div className="flex items-center justify-center mb-4">
-              {alertModal.type === "success" ? (
+              {alertModal.type === "success" && (
                 <div className="h-12 w-12 rounded-full bg-green-50 flex items-center justify-center text-green-600">
                   <CheckCircle2 size={24} />
                 </div>
-              ) : (
+              )}
+              {alertModal.type === "whatsapp" && (
+                <div className="h-12 w-12 rounded-full bg-green-50 flex items-center justify-center text-green-600">
+                  <CheckCircle2 size={24} />
+                </div>
+              )}
+              {alertModal.type === "error" && (
                 <div className="h-12 w-12 rounded-full bg-red-50 flex items-center justify-center text-red-600">
                   <AlertCircle size={24} />
                 </div>
@@ -131,21 +211,38 @@ export default function SendReminderButton({
             <h3 className="text-lg font-bold text-ink-900 mb-2">{alertModal.title}</h3>
             <p className="text-xs text-ink-600 leading-relaxed mb-6">{alertModal.message}</p>
 
-            {/* Accion */}
-            <div className="w-full">
+            {/* Acciones */}
+            <div className="w-full flex flex-col gap-2">
+              {alertModal.type === "whatsapp" && alertModal.whatsappUrl && (
+                <a
+                  href={alertModal.whatsappUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setAlertModal(null);
+                  }}
+                  className="w-full py-2.5 rounded-xl text-xs font-semibold text-white bg-[#25D366] hover:bg-[#1ebe5d] shadow-md transition flex items-center justify-center gap-2"
+                >
+                  <MessageCircle size={14} />
+                  Enviar por WhatsApp
+                </a>
+              )}
               <button
                 onClick={(e) => {
                   e.preventDefault();
                   e.stopPropagation();
                   setAlertModal(null);
                 }}
-                className={`w-full py-2.5 rounded-xl text-xs font-semibold text-white transition shadow-md ${
-                  alertModal.type === "success" 
-                    ? "bg-green-600 hover:bg-green-700 shadow-green-200" 
-                    : "bg-red-600 hover:bg-red-700 shadow-red-200"
+                className={`w-full py-2.5 rounded-xl text-xs font-semibold transition shadow-md ${
+                  alertModal.type === "error"
+                    ? "text-white bg-red-600 hover:bg-red-700 shadow-red-200"
+                    : alertModal.type === "whatsapp"
+                    ? "text-ink-700 bg-ink-100 hover:bg-ink-200 shadow-ink-100"
+                    : "text-white bg-green-600 hover:bg-green-700 shadow-green-200"
                 }`}
               >
-                Aceptar
+                {alertModal.type === "whatsapp" ? "Solo correo, cerrar" : "Aceptar"}
               </button>
             </div>
           </div>
