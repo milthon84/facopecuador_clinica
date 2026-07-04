@@ -15,6 +15,7 @@ import {
   PlusCircle 
 } from "lucide-react";
 import { formatTimeLocal } from "@/lib/availability";
+import EditPatientModal from "@/components/EditPatientModal";
 
 export const dynamic = "force-dynamic";
 
@@ -131,8 +132,17 @@ export default async function PacienteDetalle({ params }: { params: Promise<{ id
         <div className="space-y-6 md:col-span-1">
           {/* Core Info */}
           <div className="card p-6 bg-white border border-lilac-100 shadow-sm">
-            <div className="flex flex-col gap-3 mb-4">
+            <div className="flex flex-col gap-2 mb-4">
               <h1 className="text-xl font-bold text-ink-900 leading-tight">{patient.full_name}</h1>
+              <EditPatientModal
+                patient={{
+                  id: patient.id,
+                  full_name: patient.full_name,
+                  phone: patient.phone,
+                  email: patient.email,
+                  document_number: patient.document_number,
+                }}
+              />
               <Link
                 href={`/gestion/pacientes/${patient.id}/editar-ficha`}
                 className="w-full inline-flex items-center justify-center bg-gold-600 hover:bg-gold-700 text-white font-bold text-xs px-3.5 py-2.5 rounded-xl transition-all shadow-sm gap-1 hover:scale-[1.02] active:scale-[0.98]"

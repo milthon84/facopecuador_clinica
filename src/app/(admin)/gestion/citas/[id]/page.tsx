@@ -5,6 +5,7 @@ import Link from "next/link";
 import { ArrowLeft, Mail, Phone, IdCard, Calendar, CheckCircle2, Receipt } from "lucide-react";
 import AppointmentActions from "@/components/AppointmentActions";
 import SendReminderButton from "@/components/SendReminderButton";
+import EditPatientModal from "@/components/EditPatientModal";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -91,6 +92,19 @@ export default async function CitaDetalle({ params }: { params: Promise<{ id: st
           )}
           {patient.phone && <InfoRow icon={<Phone size={14} />} label="Teléfono" value={patient.phone} />}
           {patient.email && <InfoRow icon={<Mail size={14} />} label="Email" value={patient.email} />}
+        </div>
+
+        {/* Botón editar datos del paciente */}
+        <div className="mb-4">
+          <EditPatientModal
+            patient={{
+              id: patient.id,
+              full_name: patient.full_name,
+              phone: patient.phone,
+              email: patient.email,
+              document_number: patient.document_number,
+            }}
+          />
         </div>
 
         {appt.reason && (
