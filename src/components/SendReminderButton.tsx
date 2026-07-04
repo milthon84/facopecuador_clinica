@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
 import { Bell, Check, Loader2, CheckCircle2, AlertCircle, MessageCircle } from "lucide-react";
 
@@ -84,6 +85,7 @@ export default function SendReminderButton({
 }: Props) {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
+  const [mounted, setMounted] = useState(false);
   const [alertModal, setAlertModal] = useState<{
     show: boolean;
     type: "success" | "error" | "whatsapp";
@@ -91,6 +93,10 @@ export default function SendReminderButton({
     message: string;
     whatsappUrl?: string;
   } | null>(null);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   const ecPhone = buildEcPhone(patientPhone);
   const hasWhatsApp = !!ecPhone;
@@ -183,7 +189,7 @@ export default function SendReminderButton({
         <span>{hasSent ? "Reenviar Recordatorio" : "Enviar Recordatorio"}</span>
       </button>
 
-      {alertModal?.show && (
+      {mounted && alertModal?.show && createPortal(
         <div
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm transition-all duration-300 animate-in fade-in"
           onClick={(e) => {
@@ -256,7 +262,8 @@ export default function SendReminderButton({
               </button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </>
   );
