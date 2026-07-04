@@ -50,14 +50,23 @@ function buildWhatsAppUrl(
     hour12: true,
   });
 
+  // Usamos escapes Unicode explícitos para evitar problemas de codificación del archivo
+  const HAND   = "\u{1F44B}"; // 👋
+  const CHECK  = "\u2705";    // ✅
+  const CAL    = "\u{1F4C5}"; // 📅
+  const PIN    = "\u{1F4CD}"; // 📍
+  const MAP    = "\u{1F5FA}\uFE0F"; // 🗺️
+  const TOOTH  = "\u{1F9B7}"; // 🦷
+  const CLOCK  = "\u23F0";    // ⏰
+
   const mensaje =
-    `Hola *${name}* 👋\n\n` +
-    `Le recordamos su cita en *Facop Quito Clinica* ✅\n\n` +
-    `📅 *Fecha y hora:*\n${fechaFormateada}, ${horaFormateada}\n\n` +
-    `📍 *Ubicacion:*\nJuan Leon Mera y La Pinta, Edificio Opladen, 3er piso - Quito\n` +
-    `🗺️ Ver en Google Maps: https://maps.app.goo.gl/rG2VKyLm5N4yr7s67\n\n` +
-    `🦷 *Motivo:* ${reason || "consulta odontológica"}\n\n` +
-    `⏰ Si necesita cancelar o reprogramar, contactenos al menos 24 horas antes.`;
+    `Hola *${name}* ${HAND}\n\n` +
+    `Le recordamos su cita en *Facop Quito Clinica* ${CHECK}\n\n` +
+    `${CAL} *Fecha y hora:*\n${fechaFormateada}, ${horaFormateada}\n\n` +
+    `${PIN} *Ubicacion:*\nJuan Leon Mera y La Pinta, Edificio Opladen, 3er piso - Quito\n` +
+    `${MAP} Ver en Google Maps: https://maps.app.goo.gl/rG2VKyLm5N4yr7s67\n\n` +
+    `${TOOTH} *Motivo:* ${reason || "consulta odontológica"}\n\n` +
+    `${CLOCK} Si necesita cancelar o reprogramar, contactenos al menos 24 horas antes.`;
 
   return `https://wa.me/${phone}?text=${encodeURIComponent(mensaje)}`;
 }
