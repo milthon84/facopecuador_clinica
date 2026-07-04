@@ -14,7 +14,10 @@ function parseDate(s?: string): Date {
     const [y, m, d] = s.split("-").map(Number);
     return new Date(y, m - 1, d);
   }
-  return new Date();
+  // Sin param: usar la fecha de HOY en Ecuador (UTC-5)
+  const ecToday = new Date().toLocaleDateString("en-CA", { timeZone: "America/Guayaquil" });
+  const [y, m, d] = ecToday.split("-").map(Number);
+  return new Date(y, m - 1, d);
 }
 
 function fmtDate(d: Date) {
@@ -84,7 +87,8 @@ export default async function CalendarioPage({
     (byDay.get(key) as any[]).push(a);
   }
 
-  const todayStr = fmtDate(new Date());
+  // "Hoy" siempre calculado en timezone Ecuador
+  const todayStr = new Date().toLocaleDateString("en-CA", { timeZone: "America/Guayaquil" });
 
   // ── Renderizar citas de un día ─────────────────────────────────────────
   function ApptList({ dateStr, max }: { dateStr: string; max: number }) {
@@ -236,7 +240,7 @@ export default async function CalendarioPage({
             className="w-8 h-8 flex items-center justify-center rounded-lg border border-lilac-200 hover:bg-lilac-50 transition-colors">
             <ChevronLeft size={16} />
           </Link>
-          <Link href={`/gestion/calendario?view=${view}&date=${fmtDate(new Date())}`}
+          <Link href={`/gestion/calendario?view=${view}&date=${new Date().toLocaleDateString("en-CA", { timeZone: "America/Guayaquil" })}`}
             className="px-3 py-1.5 rounded-lg border border-lilac-200 text-xs font-semibold hover:bg-lilac-50 transition-colors">
             Hoy
           </Link>

@@ -1,6 +1,29 @@
 import Link from "next/link";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { formatTimeLocal } from "@/lib/availability";
+
+// Ecuador siempre UTC-5, sin horario de verano
+const EC_TZ = "America/Guayaquil";
+
+/** Devuelve la fecha actual como string "YYYY-MM-DD" en zona Ecuador */
+function todayInEcuador(): string {
+  return new Date().toLocaleDateString("en-CA", { timeZone: EC_TZ });
+}
+
+/** Convierte una fecha "YYYY-MM-DD" en Ecuador al inicio de ese día en UTC */
+function ecDayStartUTC(ecDateStr: string): string {
+  const [y, m, d] = ecDateStr.split("-").map(Number);
+  // Medianoche Ecuador = 05:00 UTC (UTC-5)
+  return new Date(Date.UTC(y, m - 1, d, 5, 0, 0)).toISOString();
+}
+
+/** Convierte una fecha "YYYY-MM-DD" en Ecuador al fin de ese día en UTC */
+function ecDayEndUTC(ecDateStr: string): string {
+  const [y, m, d] = ecDateStr.split("-").map(Number);
+  // 23:59:59 Ecuador = día siguiente a las 04:59:59 UTC
+  return new Date(Date.UTC(y, m - 1, d + 1, 4, 59, 59)).toISOString();
+}
+
 import {
   Clock,
   CheckCircle2,
@@ -25,45 +48,31 @@ export default async function AdminDashboard({
   const searchParams = await searchParamsPromise;
   const supabase = createAdminClient();
 
-  // Determinar la fecha objetivo
+  // Determinar la fecha objetivo en timezone Ecuador
+  const todayEc = todayInEcuador(); // "YYYY-MM-DD" en hora Ecuador
   const targetDateParam = searchParams?.date;
-  let targetDate = new Date();
-  
-  if (targetDateParam) {
-    const parsed = new Date(targetDateParam + "T12:00:00");
-    if (!isNaN(parsed.getTime())) {
-      targetDate = parsed;
-    }
-  }
+  // Usamos el param si viene, de lo contrario la fecha de hoy en Ecuador
+  const targetEcDate = (targetDateParam && /^\d{4}-\d{2}-\d{2}$/.test(targetDateParam))
+    ? targetDateParam
+    : todayEc;
 
-  const startOfDay = new Date(
-    targetDate.getFullYear(),
-    targetDate.getMonth(),
-    targetDate.getDate()
-  ).toISOString();
-  const endOfDay = new Date(
-    targetDate.getFullYear(),
-    targetDate.getMonth(),
-    targetDate.getDate(),
-    23,
-    59,
-    59
-  ).toISOString();
+  // Rango del día completo en UTC, respetando la zona Ecuador
+  const startOfDay = ecDayStartUTC(targetEcDate);
+  const endOfDay   = ecDayEndUTC(targetEcDate);
 
-  // Fechas de navegación
-  const prevDate = new Date(targetDate);
-  prevDate.setDate(prevDate.getDate() - 1);
-  const nextDate = new Date(targetDate);
-  nextDate.setDate(nextDate.getDate() + 1);
+  // Fechas de navegación (trabajamos solo con strings YYYY-MM-DD)
+  const [ty, tm, td] = targetEcDate.split("-").map(Number);
+  const prevDateObj = new Date(Date.UTC(ty, tm - 1, td - 1));
+  const nextDateObj = new Date(Date.UTC(ty, tm - 1, td + 1));
+  const prevDateStr = prevDateObj.toISOString().slice(0, 10);
+  const nextDateStr = nextDateObj.toISOString().slice(0, 10);
 
-  const prevDateStr = `${prevDate.getFullYear()}-${String(prevDate.getMonth() + 1).padStart(2, '0')}-${String(prevDate.getDate()).padStart(2, '0')}`;
-  const nextDateStr = `${nextDate.getFullYear()}-${String(nextDate.getMonth() + 1).padStart(2, '0')}-${String(nextDate.getDate()).padStart(2, '0')}`;
-  
-  const now = new Date();
-  const isTargetToday = now.toDateString() === targetDate.toDateString();
-  const displayTitle = isTargetToday ? "Hoy" : targetDate.toLocaleDateString("es-CO", {
-    weekday: "long",
-  });
+  const isTargetToday = targetEcDate === todayEc;
+  const displayTitle = isTargetToday
+    ? "Hoy"
+    : new Date(targetEcDate + "T12:00:00-05:00").toLocaleDateString("es-EC", {
+        weekday: "long",
+      });
 
   const todayRes = await supabase
     .from("appointments")
@@ -75,7 +84,7 @@ export default async function AdminDashboard({
     .order("starts_at");
 
   const todayAppts = todayRes.data;
-  const targetDateStr = `${targetDate.getFullYear()}-${String(targetDate.getMonth() + 1).padStart(2, '0')}-${String(targetDate.getDate()).padStart(2, '0')}`;
+  const targetDateStr = targetEcDate;
 
   const appts = todayAppts || [];
   const apptIds = appts.map((a) => a.id);
@@ -213,7 +222,7 @@ export default async function AdminDashboard({
       <div className="card overflow-hidden">
         <div className="px-5 py-4 border-b border-lilac-100 flex items-center justify-between">
           <h2 className="font-semibold">
-            {isTargetToday ? "Citas de hoy" : `Citas del ${targetDate.toLocaleDateString("es-CO", { day: "numeric", month: "long" })}`}
+            {isTargetToday ? "Citas de hoy" : `Citas del ${new Date(targetEcDate + "T12:00:00-05:00").toLocaleDateString("es-EC", { day: "numeric", month: "long" })}`}
           </h2>
           <Link
             href="/gestion/calendario"
