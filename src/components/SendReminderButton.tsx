@@ -50,14 +50,14 @@ function buildWhatsAppUrl(
     hour12: true,
   });
 
-  // Usamos escapes Unicode explícitos para evitar problemas de codificación del archivo
-  const HAND   = "\u{1F44B}"; // 👋
-  const CHECK  = "\u2705";    // ✅
-  const CAL    = "\u{1F4C5}"; // 📅
-  const PIN    = "\u{1F4CD}"; // 📍
-  const MAP    = "\u{1F5FA}\uFE0F"; // 🗺️
-  const TOOTH  = "\u{1F9B7}"; // 🦷
-  const CLOCK  = "\u23F0";    // ⏰
+  // String.fromCodePoint garantiza el caracter emoji correcto en runtime
+  const HAND  = String.fromCodePoint(0x1F44B);          // 👋
+  const CHECK = String.fromCodePoint(0x2705);            // ✅
+  const CAL   = String.fromCodePoint(0x1F4C5);           // 📅
+  const PIN   = String.fromCodePoint(0x1F4CD);           // 📍
+  const MAP   = String.fromCodePoint(0x1F5FA, 0xFE0F);  // 🗺️
+  const TOOTH = String.fromCodePoint(0x1F9B7);           // 🦷
+  const CLOCK = String.fromCodePoint(0x23F0);            // ⏰
 
   const mensaje =
     `Hola *${name}* ${HAND}\n\n` +
@@ -68,8 +68,10 @@ function buildWhatsAppUrl(
     `${TOOTH} *Motivo:* ${reason || "consulta odontológica"}\n\n` +
     `${CLOCK} Si necesita cancelar o reprogramar, contactenos al menos 24 horas antes.`;
 
-  return `https://wa.me/${phone}?text=${encodeURIComponent(mensaje)}`;
+  // Usamos whatsapp:// (mismo esquema del enlace original del usuario)
+  return `whatsapp://send?phone=${phone}&text=${encodeURIComponent(mensaje)}`;
 }
+
 
 export default function SendReminderButton({
   appointmentId,
@@ -223,19 +225,18 @@ export default function SendReminderButton({
             {/* Acciones */}
             <div className="w-full flex flex-col gap-2">
               {alertModal.type === "whatsapp" && alertModal.whatsappUrl && (
-                <a
-                  href={alertModal.whatsappUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
+                <button
                   onClick={(e) => {
                     e.stopPropagation();
+                    // Abrir WhatsApp con el enlace directo
+                    window.location.href = alertModal.whatsappUrl!;
                     setAlertModal(null);
                   }}
                   className="w-full py-2.5 rounded-xl text-xs font-semibold text-white bg-[#25D366] hover:bg-[#1ebe5d] shadow-md transition flex items-center justify-center gap-2"
                 >
                   <MessageCircle size={14} />
                   Enviar por WhatsApp
-                </a>
+                </button>
               )}
               <button
                 onClick={(e) => {
