@@ -4,6 +4,7 @@ import {
   Package, FileText, UserCog, ShieldCheck, ChevronRight,
   Settings, ShoppingCart, FileBarChart2, Shield, Tag, Ruler, Stethoscope,
   Building2, Landmark, Wallet, CircleDollarSign, CreditCard, Banknote, FileKey,
+  Layers,
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -38,6 +39,7 @@ const ICONS: Record<string, React.ReactNode> = {
   FileKey:           <FileKey size={16} />,
   CircleDollarSign:  <CircleDollarSign size={16} />,
   CreditCard:        <CreditCard size={16} />,
+  Layers:            <Layers size={16} />,
 };
 
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
@@ -64,7 +66,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
         .then(r => r as { data: { label: string; color: string } | null }),
       role !== "admin"
         ? adminClient.from("role_permissions").select("path").eq("role_name", role)
-            .then(r => r as { data: { path: string }[] | null })
+          .then(r => r as { data: { path: string }[] | null })
         : Promise.resolve(null),
     ]);
 
@@ -85,7 +87,12 @@ export default async function AdminLayout({ children }: { children: React.ReactN
   // Filtrar nav: admin ve todo, otros solo lo que tienen permiso en DB
   const visibleNav = NAV_ITEMS.filter(item => {
     if (role === "admin") return true;
-    if (allowedPaths !== null) return allowedPaths.includes(item.href);
+    if (allowedPaths !== null) {
+      if (item.href === "/gestion/inventario/transacciones") {
+        return allowedPaths.includes("/gestion/inventario") || allowedPaths.includes("/gestion/inventario/transacciones");
+      }
+      return allowedPaths.includes(item.href);
+    }
     return item.roles.includes(role as UserRole); // fallback
   });
 

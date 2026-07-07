@@ -3,7 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 import { Shield, Plus, Lock, Trash2, Save, ShieldCheck } from "lucide-react";
 import { logAudit } from "@/lib/audit";
-import { ALL_RESOURCES, RESOURCE_SECTIONS } from "@/lib/roles";
+import { ALL_RESOURCES, RESOURCE_SECTIONS, getWritePathForResource } from "@/lib/roles";
 
 export const dynamic = "force-dynamic";
 
@@ -18,8 +18,6 @@ const COLOR_OPTIONS = [
   { value: "bg-gray-100 text-gray-800 border-gray-200",      label: "Gris" },
 ];
 
-// ── Server Actions ─────────────────────────────────────────────────────────
-
 async function savePermissions(formData: FormData) {
   "use server";
   const sessionSupabase = createClient();
@@ -29,7 +27,17 @@ async function savePermissions(formData: FormData) {
   const roleName = formData.get("roleName") as string;
   if (roleName === "admin") throw new Error("No se puede modificar el rol admin");
 
-  const paths = formData.getAll("path") as string[];
+  const paths: string[] = [];
+  ALL_RESOURCES.forEach(r => {
+    const val = formData.get(`perm_${r.path}`) as string;
+    if (val === "ver" || val === "editar") {
+      paths.push(r.path);
+    }
+    if (val === "editar" && r.hasEdit) {
+      paths.push(getWritePathForResource(r.path));
+    }
+  });
+
   const supabase = createAdminClient();
 
   await supabase.from("role_permissions").delete().eq("role_name", roleName);
@@ -82,13 +90,12 @@ async function createRole(formData: FormData) {
   const { data: { user } } = await sessionSupabase.auth.getUser();
   if ((user?.app_metadata?.role as string) !== "admin") throw new Error("Sin permisos");
 
-  const rawName = formData.get("name") as string;
-  const name = rawName.toLowerCase().trim().replace(/\s+/g, "_").replace(/[^a-z0-9_]/g, "");
   const label = (formData.get("label") as string).trim();
+  const name = label.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim().replace(/\s+/g, "_").replace(/[^a-z0-9_]/g, "");
   const color = formData.get("color") as string;
   const description = (formData.get("description") as string).trim();
 
-  if (!name || !label) throw new Error("Nombre y etiqueta son requeridos");
+  if (!name || !label) throw new Error("El nombre visible es requerido");
 
   const supabase = createAdminClient();
   const { error } = await supabase.from("system_roles").insert({
@@ -316,45 +323,100 @@ export default async function RolesPage() {
                   </p>
                 </div>
               ) : (
-                <form action={savePermissions} className="p-5">
-                  <input type="hidden" name="roleName" value={role.name} />
-                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-x-6 gap-y-4 mb-4">
-                    {RESOURCE_SECTIONS.map(section => {
-                      const sectionResources = ALL_RESOURCES.filter(r => r.section === section);
-                      return (
-                        <div key={section}>
-                          <p className="text-[10px] font-bold text-ink-400 uppercase tracking-wider mb-2">
-                            {section}
-                          </p>
-                          <div className="space-y-2">
-                            {sectionResources.map(r => (
-                              <label key={r.path} className="flex items-center gap-2 cursor-pointer group">
-                                <input
-                                  type="checkbox"
-                                  name="path"
-                                  value={r.path}
-                                  defaultChecked={perms.has(r.path)}
-                                  className="rounded border-lilac-300 text-lilac-600 focus:ring-lilac-500 h-3.5 w-3.5"
-                                />
-                                <span className="text-xs text-ink-700 group-hover:text-lilac-700 transition-colors leading-tight">
-                                  {r.label}
-                                </span>
-                              </label>
-                            ))}
+                <details className="group border-t border-lilac-50">
+                  <summary className="px-5 py-3.5 flex items-center justify-between cursor-pointer select-none bg-lilac-50/20 hover:bg-lilac-50/40 transition-colors">
+                    <div className="flex items-center gap-2 text-xs font-bold text-lilac-700">
+                      <Shield size={14} className="text-lilac-600" />
+                      <span>Configurar Accesos y Permisos</span>
+                    </div>
+                    <div className="text-[10px] text-ink-400 font-semibold flex items-center gap-1">
+                      <span className="group-open:hidden">Expandir para configurar ▼</span>
+                      <span className="hidden group-open:inline">Contraer ▲</span>
+                    </div>
+                  </summary>
+                  
+                  <form action={savePermissions} className="p-5 border-t border-lilac-50 bg-white">
+                    <input type="hidden" name="roleName" value={role.name} />
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                      {RESOURCE_SECTIONS.map(section => {
+                        const sectionResources = ALL_RESOURCES.filter(r => r.section === section);
+                        return (
+                          <div key={section} className="bg-lilac-50/10 border border-lilac-100/50 rounded-2xl p-4">
+                            <p className="text-xs font-bold text-lilac-700 uppercase tracking-wider mb-3 pb-2 border-b border-lilac-100/50">
+                              {section}
+                            </p>
+                            <div className="divide-y divide-lilac-100/40">
+                              {sectionResources.map(r => {
+                                const writePath = getWritePathForResource(r.path);
+                                const currentVal = perms.has(writePath) ? "editar" : perms.has(r.path) ? "ver" : "ninguno";
+
+                                return (
+                                  <div key={r.path} className="flex items-center justify-between py-2.5 first:pt-0 last:pb-0 gap-4">
+                                    <span className="text-xs font-semibold text-ink-800">{r.label}</span>
+                                    
+                                    <div className="flex bg-ink-100/30 border border-lilac-100/50 rounded-lg p-0.5 shrink-0 select-none">
+                                      {/* Ninguno */}
+                                      <label className="cursor-pointer">
+                                        <input
+                                          type="radio"
+                                          name={`perm_${r.path}`}
+                                          value="ninguno"
+                                          defaultChecked={currentVal === "ninguno"}
+                                          className="sr-only peer"
+                                        />
+                                        <div className="px-2.5 py-1 text-[10px] font-bold rounded-md text-ink-500 peer-checked:bg-white peer-checked:text-ink-800 peer-checked:shadow-sm transition-all hover:text-ink-700">
+                                          Ninguno
+                                        </div>
+                                      </label>
+
+                                      {/* Ver */}
+                                      <label className="cursor-pointer">
+                                        <input
+                                          type="radio"
+                                          name={`perm_${r.path}`}
+                                          value="ver"
+                                          defaultChecked={currentVal === "ver"}
+                                          className="sr-only peer"
+                                        />
+                                        <div className="px-2.5 py-1 text-[10px] font-bold rounded-md text-ink-500 peer-checked:bg-lilac-100 peer-checked:text-lilac-700 peer-checked:shadow-sm transition-all hover:text-ink-700">
+                                          Ver
+                                        </div>
+                                      </label>
+
+                                      {/* Editar */}
+                                      {r.hasEdit && (
+                                        <label className="cursor-pointer">
+                                          <input
+                                            type="radio"
+                                            name={`perm_${r.path}`}
+                                            value="editar"
+                                            defaultChecked={currentVal === "editar"}
+                                            className="sr-only peer"
+                                          />
+                                          <div className="px-2.5 py-1 text-[10px] font-bold rounded-md text-ink-500 peer-checked:bg-gold-500 peer-checked:text-white peer-checked:shadow-sm transition-all hover:text-gold-700">
+                                            Editar
+                                          </div>
+                                        </label>
+                                      )}
+                                    </div>
+                                  </div>
+                                );
+                              })}
+                            </div>
                           </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                  <div className="flex justify-end pt-2 border-t border-lilac-50">
-                    <button
-                      type="submit"
-                      className="flex items-center gap-2 bg-lilac-600 hover:bg-lilac-700 text-white px-4 py-1.5 rounded-lg font-semibold text-xs transition-colors shadow-sm shadow-lilac-200"
-                    >
-                      <Save size={13} /> Guardar permisos
-                    </button>
-                  </div>
-                </form>
+                        );
+                      })}
+                    </div>
+                    <div className="flex justify-end pt-4 border-t border-lilac-50">
+                      <button
+                        type="submit"
+                        className="flex items-center gap-2 bg-lilac-600 hover:bg-lilac-700 text-white px-4 py-1.5 rounded-lg font-semibold text-xs transition-colors shadow-sm shadow-lilac-200"
+                      >
+                        <Save size={13} /> Guardar permisos
+                      </button>
+                    </div>
+                  </form>
+                </details>
               )}
             </div>
           );
@@ -370,18 +432,8 @@ export default async function RolesPage() {
         <p className="text-sm text-ink-500 mb-5">
           Define un rol con accesos personalizados. Después de crearlo, configura sus permisos arriba.
         </p>
-        <form action={createRole} className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <div className="space-y-1">
-            <label className="text-sm font-semibold text-ink-700">ID del rol *</label>
-            <input
-              name="name"
-              required
-              placeholder="Ej. enfermera"
-              className="w-full bg-lilac-50/50 border border-lilac-100 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-lilac-500"
-            />
-            <p className="text-[10px] text-ink-400">Solo letras minúsculas y guiones bajos. Se usa internamente.</p>
-          </div>
-          <div className="space-y-1">
+        <form action={createRole} className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <div className="space-y-1 sm:col-span-2">
             <label className="text-sm font-semibold text-ink-700">Nombre visible *</label>
             <input
               name="label"
@@ -401,7 +453,7 @@ export default async function RolesPage() {
               ))}
             </select>
           </div>
-          <div className="space-y-1">
+          <div className="space-y-1 sm:col-span-3">
             <label className="text-sm font-semibold text-ink-700">Descripción</label>
             <input
               name="description"
@@ -409,7 +461,7 @@ export default async function RolesPage() {
               className="w-full bg-lilac-50/50 border border-lilac-100 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-lilac-500"
             />
           </div>
-          <div className="sm:col-span-2 flex justify-end pt-2">
+          <div className="sm:col-span-3 flex justify-end pt-2">
             <button
               type="submit"
               className="flex items-center gap-2 bg-lilac-600 hover:bg-lilac-700 text-white px-6 py-2.5 rounded-xl font-semibold text-sm transition-colors shadow-md shadow-lilac-200"

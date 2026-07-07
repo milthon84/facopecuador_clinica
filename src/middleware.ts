@@ -31,6 +31,83 @@ function buildSupabaseClient(req: NextRequest, res: NextResponse) {
   );
 }
 
+function isWritePath(pathname: string): boolean {
+  const normalized = pathname.toLowerCase();
+  return (
+    normalized.endsWith("/nueva") ||
+    normalized.includes("/nueva/") ||
+    normalized.endsWith("/nuevo") ||
+    normalized.includes("/nuevo/") ||
+    normalized.endsWith("/crear") ||
+    normalized.includes("/crear/") ||
+    normalized.endsWith("/editar-ficha") ||
+    normalized.endsWith("/atencion") ||
+    normalized.includes("/atencion/") ||
+    normalized.endsWith("/transacciones/crear")
+  );
+}
+
+function getModifyPathForPathname(pathname: string): string {
+  if (pathname.startsWith("/gestion/pacientes")) {
+    return "/gestion/pacientes/modificar";
+  }
+  if (pathname.startsWith("/gestion/inventario")) {
+    return "/gestion/inventario/modificar";
+  }
+  if (pathname.startsWith("/gestion/caja-general")) {
+    return "/gestion/caja-general/modificar";
+  }
+  if (pathname.startsWith("/gestion/caja-chica")) {
+    return "/gestion/caja-chica/modificar";
+  }
+  if (pathname.startsWith("/gestion/cuentas-por-cobrar")) {
+    return "/gestion/cuentas-por-cobrar/modificar";
+  }
+  if (pathname.startsWith("/gestion/cuentas-por-pagar")) {
+    return "/gestion/cuentas-por-pagar/modificar";
+  }
+  if (pathname.startsWith("/gestion/bancos")) {
+    return "/gestion/bancos/modificar";
+  }
+  if (pathname.startsWith("/gestion/activos")) {
+    return "/gestion/activos/modificar";
+  }
+  if (pathname.startsWith("/gestion/facturacion/config")) {
+    return "/gestion/facturacion/config/modificar";
+  }
+  if (pathname.startsWith("/gestion/facturacion")) {
+    return "/gestion/facturacion/modificar";
+  }
+  if (pathname.startsWith("/gestion/gastos")) {
+    return "/gestion/gastos/modificar";
+  }
+  if (pathname.startsWith("/gestion/contabilidad")) {
+    return "/gestion/contabilidad/modificar";
+  }
+  if (pathname.startsWith("/gestion/usuarios")) {
+    return "/gestion/usuarios/modificar";
+  }
+  if (pathname.startsWith("/gestion/horarios")) {
+    return "/gestion/horarios/modificar";
+  }
+  if (pathname.startsWith("/gestion/bloqueos")) {
+    return "/gestion/bloqueos/modificar";
+  }
+  if (pathname.startsWith("/gestion/categorias")) {
+    return "/gestion/categorias/modificar";
+  }
+  if (pathname.startsWith("/gestion/unidades")) {
+    return "/gestion/unidades/modificar";
+  }
+  if (pathname.startsWith("/gestion/servicios")) {
+    return "/gestion/servicios/modificar";
+  }
+  if (pathname.startsWith("/gestion/calendario")) {
+    return "/gestion/calendario/modificar";
+  }
+  return "/gestion/modificar";
+}
+
 // Verifica acceso usando permisos almacenados en DB.
 // Si la tabla no existe aún, hace fallback al canAccess hardcodeado.
 async function checkAccess(
@@ -49,6 +126,13 @@ async function checkAccess(
     if (error) throw error;
 
     const paths: string[] = (data || []).map((p: { path: string }) => p.path);
+    
+    // Si la ruta es de escritura, requerimos explícitamente el permiso de modificación
+    if (isWritePath(pathname)) {
+      const requiredModifyPath = getModifyPathForPathname(pathname);
+      return paths.includes(requiredModifyPath);
+    }
+
     return paths.some(p => pathname === p || pathname.startsWith(p + "/"));
   } catch {
     // Fallback: usa la función hardcodeada si la DB no está disponible

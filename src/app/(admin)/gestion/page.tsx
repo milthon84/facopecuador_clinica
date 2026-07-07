@@ -1,6 +1,8 @@
 import Link from "next/link";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { createClient } from "@/lib/supabase/server";
 import { formatTimeLocal } from "@/lib/availability";
+import { hasPermission } from "@/lib/roles";
 
 // Ecuador siempre UTC-5, sin horario de verano
 const EC_TZ = "America/Guayaquil";
@@ -47,6 +49,22 @@ export default async function AdminDashboard({
 }) {
   const searchParams = await searchParamsPromise;
   const supabase = createAdminClient();
+
+  // Obtener rol y permisos del usuario actual
+  const session = createClient();
+  const { data: { user } } = await session.auth.getUser();
+  const role = (user?.app_metadata?.role as string) ?? "recepcionista";
+
+  let allowedPaths: string[] | null = null;
+  if (role !== "admin") {
+    const { data } = await supabase
+      .from("role_permissions")
+      .select("path")
+      .eq("role_name", role);
+    allowedPaths = (data || []).map((p: any) => p.path);
+  }
+
+  const canModify = hasPermission(role, "/gestion/modificar", allowedPaths);
 
   // Determinar la fecha objetivo en timezone Ecuador
   const todayEc = todayInEcuador(); // "YYYY-MM-DD" en hora Ecuador
@@ -191,12 +209,14 @@ export default async function AdminDashboard({
               </div>
             </div>
           )}
-          <Link
-            href={`/gestion/citas/nueva?date=${targetDateStr}`}
-            className="flex items-center gap-1.5 bg-lilac-600 text-white text-xs sm:text-sm px-3.5 py-2 rounded-xl hover:bg-lilac-700 transition font-medium shadow-sm"
-          >
-            <Plus size={15} /> Nueva Cita
-          </Link>
+          {canModify && (
+            <Link
+              href={`/gestion/citas/nueva?date=${targetDateStr}`}
+              className="flex items-center gap-1.5 bg-lilac-600 text-white text-xs sm:text-sm px-3.5 py-2 rounded-xl hover:bg-lilac-700 transition font-medium shadow-sm"
+            >
+              <Plus size={15} /> Nueva Cita
+            </Link>
+          )}
         </div>
       </div>
 
@@ -288,11 +308,13 @@ export default async function AdminDashboard({
                     </div>
 
                     {/* Botones de acción rápida (En el medio) */}
-                    <div className="shrink-0 w-full md:w-[320px] flex items-center md:justify-center mt-2 md:mt-0">
-                      {appt.status === "scheduled" && (
-                        <QuickAppointmentActions appointmentId={appt.id} />
-                      )}
-                    </div>
+                    {canModify && (
+                      <div className="shrink-0 w-full md:w-[320px] flex items-center md:justify-center mt-2 md:mt-0">
+                        {appt.status === "scheduled" && (
+                          <QuickAppointmentActions appointmentId={appt.id} />
+                        )}
+                      </div>
+                    )}
 
                     {/* Badges */}
                     <div className="shrink-0 w-[220px] flex flex-col items-end gap-1.5 ml-auto md:ml-0 mt-2 md:mt-0">
@@ -315,7 +337,13 @@ export default async function AdminDashboard({
                             <span>Facturado ({invoiceNumber})</span>
                           </span>
                         ) : (
-                          <BillingPendingButton patientId={p?.id} appointmentId={appt.id} />
+                          canModify ? (
+                            <BillingPendingButton patientId={p?.id} appointmentId={appt.id} />
+                          ) : (
+                            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl text-xs font-semibold border border-amber-200 bg-amber-50 text-amber-700 shadow-sm whitespace-nowrap">
+                              <span>Pendiente Facturar</span>
+                            </span>
+                          )
                         )
                       )}
                     </div>

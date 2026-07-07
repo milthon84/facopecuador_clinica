@@ -1,7 +1,9 @@
 import Link from "next/link";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { createClient } from "@/lib/supabase/server";
 import { formatTimeLocal } from "@/lib/availability";
 import { ChevronLeft, ChevronRight, Calendar, LayoutGrid, Plus } from "lucide-react";
+import { hasPermission } from "@/lib/roles";
 
 export const dynamic = "force-dynamic";
 
@@ -48,6 +50,22 @@ export default async function CalendarioPage({
   const view    = searchParams.view ?? "month"; // "month" | "week"
   const base    = parseDate(searchParams.date);
   const supabase = createAdminClient();
+
+  // Obtener rol y permisos del usuario actual
+  const session = createClient();
+  const { data: { user } } = await session.auth.getUser();
+  const role = (user?.app_metadata?.role as string) ?? "recepcionista";
+
+  let allowedPaths: string[] | null = null;
+  if (role !== "admin") {
+    const { data } = await supabase
+      .from("role_permissions")
+      .select("path")
+      .eq("role_name", role);
+    allowedPaths = (data || []).map((p: any) => p.path);
+  }
+
+  const canModify = hasPermission(role, "/gestion/calendario/modificar", allowedPaths);
 
   // ── Rango de fechas según vista ────────────────────────────────────────
   let rangeStart: Date, rangeEnd: Date;
@@ -162,7 +180,7 @@ export default async function CalendarioPage({
                   }`}>
                     {d.getDate()}
                   </div>
-                  {inMonth && (
+                  {inMonth && canModify && (
                     <Link href={`/gestion/citas/nueva?date=${str}`}
                       className="p-1 text-lilac-400 hover:text-lilac-700 hover:bg-lilac-100 rounded-lg transition"
                       title="Añadir cita">
@@ -237,7 +255,7 @@ export default async function CalendarioPage({
 
           {/* Navegación */}
           <Link href={`/gestion/calendario?view=${view}&date=${fmtDate(prevDate)}`}
-            className="w-8 h-8 flex items-center justify-center rounded-lg border border-lilac-200 hover:bg-lilac-50 transition-colors">
+             className="w-8 h-8 flex items-center justify-center rounded-lg border border-lilac-200 hover:bg-lilac-50 transition-colors">
             <ChevronLeft size={16} />
           </Link>
           <Link href={`/gestion/calendario?view=${view}&date=${new Date().toLocaleDateString("en-CA", { timeZone: "America/Guayaquil" })}`}
@@ -245,14 +263,16 @@ export default async function CalendarioPage({
             Hoy
           </Link>
           <Link href={`/gestion/calendario?view=${view}&date=${fmtDate(nextDate)}`}
-            className="w-8 h-8 flex items-center justify-center rounded-lg border border-lilac-200 hover:bg-lilac-50 transition-colors">
+             className="w-8 h-8 flex items-center justify-center rounded-lg border border-lilac-200 hover:bg-lilac-50 transition-colors">
             <ChevronRight size={16} />
           </Link>
           
-          <Link href={`/gestion/citas/nueva?date=${fmtDate(base)}`}
-            className="flex items-center gap-1.5 bg-lilac-600 text-white text-xs px-3.5 py-2 rounded-xl hover:bg-lilac-700 transition font-medium shadow-sm ml-2">
-            <Plus size={14} /> Nueva Cita
-          </Link>
+          {canModify && (
+            <Link href={`/gestion/citas/nueva?date=${fmtDate(base)}`}
+              className="flex items-center gap-1.5 bg-lilac-600 text-white text-xs px-3.5 py-2 rounded-xl hover:bg-lilac-700 transition font-medium shadow-sm ml-2">
+              <Plus size={14} /> Nueva Cita
+            </Link>
+          )}
         </div>
       </div>
 

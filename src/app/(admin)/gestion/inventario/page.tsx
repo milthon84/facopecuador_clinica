@@ -1,8 +1,10 @@
 import Link from "next/link";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { createClient } from "@/lib/supabase/server";
 import { Package, AlertTriangle, ArrowUpRight, Plus, Layers } from "lucide-react";
 import InventoryFilters from "@/components/InventoryFilters";
 import InventoryImportExport from "@/components/InventoryImportExport";
+import { hasPermission } from "@/lib/roles";
 
 export const dynamic = "force-dynamic";
 
@@ -15,6 +17,23 @@ export default async function InventoryDashboard({
   const supabase = createAdminClient();
   const q = searchParams.q || "";
   const category = searchParams.category || "";
+
+  // Obtener rol y permisos del usuario actual
+  const session = createClient();
+  const { data: { user } } = await session.auth.getUser();
+  const role = (user?.app_metadata?.role as string) ?? "recepcionista";
+
+  let allowedPaths: string[] | null = null;
+  if (role !== "admin") {
+    const { data } = await supabase
+      .from("role_permissions")
+      .select("path")
+      .eq("role_name", role);
+    allowedPaths = (data || []).map((p: any) => p.path);
+  }
+
+  const canViewTx = hasPermission(role, "/gestion/inventario/transacciones", allowedPaths);
+  const canRegisterTx = hasPermission(role, "/gestion/inventario/transacciones/crear", allowedPaths);
 
   let query = supabase
     .from("inventory_products")
@@ -47,26 +66,30 @@ export default async function InventoryDashboard({
           Inventario
         </h1>
         <div className="flex items-center gap-2">
-          <Link
-            href="/gestion/inventario/transacciones"
-            className="flex items-center gap-1.5 text-sm bg-white border border-lilac-200 hover:bg-lilac-50 px-3 py-1.5 rounded-xl transition-colors font-medium text-ink-700 shadow-sm"
-          >
-            <Layers size={15} />
-            <span className="hidden sm:inline">Movimientos</span>
-          </Link>
-          <Link
-            href="/gestion/inventario/nuevo"
-            className="flex items-center gap-1.5 text-sm bg-lilac-600 hover:bg-lilac-700 text-white px-3 py-1.5 rounded-xl transition-colors font-medium shadow-sm"
-          >
-            <Plus size={15} />
-            Nuevo
-          </Link>
+          {canViewTx && (
+            <Link
+              href="/gestion/inventario/transacciones"
+              className="flex items-center gap-1.5 text-sm bg-white border border-lilac-200 hover:bg-lilac-50 px-3 py-1.5 rounded-xl transition-colors font-medium text-ink-700 shadow-sm"
+            >
+              <Layers size={15} />
+              <span className="hidden sm:inline">Movimientos</span>
+            </Link>
+          )}
+          {canRegisterTx && (
+            <Link
+              href="/gestion/inventario/nuevo"
+              className="flex items-center gap-1.5 text-sm bg-lilac-600 hover:bg-lilac-700 text-white px-3 py-1.5 rounded-xl transition-colors font-medium shadow-sm"
+            >
+              <Plus size={15} />
+              Nuevo
+            </Link>
+          )}
         </div>
       </div>
 
       {/* Import / Export Excel */}
       <div className="bg-white border border-lilac-100 rounded-xl shadow-sm px-4 py-3 mb-4">
-        <InventoryImportExport />
+        <InventoryImportExport canImport={canRegisterTx} />
       </div>
 
       {/* Stats compactas */}
@@ -113,7 +136,7 @@ export default async function InventoryDashboard({
                 <th className="px-5 py-4">Categoría</th>
                 <th className="px-5 py-4 text-center">Stock Actual</th>
                 <th className="px-5 py-4 text-center">Stock Mínimo</th>
-                <th className="px-5 py-4 text-right">Acciones</th>
+                {(canRegisterTx || canViewTx) && <th className="px-5 py-4 text-right">Acciones</th>}
               </tr>
             </thead>
             <tbody className="divide-y divide-lilac-50">
@@ -149,15 +172,17 @@ export default async function InventoryDashboard({
                       <td className="px-5 py-4 text-center text-ink-500 font-medium">
                         {p.minimum_stock}
                       </td>
-                      <td className="px-5 py-4 text-right">
-                        <Link
-                          href={`/gestion/inventario/transacciones?product=${p.id}`}
-                          className="inline-flex items-center gap-1 text-xs font-semibold text-lilac-600 hover:text-lilac-800 transition-colors bg-lilac-50 px-2 py-1.5 rounded-lg opacity-0 group-hover:opacity-100"
-                        >
-                          Registrar
-                          <ArrowUpRight size={14} />
-                        </Link>
-                      </td>
+                      {(canRegisterTx || canViewTx) && (
+                        <td className="px-5 py-4 text-right">
+                          <Link
+                            href={canRegisterTx ? `/gestion/inventario/transacciones?product=${p.id}` : `/gestion/inventario/transacciones`}
+                            className="inline-flex items-center gap-1 text-xs font-semibold text-lilac-600 hover:text-lilac-800 transition-colors bg-lilac-50 px-2 py-1.5 rounded-lg opacity-0 group-hover:opacity-100 animate-fade-in"
+                          >
+                            {canRegisterTx ? "Registrar" : "Ver historial"}
+                            <ArrowUpRight size={14} />
+                          </Link>
+                        </td>
+                      )}
                     </tr>
                   );
                 })

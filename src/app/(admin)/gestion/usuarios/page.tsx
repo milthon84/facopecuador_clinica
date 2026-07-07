@@ -1,130 +1,13 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
-import { UserCog, Plus, ShieldCheck, Users, ToggleLeft, ToggleRight, Trash2 } from "lucide-react";
+import { UserCog, Plus, ShieldCheck, Users, ToggleLeft, ToggleRight } from "lucide-react";
 import { ROLE_LABELS, ROLE_COLORS } from "@/lib/roles";
 import type { UserRole } from "@/lib/roles";
-import { logAudit } from "@/lib/audit";
+import EditUserModal from "@/components/EditUserModal";
+import { createUserAction, toggleUserStatusAction } from "./actions";
 
 export const dynamic = "force-dynamic";
-
-// ── Server Actions ─────────────────────────────────────────────────────────
-
-async function createUser(formData: FormData) {
-  "use server";
-  const supabase = createAdminClient();
-  const sessionSupabase = createClient();
-  const { data: { user: sessionUser } } = await sessionSupabase.auth.getUser();
-  const sessionRole = (sessionUser?.app_metadata?.role as UserRole) ?? "admin";
-  if (sessionRole !== "admin") throw new Error("Sin permisos");
-
-  const full_name = formData.get("full_name") as string;
-  const email     = formData.get("email") as string;
-  const password  = formData.get("password") as string;
-  const role      = formData.get("role") as UserRole;
-
-  // Crear usuario en Supabase Auth con rol en app_metadata
-  const { data: newUser, error: authError } = await supabase.auth.admin.createUser({
-    email,
-    password,
-    app_metadata: { role },
-    email_confirm: true,
-  });
-
-  if (authError || !newUser.user) {
-    throw new Error(authError?.message || "Error al crear usuario");
-  }
-
-  // Insertar perfil
-  await supabase.from("user_profiles").insert({
-    id: newUser.user.id,
-    full_name,
-    role,
-    is_active: true,
-  });
-
-  await logAudit({
-    user_id: sessionUser?.id,
-    user_email: sessionUser?.email,
-    user_role: sessionRole,
-    action: "create",
-    resource: "user_profile",
-    resource_id: newUser.user.id,
-    description: `Usuario creado: ${email} (${ROLE_LABELS[role]})`,
-    metadata: { email, role, full_name },
-  });
-
-  redirect("/gestion/usuarios");
-}
-
-async function toggleUserStatus(formData: FormData) {
-  "use server";
-  const supabase = createAdminClient();
-  const sessionSupabase = createClient();
-  const { data: { user: sessionUser } } = await sessionSupabase.auth.getUser();
-  const sessionRole = (sessionUser?.app_metadata?.role as UserRole) ?? "admin";
-  if (sessionRole !== "admin") throw new Error("Sin permisos");
-
-  const userId    = formData.get("userId") as string;
-  const newStatus = formData.get("newStatus") === "true";
-
-  await supabase.from("user_profiles").update({ is_active: newStatus }).eq("id", userId);
-
-  await logAudit({
-    user_id: sessionUser?.id,
-    user_email: sessionUser?.email,
-    user_role: sessionRole,
-    action: "update",
-    resource: "user_profile",
-    resource_id: userId,
-    description: `Usuario ${newStatus ? "activado" : "desactivado"}`,
-  });
-
-  redirect("/gestion/usuarios");
-}
-
-async function changeRole(formData: FormData) {
-  "use server";
-  const supabase = createAdminClient();
-  const sessionSupabase = createClient();
-  const { data: { user: sessionUser } } = await sessionSupabase.auth.getUser();
-  const sessionRole = (sessionUser?.app_metadata?.role as UserRole) ?? "admin";
-  if (sessionRole !== "admin") throw new Error("Sin permisos");
-
-  const userId  = formData.get("userId") as string;
-  const newRole = formData.get("newRole") as UserRole;
-
-  const validRoles: UserRole[] = ["admin", "recepcionista", "contador"];
-  if (!validRoles.includes(newRole)) throw new Error("Rol inválido");
-
-  // Actualizar en user_profiles
-  const { error: profileError } = await supabase
-    .from("user_profiles")
-    .update({ role: newRole })
-    .eq("id", userId);
-
-  if (profileError) throw new Error(`Error al actualizar perfil: ${profileError.message}`);
-
-  // Actualizar app_metadata en Auth
-  const { error: authError } = await supabase.auth.admin.updateUserById(userId, {
-    app_metadata: { role: newRole },
-  });
-
-  if (authError) throw new Error(`Error al actualizar auth: ${authError.message}`);
-
-  await logAudit({
-    user_id: sessionUser?.id,
-    user_email: sessionUser?.email,
-    user_role: sessionRole,
-    action: "update",
-    resource: "user_profile",
-    resource_id: userId,
-    description: `Rol cambiado a: ${ROLE_LABELS[newRole]}`,
-    metadata: { new_role: newRole },
-  });
-
-  redirect("/gestion/usuarios");
-}
 
 // ── Page ───────────────────────────────────────────────────────────────────
 
@@ -144,6 +27,15 @@ export default async function UsuariosPage() {
   const { data: profiles } = await supabase
     .from("user_profiles")
     .select("*");
+
+  // Obtener todos los roles configurados en la DB
+  const { data: dbRoles } = await supabase
+    .from("system_roles")
+    .select("name, label, color")
+    .order("label");
+  
+  const systemRoles = dbRoles || [];
+  const rolesMap = new Map(systemRoles.map((r) => [r.name, r]));
 
   const profileMap = new Map((profiles || []).map((p) => [p.id, p]));
 
@@ -213,6 +105,10 @@ export default async function UsuariosPage() {
                 const role = (u.profile?.role || u.app_role) as UserRole | null;
                 const isActive = u.profile?.is_active !== false;
                 const isCurrentUser = u.id === sessionUser?.id;
+                const dbRole = role ? rolesMap.get(role) : null;
+                const label = dbRole?.label || (role ? ROLE_LABELS[role] : null) || role;
+                const color = dbRole?.color || (role ? ROLE_COLORS[role] : null) || "bg-gray-100 text-gray-800 border-gray-200";
+
                 return (
                   <tr key={u.id} className="hover:bg-lilac-50/30 transition-colors">
                     <td className="px-5 py-3">
@@ -224,8 +120,8 @@ export default async function UsuariosPage() {
                     </td>
                     <td className="px-5 py-3">
                       {role ? (
-                        <span className={`inline-flex items-center text-xs font-semibold px-2.5 py-1 rounded-full border ${ROLE_COLORS[role]}`}>
-                          {ROLE_LABELS[role]}
+                        <span className={`inline-flex items-center text-xs font-semibold px-2.5 py-1 rounded-full border ${color}`}>
+                          {label}
                         </span>
                       ) : (
                         <span className="text-xs text-ink-400 italic">Sin perfil</span>
@@ -242,42 +138,17 @@ export default async function UsuariosPage() {
                     </td>
                     <td className="px-5 py-3 text-right">
                       <div className="flex items-center justify-end gap-2">
-                        {/* Cambiar rol */}
-                        {!isCurrentUser && u.profile && (
-                          <form action={changeRole} className="flex items-center gap-1">
-                            <input type="hidden" name="userId" value={u.id} />
-                            <select
-                              name="newRole"
-                              defaultValue={role ?? "recepcionista"}
-                              className="text-xs border border-lilac-200 rounded-lg px-2 py-1 focus:outline-none focus:ring-1 focus:ring-lilac-400 bg-white"
-                            >
-                              <option value="admin">Admin</option>
-                              <option value="recepcionista">Recepcionista</option>
-                              <option value="contador">Contador</option>
-                            </select>
-                            <button type="submit"
-                              className="text-xs text-lilac-600 hover:text-lilac-800 border border-lilac-200 hover:bg-lilac-50 px-2 py-1 rounded-lg transition-colors font-medium">
-                              ✓
-                            </button>
-                          </form>
-                        )}
-                        {/* Activar/Desactivar */}
-                        {!isCurrentUser && u.profile && (
-                          <form action={toggleUserStatus}>
-                            <input type="hidden" name="userId" value={u.id} />
-                            <input type="hidden" name="newStatus" value={String(!isActive)} />
-                            <button
-                              type="submit"
-                              className={`text-xs border px-2.5 py-1 rounded-lg transition-colors font-medium ${
-                                isActive
-                                  ? "text-red-500 border-red-200 hover:bg-red-50"
-                                  : "text-green-600 border-green-200 hover:bg-green-50"
-                              }`}
-                            >
-                              {isActive ? "Desactivar" : "Activar"}
-                            </button>
-                          </form>
-                        )}
+                        <EditUserModal
+                          user={{
+                            id: u.id,
+                            email: u.email,
+                            full_name: u.profile?.full_name,
+                            role: role,
+                            is_active: isActive,
+                          }}
+                          systemRoles={systemRoles}
+                          isCurrentUser={isCurrentUser}
+                        />
                       </div>
                     </td>
                   </tr>
@@ -295,7 +166,7 @@ export default async function UsuariosPage() {
           Crear nuevo usuario
         </h2>
         <p className="text-sm text-ink-500 mb-5">El usuario podrá ingresar con el email y contraseña que definas aquí.</p>
-        <form action={createUser} className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <form action={createUserAction} className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div className="space-y-1">
             <label className="text-sm font-semibold text-ink-700">Nombre completo *</label>
             <input
@@ -326,9 +197,9 @@ export default async function UsuariosPage() {
               name="role" required
               className="w-full bg-lilac-50/50 border border-lilac-100 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-lilac-500"
             >
-              <option value="recepcionista">Recepcionista</option>
-              <option value="contador">Contador</option>
-              <option value="admin">Administrador</option>
+              {systemRoles.map((r) => (
+                <option key={r.name} value={r.name}>{r.label}</option>
+              ))}
             </select>
           </div>
           <div className="sm:col-span-2 flex justify-end pt-2">

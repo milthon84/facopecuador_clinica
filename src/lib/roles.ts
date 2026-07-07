@@ -2,15 +2,15 @@
 // SISTEMA DE ROLES Y PERMISOS
 // =====================================================
 
-export type UserRole = "admin" | "recepcionista" | "contador";
+export type UserRole = string;
 
-export const ROLE_LABELS: Record<UserRole, string> = {
+export const ROLE_LABELS: Record<string, string> = {
   admin:         "Administrador",
   recepcionista: "Recepcionista",
   contador:      "Contador",
 };
 
-export const ROLE_COLORS: Record<UserRole, string> = {
+export const ROLE_COLORS: Record<string, string> = {
   admin:         "bg-lilac-100 text-lilac-800 border-lilac-300",
   recepcionista: "bg-blue-50 text-blue-800 border-blue-200",
   contador:      "bg-green-50 text-green-800 border-green-300",
@@ -49,31 +49,68 @@ export function canAccess(role: UserRole | undefined, pathname: string): boolean
   return !blocked.some(r => pathname.startsWith(r));
 }
 
+// Helper para verificar permisos dinámicos (base de datos o estáticos)
+export function hasPermission(
+  role: string,
+  pathToCheck: string,
+  allowedPathsFromDb: string[] | null
+): boolean {
+  if (role === "admin") return true;
+  if (allowedPathsFromDb !== null) {
+    return allowedPathsFromDb.some(
+      (p) => pathToCheck === p || pathToCheck.startsWith(p + "/")
+    );
+  }
+  return canAccess(role as UserRole, pathToCheck);
+}
+
+export interface ResourceDef {
+  section: "Principal" | "Configuración" | "Clínica" | "Sistema";
+  path: string;
+  label: string;
+  hasEdit: boolean;
+}
+
 // ── Recursos configurables por rol ────────────────────────────────────────
 // Lista de todas las rutas que se pueden asignar a un rol desde el panel
-export const ALL_RESOURCES = [
-  { section: "Principal",     path: "/gestion",              label: "Dashboard (Agenda)" },
-  { section: "Principal",     path: "/gestion/calendario",   label: "Calendario" },
-  { section: "Principal",     path: "/gestion/pacientes",    label: "Pacientes" },
-  { section: "Configuración", path: "/gestion/horarios",    label: "Horarios" },
-  { section: "Configuración", path: "/gestion/bloqueos",    label: "Bloqueos" },
-  { section: "Configuración", path: "/gestion/categorias",  label: "Categorías de Insumos" },
-  { section: "Configuración", path: "/gestion/unidades",    label: "Unidades de Medida" },
-  { section: "Configuración", path: "/gestion/servicios",   label: "Catálogo de Servicios" },
-  { section: "Clínica",       path: "/gestion/inventario",   label: "Inventario" },
-  { section: "Clínica",       path: "/gestion/caja-general",        label: "Caja General" },
-  { section: "Clínica",       path: "/gestion/caja-chica",          label: "Caja Chica" },
-  { section: "Clínica",       path: "/gestion/cuentas-por-cobrar",  label: "Cuentas por Cobrar" },
-  { section: "Clínica",       path: "/gestion/cuentas-por-pagar",   label: "Cuentas por Pagar" },
-  { section: "Clínica",       path: "/gestion/bancos",     label: "Bancos" },
-  { section: "Clínica",       path: "/gestion/activos",  label: "Activos Fijos" },
-  { section: "Clínica",       path: "/gestion/facturacion",  label: "Facturación SRI" },
-  { section: "Clínica",       path: "/gestion/gastos",       label: "Gastos / Compras" },
-  { section: "Clínica",       path: "/gestion/contabilidad", label: "Contabilidad" },
-  { section: "Sistema",       path: "/gestion/facturacion/config", label: "Config. SRI" },
-  { section: "Sistema",       path: "/gestion/usuarios",     label: "Usuarios" },
-  { section: "Sistema",       path: "/gestion/auditoria",    label: "Auditoría" },
+export const ALL_RESOURCES: readonly ResourceDef[] = [
+  // Principal
+  { section: "Principal",     path: "/gestion",              label: "Agenda", hasEdit: true },
+  { section: "Principal",     path: "/gestion/calendario",   label: "Calendario", hasEdit: true },
+  { section: "Principal",     path: "/gestion/pacientes",    label: "Pacientes", hasEdit: true },
+
+  // Configuración
+  { section: "Configuración", path: "/gestion/horarios",    label: "Horarios", hasEdit: true },
+  { section: "Configuración", path: "/gestion/bloqueos",    label: "Bloqueos", hasEdit: true },
+  { section: "Configuración", path: "/gestion/categorias",  label: "Categorías de Insumos", hasEdit: true },
+  { section: "Configuración", path: "/gestion/unidades",    label: "Unidades de Medida", hasEdit: true },
+  { section: "Configuración", path: "/gestion/servicios",   label: "Catálogo de Servicios", hasEdit: true },
+
+  // Clínica
+  { section: "Clínica",       path: "/gestion/inventario",   label: "Inventario", hasEdit: true },
+  { section: "Clínica",       path: "/gestion/inventario/transacciones",   label: "Movimientos de Inventario", hasEdit: true },
+  { section: "Clínica",       path: "/gestion/caja-general",        label: "Caja General", hasEdit: true },
+  { section: "Clínica",       path: "/gestion/caja-chica",          label: "Caja Chica", hasEdit: true },
+  { section: "Clínica",       path: "/gestion/cuentas-por-cobrar",  label: "Cuentas por Cobrar", hasEdit: true },
+  { section: "Clínica",       path: "/gestion/cuentas-por-pagar",   label: "Cuentas por Pagar", hasEdit: true },
+  { section: "Clínica",       path: "/gestion/bancos",     label: "Bancos", hasEdit: true },
+  { section: "Clínica",       path: "/gestion/activos",  label: "Activos Fijos", hasEdit: true },
+  { section: "Clínica",       path: "/gestion/facturacion",  label: "Facturación SRI", hasEdit: true },
+  { section: "Clínica",       path: "/gestion/gastos",       label: "Gastos / Compras", hasEdit: true },
+  { section: "Clínica",       path: "/gestion/contabilidad", label: "Contabilidad", hasEdit: true },
+
+  // Sistema
+  { section: "Sistema",       path: "/gestion/facturacion/config", label: "Config. SRI", hasEdit: true },
+  { section: "Sistema",       path: "/gestion/usuarios",     label: "Usuarios", hasEdit: true },
+  { section: "Sistema",       path: "/gestion/auditoria",    label: "Auditoría", hasEdit: false },
 ] as const;
+
+export function getWritePathForResource(path: string): string {
+  if (path === "/gestion/inventario/transacciones") {
+    return "/gestion/inventario/transacciones/crear";
+  }
+  return path + "/modificar";
+}
 
 export const RESOURCE_SECTIONS = ["Principal", "Configuración", "Clínica", "Sistema"] as const;
 
@@ -98,6 +135,7 @@ export const NAV_ITEMS: NavItemDef[] = [
   { href: "/gestion/unidades",     label: "Unidades de Medida",  icon: "Ruler",        section: "Configuración", roles: ["admin"] },
   { href: "/gestion/servicios",    label: "Catálogo de Servicios", icon: "Stethoscope", section: "Configuración", roles: ["admin"] },
   { href: "/gestion/inventario",   label: "Inventario",      icon: "Package",         section: "Clínica",       roles: ["admin"] },
+  { href: "/gestion/inventario/transacciones", label: "Movimientos de Inventario", icon: "Layers", section: "Clínica", roles: ["admin"] },
   { href: "/gestion/caja-general",        label: "Caja General",        icon: "Banknote",        section: "Clínica", roles: ["admin", "contador"] },
   { href: "/gestion/caja-chica",          label: "Caja Chica",          icon: "Wallet",          section: "Clínica", roles: ["admin", "contador"] },
   { href: "/gestion/cuentas-por-cobrar", label: "Cuentas por Cobrar",  icon: "CircleDollarSign", section: "Clínica", roles: ["admin", "contador"] },

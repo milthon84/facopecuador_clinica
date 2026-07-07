@@ -4,7 +4,7 @@ import { redirect } from "next/navigation";
 import Link from "next/link";
 import { ArrowLeft, ArrowDownRight, ArrowUpRight, Layers, Plus } from "lucide-react";
 import { logAudit } from "@/lib/audit";
-import type { UserRole } from "@/lib/roles";
+import { hasPermission, type UserRole } from "@/lib/roles";
 
 export const dynamic = "force-dynamic";
 
@@ -16,6 +16,22 @@ export default async function TransactionsPage({
   const searchParams = await searchParamsPromise;
   const supabase = createAdminClient();
   const preselectedProduct = searchParams.product || "";
+
+  // Obtener rol y permisos del usuario actual
+  const session = createClient();
+  const { data: { user } } = await session.auth.getUser();
+  const role = (user?.app_metadata?.role as string) ?? "recepcionista";
+
+  let allowedPaths: string[] | null = null;
+  if (role !== "admin") {
+    const { data } = await supabase
+      .from("role_permissions")
+      .select("path")
+      .eq("role_name", role);
+    allowedPaths = (data || []).map((p: any) => p.path);
+  }
+
+  const canModify = hasPermission(role, "/gestion/inventario/transacciones/crear", allowedPaths);
 
   // Obtener productos para el selector
   const { data: products } = await supabase
@@ -34,7 +50,25 @@ export default async function TransactionsPage({
     "use server";
     const supabaseAction = createAdminClient();
     const sessionClient = createClient();
-    const { data: { user } } = await sessionClient.auth.getUser();
+    const { data: { user: userAction } } = await sessionClient.auth.getUser();
+
+    if (!userAction) {
+      throw new Error("Sin sesión activa");
+    }
+
+    const roleAction = (userAction.app_metadata?.role as string) ?? "recepcionista";
+    let allowedPathsAction: string[] | null = null;
+    if (roleAction !== "admin") {
+      const { data } = await supabaseAction
+        .from("role_permissions")
+        .select("path")
+        .eq("role_name", roleAction);
+      allowedPathsAction = (data || []).map((p: any) => p.path);
+    }
+
+    if (!hasPermission(roleAction, "/gestion/inventario/transacciones/crear", allowedPathsAction)) {
+      throw new Error("Sin permisos para registrar transacciones de inventario");
+    }
 
     const product_id = formData.get("product_id") as string;
     const type = formData.get("type") as "entrada" | "salida";
@@ -59,8 +93,8 @@ export default async function TransactionsPage({
         type,
         quantity,
         reason,
-        created_by_id: user?.id ?? null,
-        created_by_email: user?.email ?? null,
+        created_by_id: userAction?.id ?? null,
+        created_by_email: userAction?.email ?? null,
       })
       .select()
       .single();
@@ -71,9 +105,9 @@ export default async function TransactionsPage({
     }
 
     await logAudit({
-      user_id: user?.id,
-      user_email: user?.email,
-      user_role: (user?.app_metadata?.role as UserRole) ?? null,
+      user_id: userAction?.id,
+      user_email: userAction?.email,
+      user_role: (userAction?.app_metadata?.role as UserRole) ?? null,
       action: "create",
       resource: "inventory_transaction",
       resource_id: tx?.id,
@@ -97,89 +131,93 @@ export default async function TransactionsPage({
           <h1 className="text-2xl font-bold text-ink-900 flex items-center gap-2">
             Transacciones de Inventario
           </h1>
-          <p className="text-sm text-ink-600">Registra entradas y salidas de insumos.</p>
+          <p className="text-sm text-ink-600">
+            {canModify ? "Registra entradas y salidas de insumos." : "Visualiza el historial de entradas y salidas."}
+          </p>
         </div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
         
-        {/* Formulario de Nueva Transacción */}
-        <div className="md:col-span-1">
-          <div className="bg-white border border-lilac-100 rounded-2xl shadow-sm p-5 sticky top-6">
-            <h2 className="font-semibold text-ink-900 flex items-center gap-2 mb-5">
-              <Plus size={18} className="text-lilac-600" />
-              Nuevo Registro
-            </h2>
-            <form action={saveTransaction} className="space-y-4">
-              <div className="space-y-1">
-                <label className="text-sm font-semibold text-ink-700">Producto *</label>
-                <select
-                  name="product_id"
-                  required
-                  defaultValue={preselectedProduct}
-                  className="w-full bg-lilac-50/50 border border-lilac-100 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-lilac-500"
+        {/* Formulario de Nueva Transacción (solo si tiene permisos) */}
+        {canModify && (
+          <div className="md:col-span-1">
+            <div className="bg-white border border-lilac-100 rounded-2xl shadow-sm p-5 sticky top-6">
+              <h2 className="font-semibold text-ink-900 flex items-center gap-2 mb-5">
+                <Plus size={18} className="text-lilac-600" />
+                Nuevo Registro
+              </h2>
+              <form action={saveTransaction} className="space-y-4">
+                <div className="space-y-1">
+                  <label className="text-sm font-semibold text-ink-700">Producto *</label>
+                  <select
+                    name="product_id"
+                    required
+                    defaultValue={preselectedProduct}
+                    className="w-full bg-lilac-50/50 border border-lilac-100 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-lilac-500"
+                  >
+                    <option value="" disabled>Selecciona un producto</option>
+                    {products?.map(p => (
+                      <option key={p.id} value={p.id}>
+                        {p.name} ({p.current_stock} en stock)
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <label className="cursor-pointer">
+                    <input type="radio" name="type" value="entrada" className="peer sr-only" defaultChecked />
+                    <div className="flex items-center justify-center gap-2 rounded-xl border border-lilac-200 bg-white px-3 py-2.5 text-sm font-medium peer-checked:border-green-500 peer-checked:bg-green-50 peer-checked:text-green-700 transition-colors hover:bg-lilac-50">
+                      <ArrowDownRight size={16} />
+                      Entrada
+                    </div>
+                  </label>
+                  <label className="cursor-pointer">
+                    <input type="radio" name="type" value="salida" className="peer sr-only" />
+                    <div className="flex items-center justify-center gap-2 rounded-xl border border-lilac-200 bg-white px-3 py-2.5 text-sm font-medium peer-checked:border-red-500 peer-checked:bg-red-50 peer-checked:text-red-700 transition-colors hover:bg-lilac-50">
+                      <ArrowUpRight size={16} />
+                      Salida
+                    </div>
+                  </label>
+                </div>
+
+                <div className="space-y-1">
+                  <label className="text-sm font-semibold text-ink-700">Cantidad *</label>
+                  <input
+                    type="number"
+                    name="quantity"
+                    min="0.01"
+                    step="0.01"
+                    required
+                    className="w-full bg-lilac-50/50 border border-lilac-100 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-lilac-500 font-bold text-center"
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <label className="text-sm font-semibold text-ink-700">Motivo</label>
+                  <input
+                    type="text"
+                    name="reason"
+                    required
+                    placeholder="Ej. Uso en clínica, Compra, Merma..."
+                    className="w-full bg-lilac-50/50 border border-lilac-100 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-lilac-500"
+                  />
+                </div>
+
+                <button
+                  type="submit"
+                  className="w-full bg-lilac-600 hover:bg-lilac-700 text-white font-semibold py-2.5 rounded-xl transition-colors mt-2"
                 >
-                  <option value="" disabled>Selecciona un producto</option>
-                  {products?.map(p => (
-                    <option key={p.id} value={p.id}>
-                      {p.name} ({p.current_stock} en stock)
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <label className="cursor-pointer">
-                  <input type="radio" name="type" value="entrada" className="peer sr-only" defaultChecked />
-                  <div className="flex items-center justify-center gap-2 rounded-xl border border-lilac-200 bg-white px-3 py-2.5 text-sm font-medium peer-checked:border-green-500 peer-checked:bg-green-50 peer-checked:text-green-700 transition-colors hover:bg-lilac-50">
-                    <ArrowDownRight size={16} />
-                    Entrada
-                  </div>
-                </label>
-                <label className="cursor-pointer">
-                  <input type="radio" name="type" value="salida" className="peer sr-only" />
-                  <div className="flex items-center justify-center gap-2 rounded-xl border border-lilac-200 bg-white px-3 py-2.5 text-sm font-medium peer-checked:border-red-500 peer-checked:bg-red-50 peer-checked:text-red-700 transition-colors hover:bg-lilac-50">
-                    <ArrowUpRight size={16} />
-                    Salida
-                  </div>
-                </label>
-              </div>
-
-              <div className="space-y-1">
-                <label className="text-sm font-semibold text-ink-700">Cantidad *</label>
-                <input
-                  type="number"
-                  name="quantity"
-                  min="0.01"
-                  step="0.01"
-                  required
-                  className="w-full bg-lilac-50/50 border border-lilac-100 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-lilac-500 font-bold text-center"
-                />
-              </div>
-
-              <div className="space-y-1">
-                <label className="text-sm font-semibold text-ink-700">Motivo</label>
-                <input
-                  type="text"
-                  name="reason"
-                  required
-                  placeholder="Ej. Uso en clínica, Compra, Merma..."
-                  className="w-full bg-lilac-50/50 border border-lilac-100 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-lilac-500"
-                />
-              </div>
-
-              <button
-                type="submit"
-                className="w-full bg-lilac-600 hover:bg-lilac-700 text-white font-semibold py-2.5 rounded-xl transition-colors mt-2"
-              >
-                Guardar Movimiento
-              </button>
-            </form>
+                  Guardar Movimiento
+                </button>
+              </form>
+            </div>
           </div>
-        </div>
+        )}
 
         {/* Historial Reciente */}
-        <div className="md:col-span-2">
+        <div className={canModify ? "md:col-span-2" : "md:col-span-3"}>
           <div className="bg-white border border-lilac-100 rounded-2xl shadow-sm overflow-hidden">
             <div className="px-5 py-4 border-b border-lilac-50 flex items-center gap-2">
               <Layers size={18} className="text-ink-500" />

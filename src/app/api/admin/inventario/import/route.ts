@@ -1,6 +1,8 @@
 import { createAdminClient } from "@/lib/supabase/admin";
+import { createClient } from "@/lib/supabase/server";
 import { NextRequest, NextResponse } from "next/server";
 import * as XLSX from "xlsx";
+import { hasPermission } from "@/lib/roles";
 
 export const dynamic = "force-dynamic";
 
@@ -35,11 +37,32 @@ async function getNextSkuForCategory(
 
 export async function POST(req: NextRequest) {
   try {
+    const session = createClient();
+    const { data: { user } } = await session.auth.getUser();
+    if (!user) {
+      return NextResponse.json({ error: "No autorizado" }, { status: 401 });
+    }
+
+    const role = (user.app_metadata?.role as string) ?? "recepcionista";
+    const supabase = createAdminClient();
+
+    let allowedPaths: string[] | null = null;
+    if (role !== "admin") {
+      const { data } = await supabase
+        .from("role_permissions")
+        .select("path")
+        .eq("role_name", role);
+      allowedPaths = (data || []).map((p: any) => p.path);
+    }
+
+    // El usuario debe poseer permiso de inventario total o el de registrar transacciones
+    if (!hasPermission(role, "/gestion/inventario", allowedPaths) && !hasPermission(role, "/gestion/inventario/transacciones/crear", allowedPaths)) {
+      return NextResponse.json({ error: "Sin permisos" }, { status: 403 });
+    }
+
     const formData = await req.formData();
     const file = formData.get("file") as File | null;
     if (!file) return NextResponse.json({ error: "No se recibió archivo" }, { status: 400 });
-
-    const supabase = createAdminClient();
 
     // Cargar categorías y unidades válidas desde BD
     const [{ data: categoriesData }, { data: unitsData }] = await Promise.all([

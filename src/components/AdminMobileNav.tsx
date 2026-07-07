@@ -8,6 +8,7 @@ import {
   Package, FileText, UserCog, ShieldCheck, X, Menu,
   LogOut, Settings, ShoppingCart, FileBarChart2, Shield, Tag, Ruler, Stethoscope,
   Building2, Landmark, Wallet, CircleDollarSign, CreditCard, Banknote, FileKey,
+  Layers,
 } from "lucide-react";
 import { NAV_ITEMS } from "@/lib/roles";
 import { createClient } from "@/lib/supabase/client";
@@ -17,6 +18,7 @@ const ICON_MAP: Record<string, React.ElementType> = {
   Package, FileText, UserCog, ShieldCheck, Settings,
   ShoppingCart, FileBarChart2, Shield, Tag, Ruler, Stethoscope,
   Building2, Landmark, Wallet, CircleDollarSign, CreditCard, Banknote, FileKey,
+  Layers,
 };
 
 interface Props {
@@ -33,6 +35,9 @@ export default function AdminMobileNav({ role, roleLabel, roleColor, displayName
 
   const visibleNav = NAV_ITEMS.filter(item => {
     if (role === "admin" || allowedPaths === null) return true;
+    if (item.href === "/gestion/inventario/transacciones") {
+      return allowedPaths.includes("/gestion/inventario") || allowedPaths.includes("/gestion/inventario/transacciones");
+    }
     return allowedPaths.includes(item.href);
   });
 

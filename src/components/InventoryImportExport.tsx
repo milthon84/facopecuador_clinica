@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 
 type Status = "idle" | "loading" | "success" | "error";
 
-export default function InventoryImportExport() {
+export default function InventoryImportExport({ canImport = true }: { canImport?: boolean }) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const router = useRouter();
 
@@ -81,26 +81,30 @@ export default function InventoryImportExport() {
         </button>
 
         {/* Importar */}
-        <button
-          onClick={() => fileInputRef.current?.click()}
-          disabled={status === "loading"}
-          className="flex items-center gap-2 text-sm font-medium bg-white border border-lilac-200 hover:bg-lilac-50 text-ink-700 px-4 py-2 rounded-xl transition-colors shadow-sm disabled:opacity-60"
-        >
-          {status === "loading" ? (
-            <Loader2 size={16} className="animate-spin text-lilac-500" />
-          ) : (
-            <Upload size={16} className="text-lilac-600" />
-          )}
-          {status === "loading" ? "Importando…" : "Cargar Excel"}
-        </button>
+        {canImport && (
+          <>
+            <button
+              onClick={() => fileInputRef.current?.click()}
+              disabled={status === "loading"}
+              className="flex items-center gap-2 text-sm font-medium bg-white border border-lilac-200 hover:bg-lilac-50 text-ink-700 px-4 py-2 rounded-xl transition-colors shadow-sm disabled:opacity-60"
+            >
+              {status === "loading" ? (
+                <Loader2 size={16} className="animate-spin text-lilac-500" />
+              ) : (
+                <Upload size={16} className="text-lilac-600" />
+              )}
+              {status === "loading" ? "Importando…" : "Cargar Excel"}
+            </button>
 
-        <input
-          ref={fileInputRef}
-          type="file"
-          accept=".xlsx,.xls"
-          className="hidden"
-          onChange={handleFileChange}
-        />
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept=".xlsx,.xls"
+              className="hidden"
+              onChange={handleFileChange}
+            />
+          </>
+        )}
       </div>
 
       {/* Feedback */}
