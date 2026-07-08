@@ -92,6 +92,7 @@ export default async function AdminDashboard({
 
   const { role, allowedPaths } = authData;
   const canModify = hasPermission(role, "/gestion/modificar", allowedPaths);
+  const canModifyBilling = hasPermission(role, "/gestion/facturacion/modificar", allowedPaths);
 
   const todayAppts = todayRes.data;
   const targetDateStr = targetEcDate;
@@ -329,7 +330,7 @@ export default async function AdminDashboard({
                             <span>Facturado ({invoiceNumber})</span>
                           </span>
                         ) : (
-                          canModify ? (
+                          canModifyBilling ? (
                             <BillingPendingButton patientId={p?.id} appointmentId={appt.id} />
                           ) : (
                             <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl text-xs font-semibold border border-amber-200 bg-amber-50 text-amber-700 shadow-sm whitespace-nowrap">

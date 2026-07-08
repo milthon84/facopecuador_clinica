@@ -43,7 +43,8 @@ export default async function CitaDetalle({ params }: { params: Promise<{ id: st
 
   const { role, allowedPaths } = authData;
   const canModifyPatient = hasPermission(role, "/gestion/pacientes/modificar", allowedPaths);
-  const canModifyCalendar = hasPermission(role, "/gestion/calendario/modificar", allowedPaths);
+  const canModifyCalendar = hasPermission(role, "/gestion/modificar", allowedPaths) || 
+                            hasPermission(role, "/gestion/calendario/modificar", allowedPaths);
   const canModifyBilling = hasPermission(role, "/gestion/facturacion/modificar", allowedPaths);
 
   const start = new Date(appt.starts_at);
