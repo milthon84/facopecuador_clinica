@@ -1,10 +1,12 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import { notFound } from "next/navigation";
 import AtencionClientPage from "./AtencionClientPage";
+import { assertWritePermission } from "@/lib/auth-action";
 
 export const dynamic = "force-dynamic";
 
 export default async function AtencionPage({ params }: { params: Promise<{ id: string }> }) {
+  await assertWritePermission("/gestion/pacientes");
   const { id } = await params;
   const supabase = createAdminClient();
 

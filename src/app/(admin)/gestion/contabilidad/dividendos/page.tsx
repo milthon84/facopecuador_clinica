@@ -3,11 +3,13 @@ import Link from "next/link";
 import { ArrowLeft, Plus, DollarSign, CheckCircle2, Clock, XCircle } from "lucide-react";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+import { assertPermission, assertWritePermission, hasWritePermission } from "@/lib/auth-action";
 
 export const dynamic = "force-dynamic";
 
 async function markPaid(formData: FormData) {
   "use server";
+  await assertWritePermission("/gestion/contabilidad");
   const id = formData.get("id") as string;
   const paid_date = new Date().toISOString().split("T")[0];
   const supabase = createAdminClient();
@@ -17,6 +19,7 @@ async function markPaid(formData: FormData) {
 
 async function voidDividend(formData: FormData) {
   "use server";
+  await assertWritePermission("/gestion/contabilidad");
   const id = formData.get("id") as string;
   const supabase = createAdminClient();
   await supabase.from("dividends").update({ status: "void" }).eq("id", id);
@@ -35,6 +38,9 @@ export default async function DividendosPage({
   searchParams: Promise<{ year?: string }>;
 }) {
   const searchParams = await searchParamsPromise;
+  await assertPermission("/gestion/contabilidad");
+  const canEdit = await hasWritePermission("/gestion/contabilidad");
+
   const currentYear = new Date().getFullYear();
   const year = Number(searchParams.year ?? currentYear);
 
@@ -63,10 +69,12 @@ export default async function DividendosPage({
           <h1 className="text-xl font-bold text-ink-900">ADI — Dividendos y Utilidades</h1>
           <p className="text-xs text-ink-500">Anexo de Dividendos para declaración anual SRI</p>
         </div>
-        <Link href={`/gestion/contabilidad/dividendos/nuevo?year=${year}`}
-          className="flex items-center gap-1.5 text-sm bg-lilac-600 hover:bg-lilac-700 text-white px-3 py-1.5 rounded-xl font-medium shadow-sm">
-          <Plus size={15} /> Registrar
-        </Link>
+        {canEdit && (
+          <Link href={`/gestion/contabilidad/dividendos/nuevo?year=${year}`}
+            className="flex items-center gap-1.5 text-sm bg-lilac-600 hover:bg-lilac-700 text-white px-3 py-1.5 rounded-xl font-medium shadow-sm">
+            <Plus size={15} /> Registrar
+          </Link>
+        )}
       </div>
 
       {/* Selector año */}
@@ -135,7 +143,7 @@ export default async function DividendosPage({
                       </span>
                     </td>
                     <td className="px-4 py-2.5">
-                      {d.status === "pending" && (
+                      {canEdit && d.status === "pending" && (
                         <div className="flex gap-1">
                           <form action={markPaid}>
                             <input type="hidden" name="id" value={d.id} />

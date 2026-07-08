@@ -1,6 +1,7 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import Link from "next/link";
 import { BookOpen, TrendingUp, TrendingDown, Scale, FileBarChart2, Receipt, FileSpreadsheet, DollarSign } from "lucide-react";
+import { assertPermission } from "@/lib/auth-action";
 
 export const dynamic = "force-dynamic";
 
@@ -18,6 +19,7 @@ export default async function ContabilidadPage({
 }: {
   searchParams: Promise<{ tab?: string; period?: string }>;
 }) {
+  await assertPermission("/gestion/contabilidad");
   const searchParams = await searchParamsPromise;
   const tab    = searchParams.tab    ?? "diario";
   const now    = new Date();

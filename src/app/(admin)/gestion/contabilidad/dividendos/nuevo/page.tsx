@@ -4,11 +4,13 @@ import { validateDocumento } from "@/lib/validators";
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import { ArrowLeft, Save } from "lucide-react";
+import { assertWritePermission } from "@/lib/auth-action";
 
 export const dynamic = "force-dynamic";
 
 async function saveDividend(formData: FormData) {
   "use server";
+  await assertWritePermission("/gestion/contabilidad");
   const supabase   = createAdminClient();
   const authClient = createClient();
   const { data: { user } } = await authClient.auth.getUser();
@@ -31,7 +33,7 @@ async function saveDividend(formData: FormData) {
       const err = validateDocumento(ruc);
       if (err) throw new Error(`RUC/Cédula inválido: ${err}`);
       return ruc;
-    })(),
+      })(),
     beneficiary_type:  formData.get("beneficiary_type") as string,
     percentage,
     utility_amount,
@@ -49,6 +51,7 @@ export default async function NuevoDividendoPage({
 }: {
   searchParams: Promise<{ year?: string }>;
 }) {
+  await assertWritePermission("/gestion/contabilidad");
   const searchParams = await searchParamsPromise;
   const year = searchParams.year ?? String(new Date().getFullYear());
   const today = new Date().toISOString().split("T")[0];

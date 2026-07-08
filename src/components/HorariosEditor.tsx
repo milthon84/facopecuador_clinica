@@ -16,12 +16,19 @@ interface Rule {
 
 const DAYS = ["Domingo", "Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado"];
 
-export default function HorariosEditor({ initialRules }: { initialRules: Rule[] }) {
+export default function HorariosEditor({
+  initialRules,
+  canEdit = true,
+}: {
+  initialRules: Rule[];
+  canEdit?: boolean;
+}) {
   const router = useRouter();
   const [rules, setRules] = useState<Rule[]>(initialRules);
   const [loading, setLoading] = useState(false);
 
   async function addRule(day_of_week: number) {
+    if (!canEdit) return;
     setLoading(true);
     const supabase = createClient();
     const { data, error } = await supabase
@@ -36,6 +43,7 @@ export default function HorariosEditor({ initialRules }: { initialRules: Rule[] 
   }
 
   async function updateRule(id: string, patch: Partial<Rule>) {
+    if (!canEdit) return;
     const supabase = createClient();
     const { error } = await supabase.from("availability_rules").update(patch).eq("id", id);
     if (error) return alert(error.message);
@@ -43,6 +51,7 @@ export default function HorariosEditor({ initialRules }: { initialRules: Rule[] 
   }
 
   async function deleteRule(id: string) {
+    if (!canEdit) return;
     if (!confirm("¿Eliminar este bloque horario?")) return;
     const supabase = createClient();
     const { error } = await supabase.from("availability_rules").delete().eq("id", id);
@@ -59,9 +68,11 @@ export default function HorariosEditor({ initialRules }: { initialRules: Rule[] 
           <div key={dow} className="card p-4">
             <div className="flex items-center justify-between mb-3">
               <h3 className="font-semibold">{dayName}</h3>
-              <button onClick={() => addRule(dow)} disabled={loading} className="btn-secondary text-xs">
-                {loading ? "Agregando..." : <><Plus size={12} /> Agregar</>}
-              </button>
+              {canEdit && (
+                <button onClick={() => addRule(dow)} disabled={loading} className="btn-secondary text-xs">
+                  {loading ? "Agregando..." : <><Plus size={12} /> Agregar</>}
+                </button>
+              )}
             </div>
             {dayRules.length === 0 ? (
               <div className="text-xs text-ink-600/60 italic">Cerrado</div>
@@ -73,6 +84,7 @@ export default function HorariosEditor({ initialRules }: { initialRules: Rule[] 
                       type="time"
                       value={r.start_time.slice(0, 5)}
                       onChange={(e) => updateRule(r.id, { start_time: e.target.value })}
+                      disabled={!canEdit}
                       className="input py-2 px-2 w-28"
                     />
                     <span className="text-ink-600 text-sm">a</span>
@@ -80,11 +92,13 @@ export default function HorariosEditor({ initialRules }: { initialRules: Rule[] 
                       type="time"
                       value={r.end_time.slice(0, 5)}
                       onChange={(e) => updateRule(r.id, { end_time: e.target.value })}
+                      disabled={!canEdit}
                       className="input py-2 px-2 w-28"
                     />
                     <select
                       value={r.slot_duration_minutes}
                       onChange={(e) => updateRule(r.id, { slot_duration_minutes: parseInt(e.target.value) })}
+                      disabled={!canEdit}
                       className="input py-2 px-2 w-32 text-sm"
                     >
                       <option value={30}>30 min/cita</option>
@@ -96,13 +110,16 @@ export default function HorariosEditor({ initialRules }: { initialRules: Rule[] 
                       <input
                         type="checkbox"
                         checked={r.is_active}
+                        disabled={!canEdit}
                         onChange={(e) => updateRule(r.id, { is_active: e.target.checked })}
                       />
                       Activo
                     </label>
-                    <button onClick={() => deleteRule(r.id)} className="ml-auto text-red-600 hover:text-red-700 p-2">
-                      <Trash2 size={14} />
-                    </button>
+                    {canEdit && (
+                      <button onClick={() => deleteRule(r.id)} className="ml-auto text-red-600 hover:text-red-700 p-2">
+                        <Trash2 size={14} />
+                      </button>
+                    )}
                   </div>
                 ))}
               </div>

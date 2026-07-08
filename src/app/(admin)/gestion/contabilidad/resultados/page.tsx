@@ -1,6 +1,7 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import { TrendingUp, ArrowLeft } from "lucide-react";
 import Link from "next/link";
+import { assertPermission } from "@/lib/auth-action";
 
 export const dynamic = "force-dynamic";
 
@@ -17,6 +18,7 @@ function periodLabel(p: string) {
 export default async function EstadoResultadosPage({
   searchParams: searchParamsPromise,
 }: { searchParams: Promise<{ period?: string; from?: string; to?: string; mode?: string }> }) {
+  await assertPermission("/gestion/contabilidad");
   const searchParams = await searchParamsPromise;
   const now = new Date();
   const mode = searchParams.mode ?? "period";

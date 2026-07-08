@@ -1,4 +1,5 @@
 import NewAppointmentForm from "./NewAppointmentForm";
+import { assertWritePermission } from "@/lib/auth-action";
 
 export const dynamic = "force-dynamic";
 
@@ -7,6 +8,7 @@ export default async function NewAppointmentPage({
 }: {
   searchParams: Promise<{ date?: string }>;
 }) {
+  await assertWritePermission("/gestion");
   const searchParams = await searchParamsPromise;
   // Obtener la fecha de hoy en la zona horaria de Ecuador (America/Guayaquil)
   const options = { timeZone: "America/Guayaquil", year: "numeric" as const, month: "2-digit" as const, day: "2-digit" as const };

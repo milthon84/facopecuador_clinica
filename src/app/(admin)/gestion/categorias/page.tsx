@@ -1,11 +1,13 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import { revalidatePath } from "next/cache";
 import { Tag, Trash2, Plus } from "lucide-react";
+import { assertPermission, assertWritePermission, hasWritePermission } from "@/lib/auth-action";
 
 export const dynamic = "force-dynamic";
 
 async function addCategory(formData: FormData) {
   "use server";
+  await assertWritePermission("/gestion/categorias");
   const name   = (formData.get("name") as string)?.trim();
   const prefix = (formData.get("prefix") as string)?.trim().toUpperCase().slice(0, 4);
   if (!name || !prefix) return;
@@ -16,6 +18,7 @@ async function addCategory(formData: FormData) {
 
 async function deleteCategory(formData: FormData) {
   "use server";
+  await assertWritePermission("/gestion/categorias");
   const id = formData.get("id") as string;
   const supabase = createAdminClient();
   await supabase.from("inventory_categories").delete().eq("id", id);
@@ -23,6 +26,9 @@ async function deleteCategory(formData: FormData) {
 }
 
 export default async function CategoriasPage() {
+  await assertPermission("/gestion/categorias");
+  const canEdit = await hasWritePermission("/gestion/categorias");
+
   const supabase = createAdminClient();
   const { data: categories } = await supabase
     .from("inventory_categories")
@@ -58,47 +64,53 @@ export default async function CategoriasPage() {
                 {cat.prefix}
               </span>
               <span className="text-sm text-ink-800 flex-1">{cat.name}</span>
-              <form action={deleteCategory}>
-                <input type="hidden" name="id" value={cat.id} />
-                <button
-                  type="submit"
-                  title="Eliminar"
-                  className="p-1.5 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition"
-                >
-                  <Trash2 size={14} />
-                </button>
-              </form>
+              {canEdit && (
+                <form action={deleteCategory}>
+                  <input type="hidden" name="id" value={cat.id} />
+                  <button
+                    type="submit"
+                    title="Eliminar"
+                    className="p-1.5 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition"
+                  >
+                    <Trash2 size={14} />
+                  </button>
+                </form>
+              )}
             </div>
           ))}
         </div>
 
-        <form action={addCategory} className="flex gap-2">
-          <input
-            type="text"
-            name="name"
-            required
-            placeholder="Nueva categoría"
-            className="flex-1 text-sm border border-lilac-200 rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-lilac-400 bg-white"
-          />
-          <input
-            type="text"
-            name="prefix"
-            required
-            maxLength={4}
-            placeholder="SKU"
-            title="Prefijo de 2-4 letras para el código (ej: CON)"
-            className="w-16 text-sm border border-lilac-200 rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-lilac-400 bg-white uppercase font-mono text-center"
-          />
-          <button
-            type="submit"
-            className="flex items-center gap-1.5 bg-lilac-600 text-white text-sm px-4 py-2 rounded-xl hover:bg-lilac-700 transition font-medium"
-          >
-            <Plus size={15} /> Agregar
-          </button>
-        </form>
-        <p className="text-xs text-ink-400 mt-2">
-          El prefijo genera códigos SKU automáticos (ej: <strong>CON</strong> → <strong>CON-001</strong>).
-        </p>
+        {canEdit && (
+          <>
+            <form action={addCategory} className="flex gap-2">
+              <input
+                type="text"
+                name="name"
+                required
+                placeholder="Nueva categoría"
+                className="flex-1 text-sm border border-lilac-200 rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-lilac-400 bg-white"
+              />
+              <input
+                type="text"
+                name="prefix"
+                required
+                maxLength={4}
+                placeholder="SKU"
+                title="Prefijo de 2-4 letras para el código (ej: CON)"
+                className="w-16 text-sm border border-lilac-200 rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-lilac-400 bg-white uppercase font-mono text-center"
+              />
+              <button
+                type="submit"
+                className="flex items-center gap-1.5 bg-lilac-600 text-white text-sm px-4 py-2 rounded-xl hover:bg-lilac-700 transition font-medium"
+              >
+                <Plus size={15} /> Agregar
+              </button>
+            </form>
+            <p className="text-xs text-ink-400 mt-2">
+              El prefijo genera códigos SKU automáticos (ej: <strong>CON</strong> → <strong>CON-001</strong>).
+            </p>
+          </>
+        )}
       </div>
     </div>
   );

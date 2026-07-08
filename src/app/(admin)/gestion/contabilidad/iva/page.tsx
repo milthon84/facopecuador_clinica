@@ -1,6 +1,7 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import { Receipt, ArrowLeft, Download } from "lucide-react";
 import Link from "next/link";
+import { assertPermission } from "@/lib/auth-action";
 
 export const dynamic = "force-dynamic";
 
@@ -15,6 +16,7 @@ function periodLabel(p: string) {
 export default async function ResumenIvaPage({
   searchParams: searchParamsPromise,
 }: { searchParams: Promise<{ period?: string }> }) {
+  await assertPermission("/gestion/contabilidad");
   const searchParams = await searchParamsPromise;
   const now    = new Date();
   const period = searchParams.period ?? `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;

@@ -3,11 +3,13 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { Stethoscope, Trash2, Plus, Pencil } from "lucide-react";
 import Link from "next/link";
+import { assertPermission, assertWritePermission, hasWritePermission } from "@/lib/auth-action";
 
 export const dynamic = "force-dynamic";
 
 async function addService(formData: FormData) {
   "use server";
+  await assertWritePermission("/gestion/servicios");
   const name = (formData.get("name") as string)?.trim();
   const price = Number(formData.get("price") || 0);
   if (!name) return;
@@ -24,6 +26,7 @@ async function addService(formData: FormData) {
 
 async function toggleService(formData: FormData) {
   "use server";
+  await assertWritePermission("/gestion/servicios");
   const id     = formData.get("id") as string;
   const active = formData.get("active") === "true";
   const supabase = createAdminClient();
@@ -33,6 +36,7 @@ async function toggleService(formData: FormData) {
 
 async function deleteService(formData: FormData) {
   "use server";
+  await assertWritePermission("/gestion/servicios");
   const id = formData.get("id") as string;
   const supabase = createAdminClient();
   await supabase.from("services").delete().eq("id", id);
@@ -41,6 +45,7 @@ async function deleteService(formData: FormData) {
 
 async function updateService(formData: FormData) {
   "use server";
+  await assertWritePermission("/gestion/servicios");
   const id = formData.get("id") as string;
   const name = (formData.get("name") as string)?.trim();
   const price = Number(formData.get("price") || 0);
@@ -62,6 +67,9 @@ export default async function ServiciosPage({
   searchParams: Promise<{ edit?: string }>;
 }) {
   const searchParams = await searchParamsPromise;
+  await assertPermission("/gestion/servicios");
+  const canEdit = await hasWritePermission("/gestion/servicios");
+
   const supabase = createAdminClient();
   const { data: services } = await supabase
     .from("services")
@@ -208,38 +216,40 @@ export default async function ServiciosPage({
                             <span className="text-sm font-bold text-lilac-700 w-16 text-right shrink-0">
                               ${Number(s.price).toFixed(2)}
                             </span>
-                            <div className="flex gap-1 shrink-0">
-                              <Link
-                                href={`/gestion/servicios?edit=${s.id}`}
-                                title="Editar"
-                                className="p-1.5 text-lilac-600 hover:text-lilac-800 hover:bg-lilac-50 rounded-lg transition"
-                              >
-                                <Pencil size={13} />
-                              </Link>
-                              <form action={toggleService}>
-                                <input type="hidden" name="id"     value={s.id} />
-                                <input type="hidden" name="active" value={String(s.active)} />
-                                <button
-                                  type="submit"
-                                  title={s.active ? "Desactivar" : "Activar"}
-                                  className={`p-1.5 rounded-lg transition text-base leading-none ${
-                                    s.active ? "text-amber-500 hover:bg-amber-50" : "text-green-600 hover:bg-green-50"
-                                  }`}
+                            {canEdit && (
+                              <div className="flex gap-1 shrink-0">
+                                <Link
+                                  href={`/gestion/servicios?edit=${s.id}`}
+                                  title="Editar"
+                                  className="p-1.5 text-lilac-600 hover:text-lilac-800 hover:bg-lilac-50 rounded-lg transition"
                                 >
-                                  {s.active ? "●" : "○"}
-                                </button>
-                              </form>
-                              <form action={deleteService}>
-                                <input type="hidden" name="id" value={s.id} />
-                                <button
-                                  type="submit"
-                                  title="Eliminar"
-                                  className="p-1.5 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition"
-                                >
-                                  <Trash2 size={13} />
-                                </button>
-                              </form>
-                            </div>
+                                  <Pencil size={13} />
+                                </Link>
+                                <form action={toggleService}>
+                                  <input type="hidden" name="id"     value={s.id} />
+                                  <input type="hidden" name="active" value={String(s.active)} />
+                                  <button
+                                    type="submit"
+                                    title={s.active ? "Desactivar" : "Activar"}
+                                    className={`p-1.5 rounded-lg transition text-base leading-none ${
+                                      s.active ? "text-amber-500 hover:bg-amber-50" : "text-green-600 hover:bg-green-50"
+                                    }`}
+                                  >
+                                    {s.active ? "●" : "○"}
+                                  </button>
+                                </form>
+                                <form action={deleteService}>
+                                  <input type="hidden" name="id" value={s.id} />
+                                  <button
+                                    type="submit"
+                                    title="Eliminar"
+                                    className="p-1.5 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition"
+                                  >
+                                    <Trash2 size={13} />
+                                  </button>
+                                </form>
+                              </div>
+                            )}
                           </>
                         )}
                       </div>
@@ -253,49 +263,51 @@ export default async function ServiciosPage({
       </div>
 
       {/* Formulario agregar servicio */}
-      <div className="bg-white border border-lilac-100 rounded-2xl shadow-sm p-5">
-        <h2 className="text-sm font-semibold text-ink-700 mb-4 flex items-center gap-2">
-          <Plus size={15} className="text-lilac-600" /> Nuevo servicio
-        </h2>
-        <form action={addService} className="grid grid-cols-2 gap-3">
-          <input
-            type="text" name="name" required
-            placeholder="Nombre del servicio *"
-            className="col-span-2 text-sm border border-lilac-200 rounded-xl px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-lilac-400 bg-white"
-          />
-          <input
-            type="text" name="description"
-            placeholder="Descripción (opcional)"
-            className="col-span-2 text-sm border border-lilac-200 rounded-xl px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-lilac-400 bg-white"
-          />
-          <input
-            type="text" name="service_category"
-            placeholder="Categoría (ej: Cirugía)"
-            className="text-sm border border-lilac-200 rounded-xl px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-lilac-400 bg-white"
-          />
-          <div className="relative">
-            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-ink-400 text-xs">$</span>
+      {canEdit && (
+        <div className="bg-white border border-lilac-100 rounded-2xl shadow-sm p-5">
+          <h2 className="text-sm font-semibold text-ink-700 mb-4 flex items-center gap-2">
+            <Plus size={15} className="text-lilac-600" /> Nuevo servicio
+          </h2>
+          <form action={addService} className="grid grid-cols-2 gap-3">
             <input
-              type="number" name="price" min="0" step="0.01" defaultValue="0"
-              placeholder="Precio"
-              className="w-full text-sm border border-lilac-200 rounded-xl pl-7 pr-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-lilac-400 bg-white font-mono"
+              type="text" name="name" required
+              placeholder="Nombre del servicio *"
+              className="col-span-2 text-sm border border-lilac-200 rounded-xl px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-lilac-400 bg-white"
             />
-          </div>
-          <select
-            name="iva_code"
-            className="text-sm border border-lilac-200 rounded-xl px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-lilac-400 bg-white"
-          >
-            <option value="4">IVA 15%</option>
-            <option value="0">IVA 0%</option>
-          </select>
-          <button
-            type="submit"
-            className="flex items-center justify-center gap-1.5 bg-lilac-600 text-white text-sm px-3 py-2.5 rounded-xl hover:bg-lilac-700 transition font-medium"
-          >
-            <Plus size={15} /> Agregar servicio
-          </button>
-        </form>
-      </div>
+            <input
+              type="text" name="description"
+              placeholder="Descripción (opcional)"
+              className="col-span-2 text-sm border border-lilac-200 rounded-xl px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-lilac-400 bg-white"
+            />
+            <input
+              type="text" name="service_category"
+              placeholder="Categoría (ej: Cirugía)"
+              className="text-sm border border-lilac-200 rounded-xl px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-lilac-400 bg-white"
+            />
+            <div className="relative">
+              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-ink-400 text-xs">$</span>
+              <input
+                type="number" name="price" min="0" step="0.01" defaultValue="0"
+                placeholder="Precio"
+                className="w-full text-sm border border-lilac-200 rounded-xl pl-7 pr-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-lilac-400 bg-white font-mono"
+              />
+            </div>
+            <select
+              name="iva_code"
+              className="text-sm border border-lilac-200 rounded-xl px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-lilac-400 bg-white"
+            >
+              <option value="4">IVA 15%</option>
+              <option value="0">IVA 0%</option>
+            </select>
+            <button
+              type="submit"
+              className="flex items-center justify-center gap-1.5 bg-lilac-600 text-white text-sm px-3 py-2.5 rounded-xl hover:bg-lilac-700 transition font-medium"
+            >
+              <Plus size={15} /> Agregar servicio
+            </button>
+          </form>
+        </div>
+      )}
     </div>
   );
 }

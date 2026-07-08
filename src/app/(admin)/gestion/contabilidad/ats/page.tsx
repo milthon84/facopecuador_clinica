@@ -1,6 +1,7 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import Link from "next/link";
 import { ArrowLeft, Download, FileSpreadsheet } from "lucide-react";
+import { assertPermission } from "@/lib/auth-action";
 
 export const dynamic = "force-dynamic";
 
@@ -18,6 +19,7 @@ export default async function ATSPage({
 }: {
   searchParams: Promise<{ period?: string }>;
 }) {
+  await assertPermission("/gestion/contabilidad");
   const searchParams = await searchParamsPromise;
   const now = new Date();
   const period = searchParams.period

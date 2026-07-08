@@ -1,9 +1,13 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import HorariosEditor from "@/components/HorariosEditor";
+import { assertPermission, hasWritePermission } from "@/lib/auth-action";
 
 export const dynamic = "force-dynamic";
 
 export default async function HorariosPage() {
+  await assertPermission("/gestion/horarios");
+  const canEdit = await hasWritePermission("/gestion/horarios");
+
   const supabase = createAdminClient();
   const { data: rules } = await supabase
     .from("availability_rules")
@@ -15,7 +19,7 @@ export default async function HorariosPage() {
     <div className="max-w-3xl">
       <h1 className="text-2xl font-bold mb-1">Horarios de atención</h1>
       <p className="text-sm text-ink-600 mb-6">Definí qué horarios trabajás cada día de la semana. Los pacientes solo verán slots dentro de estos rangos.</p>
-      <HorariosEditor initialRules={JSON.parse(JSON.stringify(rules || []))} />
+      <HorariosEditor initialRules={JSON.parse(JSON.stringify(rules || []))} canEdit={canEdit} />
     </div>
   );
 }

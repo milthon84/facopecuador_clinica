@@ -14,7 +14,13 @@ interface Exception {
   reason: string | null;
 }
 
-export default function BloqueosEditor({ initialExceptions }: { initialExceptions: Exception[] }) {
+export default function BloqueosEditor({
+  initialExceptions,
+  canEdit = true,
+}: {
+  initialExceptions: Exception[];
+  canEdit?: boolean;
+}) {
   const router = useRouter();
   const [items, setItems] = useState<Exception[]>(initialExceptions);
   const [showForm, setShowForm] = useState(false);
@@ -28,6 +34,7 @@ export default function BloqueosEditor({ initialExceptions }: { initialException
   const [loading, setLoading] = useState(false);
 
   async function addException() {
+    if (!canEdit) return;
     if (type === "extra" && (!startTime || !endTime)) return alert("Indicá hora de inicio y fin");
     setLoading(true);
     const supabase = createClient();
@@ -48,6 +55,7 @@ export default function BloqueosEditor({ initialExceptions }: { initialException
   }
 
   async function deleteException(id: string) {
+    if (!canEdit) return;
     if (!confirm("¿Eliminar este bloqueo / excepción?")) return;
     const supabase = createClient();
     const { error } = await supabase.from("availability_exceptions").delete().eq("id", id);
@@ -58,67 +66,69 @@ export default function BloqueosEditor({ initialExceptions }: { initialException
 
   return (
     <div>
-      <div className="mb-4">
-        {!showForm ? (
-          <button onClick={() => setShowForm(true)} className="btn-primary">
-            <Plus size={16} /> Agregar bloqueo o horario extra
-          </button>
-        ) : (
-          <div className="card p-4 space-y-3">
-            <div className="flex gap-2">
-              <button
-                onClick={() => setType("block")}
-                className={`flex-1 py-2 rounded-lg text-sm font-medium ${type === "block" ? "bg-red-100 text-red-700" : "bg-lilac-50 text-ink-600"}`}
-              >
-                <Ban size={14} className="inline mr-1" /> Bloquear
-              </button>
-              <button
-                onClick={() => setType("extra")}
-                className={`flex-1 py-2 rounded-lg text-sm font-medium ${type === "extra" ? "bg-gold-100 text-gold-700" : "bg-lilac-50 text-ink-600"}`}
-              >
-                <CalendarPlus size={14} className="inline mr-1" /> Horario extra
-              </button>
-            </div>
-
-            <div>
-              <label className="label">Fecha</label>
-              <input type="date" className="input" value={date} onChange={(e) => setDate(e.target.value)} />
-            </div>
-
-            {type === "block" && (
-              <label className="flex items-center gap-2 text-sm">
-                <input type="checkbox" checked={fullDay} onChange={(e) => setFullDay(e.target.checked)} />
-                Bloquear el día completo
-              </label>
-            )}
-
-            {(type === "extra" || !fullDay) && (
-              <div className="grid grid-cols-2 gap-2">
-                <div>
-                  <label className="label">Desde</label>
-                  <input type="time" className="input" value={startTime} onChange={(e) => setStartTime(e.target.value)} />
-                </div>
-                <div>
-                  <label className="label">Hasta</label>
-                  <input type="time" className="input" value={endTime} onChange={(e) => setEndTime(e.target.value)} />
-                </div>
+      {canEdit && (
+        <div className="mb-4">
+          {!showForm ? (
+            <button onClick={() => setShowForm(true)} className="btn-primary">
+              <Plus size={16} /> Agregar bloqueo o horario extra
+            </button>
+          ) : (
+            <div className="card p-4 space-y-3">
+              <div className="flex gap-2">
+                <button
+                  onClick={() => setType("block")}
+                  className={`flex-1 py-2 rounded-lg text-sm font-medium ${type === "block" ? "bg-red-100 text-red-700" : "bg-lilac-50 text-ink-600"}`}
+                >
+                  <Ban size={14} className="inline mr-1" /> Bloquear
+                </button>
+                <button
+                  onClick={() => setType("extra")}
+                  className={`flex-1 py-2 rounded-lg text-sm font-medium ${type === "extra" ? "bg-gold-100 text-gold-700" : "bg-lilac-50 text-ink-600"}`}
+                >
+                  <CalendarPlus size={14} className="inline mr-1" /> Horario extra
+                </button>
               </div>
-            )}
 
-            <div>
-              <label className="label">Motivo (opcional)</label>
-              <input className="input" value={reason} onChange={(e) => setReason(e.target.value)} placeholder="Vacaciones, feriado, congreso…" />
-            </div>
+              <div>
+                <label className="label">Fecha</label>
+                <input type="date" className="input" value={date} onChange={(e) => setDate(e.target.value)} />
+              </div>
 
-            <div className="flex justify-end gap-2">
-              <button onClick={() => setShowForm(false)} className="btn-ghost text-xs">Cancelar</button>
-              <button onClick={addException} disabled={loading} className="btn-primary text-xs px-3 py-2">
-                {loading ? "Guardando..." : "Guardar"}
-              </button>
+              {type === "block" && (
+                <label className="flex items-center gap-2 text-sm">
+                  <input type="checkbox" checked={fullDay} onChange={(e) => setFullDay(e.target.checked)} />
+                  Bloquear el día completo
+                </label>
+              )}
+
+              {(type === "extra" || !fullDay) && (
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <label className="label">Desde</label>
+                    <input type="time" className="input" value={startTime} onChange={(e) => setStartTime(e.target.value)} />
+                  </div>
+                  <div>
+                    <label className="label">Hasta</label>
+                    <input type="time" className="input" value={endTime} onChange={(e) => setEndTime(e.target.value)} />
+                  </div>
+                </div>
+              )}
+
+              <div>
+                <label className="label">Motivo (opcional)</label>
+                <input className="input" value={reason} onChange={(e) => setReason(e.target.value)} placeholder="Vacaciones, feriado, congreso…" />
+              </div>
+
+              <div className="flex justify-end gap-2">
+                <button onClick={() => setShowForm(false)} className="btn-ghost text-xs">Cancelar</button>
+                <button onClick={addException} disabled={loading} className="btn-primary text-xs px-3 py-2">
+                  {loading ? "Guardando..." : "Guardar"}
+                </button>
+              </div>
             </div>
-          </div>
-        )}
-      </div>
+          )}
+        </div>
+      )}
 
       {items.length === 0 ? (
         <div className="card p-6 text-center text-sm text-ink-600">No hay bloqueos próximos.</div>
@@ -146,9 +156,11 @@ export default function BloqueosEditor({ initialExceptions }: { initialException
                   {ex.reason && ` · ${ex.reason}`}
                 </div>
               </div>
-              <button onClick={() => deleteException(ex.id)} className="text-red-600 hover:text-red-700 p-2">
-                <Trash2 size={14} />
-              </button>
+              {canEdit && (
+                <button onClick={() => deleteException(ex.id)} className="text-red-600 hover:text-red-700 p-2">
+                  <Trash2 size={14} />
+                </button>
+              )}
             </li>
           ))}
         </ul>

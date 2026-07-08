@@ -1,6 +1,7 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import { Scale, ArrowLeft } from "lucide-react";
 import Link from "next/link";
+import { assertPermission } from "@/lib/auth-action";
 
 export const dynamic = "force-dynamic";
 
@@ -34,6 +35,7 @@ function getSection(map: Map<string, AccountBalance>, prefix: string, invert = f
 export default async function BalanceGeneralPage({
   searchParams: searchParamsPromise,
 }: { searchParams: Promise<{ to?: string }> }) {
+  await assertPermission("/gestion/contabilidad");
   const searchParams = await searchParamsPromise;
   const now = new Date();
   const toDate = searchParams.to ?? new Date(now.getFullYear(), now.getMonth() + 1, 0).toISOString().split("T")[0];

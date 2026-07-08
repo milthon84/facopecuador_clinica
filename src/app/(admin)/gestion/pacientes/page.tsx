@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { Search } from "lucide-react";
+import { assertPermission } from "@/lib/auth-action";
 
 export const dynamic = "force-dynamic";
 
@@ -11,6 +12,7 @@ export default async function PacientesPage({
 }: {
   searchParams: Promise<SearchParams>;
 }) {
+  await assertPermission("/gestion/pacientes");
   const searchParams = await searchParamsPromise;
   const supabase = createAdminClient();
   const q = searchParams.q?.trim() || "";
