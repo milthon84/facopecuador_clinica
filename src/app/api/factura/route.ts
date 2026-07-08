@@ -5,6 +5,7 @@ import { signXMLWithP12 } from "@/lib/sri-sign";
 import { enviarYAutorizar } from "@/lib/sri-wsdl";
 import { createInvoiceJournalEntry } from "@/lib/accounting";
 import crypto from "crypto";
+import { getSessionUser } from "@/lib/supabase/auth";
 
 /** Redondea un número a 2 decimales para evitar errores de punto flotante */
 const round2 = (n: number) => Math.round(n * 100) / 100;
@@ -30,8 +31,27 @@ function getTipoIdentificacion(doc: string): string {
 
 export async function POST(req: Request) {
   try {
-    const body = await req.json();
     const supabase = createAdminClient();
+
+    // Verificación de sesión y permisos
+    const user = await getSessionUser(req);
+    if (!user) {
+      return NextResponse.json({ error: "No autorizado" }, { status: 401 });
+    }
+
+    const role = (user.app_metadata?.role as string) ?? "recepcionista";
+    if (role !== "admin") {
+      const { data } = await supabase
+        .from("role_permissions")
+        .select("path")
+        .eq("role_name", role);
+      const paths = (data || []).map((p: any) => p.path);
+      if (!paths.includes("/gestion/facturacion/modificar")) {
+        return NextResponse.json({ error: "Sin permisos de facturación" }, { status: 403 });
+      }
+    }
+
+    const body = await req.json();
 
     // 1. Obtener Configuración SRI
     const { data: config } = await supabase.from("sri_configs").select("*").single();

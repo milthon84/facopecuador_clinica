@@ -1,6 +1,6 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import { redirect, notFound } from "next/navigation";
-import { assertPermission } from "@/lib/auth-action";
+import { assertPermission, assertWritePermission, hasWritePermission } from "@/lib/auth-action";
 import { ArrowLeft, TrendingDown, CheckCircle2, Clock, AlertTriangle } from "lucide-react";
 import Link from "next/link";
 import { createDepreciationJournalEntry } from "@/lib/accounting";
@@ -37,7 +37,7 @@ function buildSchedule(asset: {
 // Registra un período de depreciación
 async function registerDepreciation(formData: FormData) {
   "use server";
-  const user = await assertPermission("/gestion/activos");
+  const user = await assertWritePermission("/gestion/activos");
 
   const supabase       = createAdminClient();
   const asset_id       = formData.get("asset_id") as string;
@@ -74,7 +74,7 @@ async function registerDepreciation(formData: FormData) {
 // Dar de baja el activo
 async function disposeAsset(formData: FormData) {
   "use server";
-  await assertPermission("/gestion/activos");
+  await assertWritePermission("/gestion/activos");
 
   const supabase      = createAdminClient();
   const asset_id      = formData.get("asset_id") as string;
@@ -90,6 +90,8 @@ async function disposeAsset(formData: FormData) {
 }
 
 export default async function AssetDetailPage({ params }: { params: Promise<{ id: string }> }) {
+  await assertPermission("/gestion/activos");
+  const canEdit = await hasWritePermission("/gestion/activos");
   const { id } = await params;
   const supabase = createAdminClient();
 
@@ -199,7 +201,7 @@ export default async function AssetDetailPage({ params }: { params: Promise<{ id
                 <th className="px-4 py-2.5 text-right">Dep. acumulada</th>
                 <th className="px-4 py-2.5 text-right">Valor en libros</th>
                 <th className="px-4 py-2.5 text-center">Estado</th>
-                {asset.status === "active" && <th className="px-4 py-2.5"></th>}
+                {asset.status === "active" && canEdit && <th className="px-4 py-2.5"></th>}
               </tr>
             </thead>
             <tbody className="divide-y divide-lilac-50">
@@ -229,7 +231,7 @@ export default async function AssetDetailPage({ params }: { params: Promise<{ id
                         </span>
                       )}
                     </td>
-                    {asset.status === "active" && (
+                    {asset.status === "active" && canEdit && (
                       <td className="px-4 py-2 text-right">
                         {!isRegistered && !isFuture && (
                           <form action={registerDepreciation}>
@@ -255,7 +257,7 @@ export default async function AssetDetailPage({ params }: { params: Promise<{ id
       </div>
 
       {/* Dar de baja */}
-      {asset.status === "active" && (
+      {asset.status === "active" && canEdit && (
         <div className="bg-white border border-red-100 rounded-2xl shadow-sm p-5">
           <h2 className="font-semibold text-red-800 mb-1">Dar de baja el activo</h2>
           <p className="text-sm text-ink-500 mb-4">Úsalo cuando el bien sea vendido, robado, destruido o retirado de uso.</p>

@@ -5,11 +5,13 @@ import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import { createExpenseJournalEntry } from "@/lib/accounting";
 import NuevaCompraForm from "./NuevaCompraForm";
+import { assertWritePermission } from "@/lib/auth-action";
 
 export const dynamic = "force-dynamic";
 
 async function saveExpense(formData: FormData) {
   "use server";
+  await assertWritePermission("/gestion/gastos");
   const supabase   = createAdminClient();
   const authClient = createClient();
   const { data: { user } } = await authClient.auth.getUser();
@@ -93,6 +95,7 @@ async function saveExpense(formData: FormData) {
 }
 
 export default async function NuevoGastoPage() {
+  await assertWritePermission("/gestion/gastos");
   const today    = new Date().toISOString().split("T")[0];
   const supabase = createAdminClient();
 

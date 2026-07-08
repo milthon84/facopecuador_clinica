@@ -1,6 +1,6 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import { redirect, notFound } from "next/navigation";
-import { assertPermission } from "@/lib/auth-action";
+import { assertPermission, assertWritePermission, hasWritePermission } from "@/lib/auth-action";
 import { ArrowLeft, Plus, TrendingUp, TrendingDown, Building2 } from "lucide-react";
 import Link from "next/link";
 
@@ -22,7 +22,7 @@ const ACCOUNT_TYPE_LABELS: Record<string, string> = {
 
 async function addTransaction(formData: FormData) {
   "use server";
-  const user = await assertPermission("/gestion/bancos");
+  await assertWritePermission("/gestion/bancos");
 
   const account_id     = formData.get("account_id") as string;
   const type           = formData.get("type") as string;
@@ -79,7 +79,7 @@ type Transaction = {
 
 async function transferToBankAction(formData: FormData) {
   "use server";
-  await assertPermission("/gestion/bancos");
+  await assertWritePermission("/gestion/bancos");
 
   const supabase    = createAdminClient();
   const caja_id     = formData.get("caja_id") as string;
@@ -113,9 +113,13 @@ export default async function BancoDetailPage({
   params: Promise<{ id: string }>;
   searchParams: Promise<{ action?: string }>;
 }) {
+  await assertPermission("/gestion/bancos");
+  const canEdit = await hasWritePermission("/gestion/bancos");
+
   const { id } = await params;
   const resolvedSearchParams = await searchParams;
-  const showForm = resolvedSearchParams.action === "manual";
+  const showForm = canEdit && resolvedSearchParams.action === "manual";
+  const showDepositForm = canEdit && resolvedSearchParams.action === "depositar";
   const supabase = createAdminClient();
 
   const [{ data: account }, { data: rawTransactions }, { data: allBanks }] = await Promise.all([
@@ -164,22 +168,22 @@ export default async function BancoDetailPage({
             {account.account_number && ` · ${account.account_number}`}
           </p>
         </div>
-        {isCajaGeneral ? (
+        {canEdit && (isCajaGeneral ? (
           /* Caja General: solo permite depositar en banco */
           <Link
-            href={showForm ? `/gestion/bancos/${id}` : `/gestion/bancos/${id}?action=depositar`}
+            href={showForm || showDepositForm ? `/gestion/bancos/${id}` : `/gestion/bancos/${id}?action=depositar`}
             className={`flex items-center gap-2 px-4 py-2 rounded-xl font-semibold text-sm transition-colors shrink-0 ${
-              resolvedSearchParams.action === "depositar"
+              showDepositForm
                 ? "bg-ink-100 text-ink-700 border border-ink-200"
                 : "bg-green-600 hover:bg-green-700 text-white shadow-md shadow-green-200"
             }`}>
             <Plus size={16} />
-            {resolvedSearchParams.action === "depositar" ? "Cancelar" : "Depositar en banco"}
+            {showDepositForm ? "Cancelar" : "Depositar en banco"}
           </Link>
         ) : (
           /* Otras cuentas: movimiento manual */
           <Link
-            href={showForm ? `/gestion/bancos/${id}` : `/gestion/bancos/${id}?action=manual`}
+            href={showForm || showDepositForm ? `/gestion/bancos/${id}` : `/gestion/bancos/${id}?action=manual`}
             className={`flex items-center gap-2 px-4 py-2 rounded-xl font-semibold text-sm transition-colors shrink-0 ${
               showForm
                 ? "bg-ink-100 text-ink-700 border border-ink-200 hover:bg-ink-200"
@@ -188,7 +192,7 @@ export default async function BancoDetailPage({
             <Plus size={16} />
             {showForm ? "Cancelar" : "Movimiento manual"}
           </Link>
-        )}
+        ))}
       </div>
 
       {/* Stats */}
@@ -227,7 +231,7 @@ export default async function BancoDetailPage({
       )}
 
       {/* Formulario: Depositar en banco (solo Caja General) */}
-      {isCajaGeneral && resolvedSearchParams.action === "depositar" && (
+      {isCajaGeneral && showDepositForm && (
         <div className="bg-white border border-green-200 rounded-2xl shadow-sm p-5 mb-6">
           <h2 className="font-semibold text-ink-900 mb-4 flex items-center gap-2 text-sm">
             <TrendingUp size={16} className="text-green-600" />

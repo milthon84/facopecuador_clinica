@@ -49,6 +49,18 @@ export function canAccess(role: UserRole | undefined, pathname: string): boolean
   return !blocked.some(r => pathname.startsWith(r));
 }
 
+export function isWritePath(path: string): boolean {
+  const normalized = path.toLowerCase();
+  return (
+    normalized === "/gestion/modificar" ||
+    normalized.startsWith("/gestion/modificar/") ||
+    normalized.endsWith("/modificar") ||
+    normalized.includes("/modificar/") ||
+    normalized.endsWith("/crear") ||
+    normalized.includes("/crear/")
+  );
+}
+
 // Helper para verificar permisos dinámicos (base de datos o estáticos)
 export function hasPermission(
   role: string,
@@ -57,9 +69,13 @@ export function hasPermission(
 ): boolean {
   if (role === "admin") return true;
   if (allowedPathsFromDb !== null) {
-    return allowedPathsFromDb.some(
-      (p) => pathToCheck === p || pathToCheck.startsWith(p + "/")
-    );
+    return allowedPathsFromDb.some((p) => {
+      // Si la ruta a verificar es de escritura, solo se concede si el permiso otorgado es también de escritura
+      if (isWritePath(pathToCheck)) {
+        if (!isWritePath(p)) return false;
+      }
+      return pathToCheck === p || pathToCheck.startsWith(p + "/");
+    });
   }
   return canAccess(role as UserRole, pathToCheck);
 }

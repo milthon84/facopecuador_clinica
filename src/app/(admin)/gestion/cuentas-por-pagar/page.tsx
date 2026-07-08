@@ -2,7 +2,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import { CreditCard, CheckCircle2, AlertCircle, Clock } from "lucide-react";
-import { assertPermission } from "@/lib/auth-action";
+import { assertPermission, assertWritePermission, hasWritePermission } from "@/lib/auth-action";
 
 export const dynamic = "force-dynamic";
 
@@ -13,7 +13,7 @@ const fmt = (n: number) => n.toLocaleString("es-EC", { minimumFractionDigits: 2,
 
 async function recordExpensePayment(formData: FormData) {
   "use server";
-  await assertPermission("/gestion/cuentas-por-pagar");
+  await assertWritePermission("/gestion/cuentas-por-pagar");
 
   const supabase        = createAdminClient();
   const expense_id      = formData.get("expense_id") as string;
@@ -59,6 +59,9 @@ async function recordExpensePayment(formData: FormData) {
 export default async function CuentasPorPagarPage({
   searchParams: searchParamsPromise,
 }: { searchParams: Promise<{ pay?: string }> }) {
+  await assertPermission("/gestion/cuentas-por-pagar");
+  const canEdit = await hasWritePermission("/gestion/cuentas-por-pagar");
+
   const searchParams = await searchParamsPromise;
   const supabase = createAdminClient();
 
@@ -88,7 +91,7 @@ export default async function CuentasPorPagarPage({
     .filter(exp => exp.pending > 0); // Solo los que aún tienen saldo
 
   const totalPendiente = r2(list.reduce((s, e) => s + e.pending, 0));
-  const selectedExpense = searchParams.pay ? list.find(e => e.id === searchParams.pay) : null;
+  const selectedExpense = canEdit && searchParams.pay ? list.find(e => e.id === searchParams.pay) : null;
   const today = new Date().toISOString().split("T")[0];
 
   const CATEGORY_COLORS: Record<string, string> = {
@@ -217,7 +220,7 @@ export default async function CuentasPorPagarPage({
                   <th className="px-4 py-3 text-right">Pagado</th>
                   <th className="px-4 py-3 text-right">Pendiente</th>
                   <th className="px-4 py-3 text-center">Estado</th>
-                  <th className="px-4 py-3"></th>
+                  {canEdit && <th className="px-4 py-3"></th>}
                 </tr>
               </thead>
               <tbody className="divide-y divide-lilac-50">
@@ -250,13 +253,15 @@ export default async function CuentasPorPagarPage({
                         </span>
                       )}
                     </td>
-                    <td className="px-4 py-3 text-right">
-                      <Link
-                        href={`/gestion/cuentas-por-pagar?pay=${exp.id}`}
-                        className="text-xs bg-red-600 hover:bg-red-700 text-white px-3 py-1.5 rounded-lg font-medium transition-colors">
-                        Pagar
-                      </Link>
-                    </td>
+                    {canEdit && (
+                      <td className="px-4 py-3 text-right">
+                        <Link
+                          href={`/gestion/cuentas-por-pagar?pay=${exp.id}`}
+                          className="text-xs bg-red-600 hover:bg-red-700 text-white px-3 py-1.5 rounded-lg font-medium transition-colors">
+                          Pagar
+                        </Link>
+                      </td>
+                    )}
                   </tr>
                 ))}
               </tbody>

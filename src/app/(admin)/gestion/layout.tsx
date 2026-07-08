@@ -10,6 +10,7 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import SignOutButton from "@/components/SignOutButton";
 import AdminMobileNav from "@/components/AdminMobileNav";
+import GlobalLoadingOverlay from "@/components/GlobalLoadingOverlay";
 import type { UserRole } from "@/lib/roles";
 import { ROLE_LABELS, ROLE_COLORS, NAV_ITEMS, NAV_SECTIONS } from "@/lib/roles";
 
@@ -44,7 +45,13 @@ const ICONS: Record<string, React.ReactNode> = {
 
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
   const supabase = createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  let user = null;
+  try {
+    const { data } = await supabase.auth.getUser();
+    user = data.user;
+  } catch (err) {
+    console.error("Error fetching user in AdminLayout:", err);
+  }
 
   if (!user) return <>{children}</>;
 
@@ -169,6 +176,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
         displayName={displayName}
         allowedPaths={allowedPaths}
       />
+      <GlobalLoadingOverlay />
     </div>
   );
 }

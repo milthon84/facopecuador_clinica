@@ -4,6 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { formatTimeLocal } from "@/lib/availability";
 import { ChevronLeft, ChevronRight, Calendar, LayoutGrid, Plus } from "lucide-react";
 import { hasPermission } from "@/lib/roles";
+import { getCachedUserAndPermissions } from "@/lib/auth-cache";
 
 export const dynamic = "force-dynamic";
 
@@ -51,22 +52,6 @@ export default async function CalendarioPage({
   const base    = parseDate(searchParams.date);
   const supabase = createAdminClient();
 
-  // Obtener rol y permisos del usuario actual
-  const session = createClient();
-  const { data: { user } } = await session.auth.getUser();
-  const role = (user?.app_metadata?.role as string) ?? "recepcionista";
-
-  let allowedPaths: string[] | null = null;
-  if (role !== "admin") {
-    const { data } = await supabase
-      .from("role_permissions")
-      .select("path")
-      .eq("role_name", role);
-    allowedPaths = (data || []).map((p: any) => p.path);
-  }
-
-  const canModify = hasPermission(role, "/gestion/calendario/modificar", allowedPaths);
-
   // ── Rango de fechas según vista ────────────────────────────────────────
   let rangeStart: Date, rangeEnd: Date;
   let prevDate: Date, nextDate: Date;
@@ -88,13 +73,20 @@ export default async function CalendarioPage({
       .replace(/^./, s => s.toUpperCase());
   }
 
-  // ── Cargar citas ──────────────────────────────────────────────────────
-  const { data: appts } = await supabase
-    .from("appointments")
-    .select("id, starts_at, status, patient:patients(full_name), dental_consultation:dental_consultations(id)")
-    .gte("starts_at", rangeStart.toISOString())
-    .lte("starts_at", rangeEnd.toISOString())
-    .order("starts_at");
+  // ── Cargar citas y permisos en paralelo ──────────────────────────────────
+  const [authData, apptsRes] = await Promise.all([
+    getCachedUserAndPermissions(),
+    supabase
+      .from("appointments")
+      .select("id, starts_at, status, patient:patients(full_name), dental_consultation:dental_consultations(id)")
+      .gte("starts_at", rangeStart.toISOString())
+      .lte("starts_at", rangeEnd.toISOString())
+      .order("starts_at")
+  ]);
+
+  const { role, allowedPaths } = authData;
+  const canModify = hasPermission(role, "/gestion/calendario/modificar", allowedPaths);
+  const appts = apptsRes.data;
 
   // Agrupar por YYYY-MM-DD local
   const byDay = new Map<string, typeof appts>();

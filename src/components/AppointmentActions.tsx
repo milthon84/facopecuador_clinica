@@ -5,9 +5,21 @@ import { useRouter } from "next/navigation";
 import { CheckCircle2, XCircle, AlertCircle, Receipt } from "lucide-react";
 import Link from "next/link";
 
-interface Props { appointment: any; isBilled?: boolean; invoiceNumber?: string | null }
+interface Props {
+  appointment: any;
+  isBilled?: boolean;
+  invoiceNumber?: string | null;
+  canModifyCalendar?: boolean;
+  canModifyBilling?: boolean;
+}
 
-export default function AppointmentActions({ appointment, isBilled = false, invoiceNumber = null }: Props) {
+export default function AppointmentActions({
+  appointment,
+  isBilled = false,
+  invoiceNumber = null,
+  canModifyCalendar = true,
+  canModifyBilling = true,
+}: Props) {
   const router = useRouter();
 
   const [cancelReason, setCancelReason] = useState("");
@@ -33,6 +45,9 @@ export default function AppointmentActions({ appointment, isBilled = false, invo
         </div>
       );
     }
+    if (!canModifyBilling) {
+      return null;
+    }
     return (
       <div className="flex flex-wrap gap-2">
         <Link
@@ -43,6 +58,10 @@ export default function AppointmentActions({ appointment, isBilled = false, invo
         </Link>
       </div>
     );
+  }
+
+  if (!canModifyCalendar) {
+    return null;
   }
 
   async function updateStatus(status: string, extra: Record<string, any> = {}) {

@@ -55,8 +55,8 @@ export async function POST(req: NextRequest) {
       allowedPaths = (data || []).map((p: any) => p.path);
     }
 
-    // El usuario debe poseer permiso de inventario total o el de registrar transacciones
-    if (!hasPermission(role, "/gestion/inventario", allowedPaths) && !hasPermission(role, "/gestion/inventario/transacciones/crear", allowedPaths)) {
+    // Debe tener permiso de escritura en inventario
+    if (!hasPermission(role, "/gestion/inventario/modificar", allowedPaths)) {
       return NextResponse.json({ error: "Sin permisos" }, { status: 403 });
     }
 

@@ -5,6 +5,7 @@ import Link from "next/link";
 import { ArrowLeft, ArrowDownRight, ArrowUpRight, Layers, Plus } from "lucide-react";
 import { logAudit } from "@/lib/audit";
 import { hasPermission, type UserRole } from "@/lib/roles";
+import { getCachedUserAndPermissions } from "@/lib/auth-cache";
 
 export const dynamic = "force-dynamic";
 
@@ -17,34 +18,24 @@ export default async function TransactionsPage({
   const supabase = createAdminClient();
   const preselectedProduct = searchParams.product || "";
 
-  // Obtener rol y permisos del usuario actual
-  const session = createClient();
-  const { data: { user } } = await session.auth.getUser();
-  const role = (user?.app_metadata?.role as string) ?? "recepcionista";
+  // Ejecutar consulta de permisos, productos e historial en paralelo
+  const [authData, productsRes, transactionsRes] = await Promise.all([
+    getCachedUserAndPermissions(),
+    supabase
+      .from("inventory_products")
+      .select("id, name, current_stock, unit_of_measure")
+      .order("name"),
+    supabase
+      .from("inventory_transactions")
+      .select("*, product:inventory_products(name, unit_of_measure)")
+      .order("transaction_date", { ascending: false })
+      .limit(50)
+  ]);
 
-  let allowedPaths: string[] | null = null;
-  if (role !== "admin") {
-    const { data } = await supabase
-      .from("role_permissions")
-      .select("path")
-      .eq("role_name", role);
-    allowedPaths = (data || []).map((p: any) => p.path);
-  }
-
+  const { role, allowedPaths } = authData;
   const canModify = hasPermission(role, "/gestion/inventario/transacciones/crear", allowedPaths);
-
-  // Obtener productos para el selector
-  const { data: products } = await supabase
-    .from("inventory_products")
-    .select("id, name, current_stock, unit_of_measure")
-    .order("name");
-
-  // Obtener historial de transacciones recientes
-  const { data: transactions } = await supabase
-    .from("inventory_transactions")
-    .select("*, product:inventory_products(name, unit_of_measure)")
-    .order("transaction_date", { ascending: false })
-    .limit(50);
+  const products = productsRes.data;
+  const transactions = transactionsRes.data;
 
   async function saveTransaction(formData: FormData) {
     "use server";

@@ -1,5 +1,6 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import NewInvoiceForm from "./NewInvoiceForm";
+import { assertWritePermission } from "@/lib/auth-action";
 
 export const dynamic = "force-dynamic";
 
@@ -8,6 +9,7 @@ export default async function NewInvoicePage({
 }: {
   searchParams: Promise<{ patient_id?: string; appointment_id?: string }>;
 }) {
+  await assertWritePermission("/gestion/facturacion");
   const searchParams = await searchParamsPromise;
   const supabase = createAdminClient();
 

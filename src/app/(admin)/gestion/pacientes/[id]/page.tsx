@@ -18,6 +18,7 @@ import {
 import { formatTimeLocal } from "@/lib/availability";
 import EditPatientModal from "@/components/EditPatientModal";
 import { hasPermission } from "@/lib/roles";
+import { getCachedUserAndPermissions } from "@/lib/auth-cache";
 
 export const dynamic = "force-dynamic";
 
@@ -25,49 +26,36 @@ export default async function PacienteDetalle({ params }: { params: Promise<{ id
   const { id } = await params;
   const supabase = createAdminClient();
   
-  // 1) Fetch patient core details
-  const { data: patient } = await supabase
-    .from("patients")
-    .select("*")
-    .eq("id", id)
-    .single();
-    
-  if (!patient) return notFound();
-
-  // Obtener rol y permisos del usuario actual
-  const session = createClient();
-  const { data: { user } } = await session.auth.getUser();
-  const role = (user?.app_metadata?.role as string) ?? "recepcionista";
-
-  let allowedPaths: string[] | null = null;
-  if (role !== "admin") {
-    const { data } = await supabase
-      .from("role_permissions")
-      .select("path")
-      .eq("role_name", role);
-    allowedPaths = (data || []).map((p: any) => p.path);
-  }
-
-  const canModify = hasPermission(role, "/gestion/pacientes/modificar", allowedPaths);
-
-  // Ejecutar el resto de las consultas a Supabase en paralelo para optimizar la carga del perfil del paciente
-  const [dentalRecordRes, apptsRes, consultationsRes] = await Promise.all([
+  // Ejecutar todas las consultas del perfil del paciente y permisos en paralelo
+  const [patientRes, authData, dentalRecordRes, apptsRes, consultationsRes] = await Promise.all([
+    supabase
+      .from("patients")
+      .select("*")
+      .eq("id", id)
+      .single(),
+    getCachedUserAndPermissions(),
     supabase
       .from("dental_records")
       .select("*")
-      .eq("patient_id", patient.id)
+      .eq("patient_id", id)
       .maybeSingle(),
     supabase
       .from("appointments")
       .select("id, starts_at, ends_at, status, reason")
-      .eq("patient_id", patient.id)
+      .eq("patient_id", id)
       .order("starts_at", { ascending: false }),
     supabase
       .from("dental_consultations")
       .select("*")
-      .eq("patient_id", patient.id)
+      .eq("patient_id", id)
       .order("created_at", { ascending: false })
   ]);
+    
+  const patient = patientRes.data;
+  if (!patient) return notFound();
+
+  const { role, allowedPaths } = authData;
+  const canModify = hasPermission(role, "/gestion/pacientes/modificar", allowedPaths);
 
   const dentalRecord = dentalRecordRes.data;
   const appts = apptsRes.data;

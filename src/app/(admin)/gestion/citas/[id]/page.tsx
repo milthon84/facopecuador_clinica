@@ -6,6 +6,9 @@ import { ArrowLeft, Mail, Phone, IdCard, Calendar, CheckCircle2, Receipt } from 
 import AppointmentActions from "@/components/AppointmentActions";
 import SendReminderButton from "@/components/SendReminderButton";
 import EditPatientModal from "@/components/EditPatientModal";
+import { createClient } from "@/lib/supabase/server";
+import { hasPermission } from "@/lib/roles";
+import { getCachedUserAndPermissions } from "@/lib/auth-cache";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -14,40 +17,51 @@ export default async function CitaDetalle({ params }: { params: Promise<{ id: st
   const { id } = await params;
   const supabase = createAdminClient();
 
-  const { data: appt } = await supabase
-    .from("appointments")
-    .select("*, patient:patients(*)")
-    .eq("id", id)
-    .single();
+  // Ejecutar consultas de cita, permisos, consulta y factura en paralelo
+  const [apptRes, authData, consultationRes, invoiceRes] = await Promise.all([
+    supabase
+      .from("appointments")
+      .select("*, patient:patients(*)")
+      .eq("id", id)
+      .single(),
+    getCachedUserAndPermissions(),
+    supabase
+      .from("dental_consultations")
+      .select("*")
+      .eq("appointment_id", id)
+      .maybeSingle(),
+    supabase
+      .from("invoices")
+      .select("id, invoice_number")
+      .eq("xml_url", id)
+      .limit(1)
+  ]);
 
+  const appt = apptRes.data;
   if (!appt) return notFound();
   const patient = Array.isArray(appt.patient) ? appt.patient[0] : appt.patient;
+
+  const { role, allowedPaths } = authData;
+  const canModifyPatient = hasPermission(role, "/gestion/pacientes/modificar", allowedPaths);
+  const canModifyCalendar = hasPermission(role, "/gestion/calendario/modificar", allowedPaths);
+  const canModifyBilling = hasPermission(role, "/gestion/facturacion/modificar", allowedPaths);
 
   const start = new Date(appt.starts_at);
   const end = new Date(appt.ends_at);
 
-  // Historial del paciente
-  const { data: history } = await supabase
-    .from("appointments")
-    .select("id, starts_at, status, reason")
-    .eq("patient_id", patient.id)
-    .neq("id", appt.id)
-    .order("starts_at", { ascending: false })
-    .limit(10);
+  // Historial del paciente (se ejecuta secuencial porque depende de patient.id)
+  const { data: history } = patient
+    ? await supabase
+        .from("appointments")
+        .select("id, starts_at, status, reason")
+        .eq("patient_id", patient.id)
+        .neq("id", appt.id)
+        .order("starts_at", { ascending: false })
+        .limit(10)
+    : { data: [] };
 
-  // Evolución clínica de la cita si está atendida
-  const { data: consultation } = await supabase
-    .from("dental_consultations")
-    .select("*")
-    .eq("appointment_id", appt.id)
-    .single();
-
-  // Consultar si hay una factura directamente enlazada a esta cita (usando la columna xml_url que guarda el appointment_id)
-  const { data: invoice } = await supabase
-    .from("invoices")
-    .select("id, invoice_number")
-    .eq("xml_url", appt.id)
-    .limit(1);
+  const consultation = consultationRes.data;
+  const invoice = invoiceRes.data;
 
   const isBilled = !!(invoice && invoice.length > 0);
   const invoiceNumber = invoice && invoice.length > 0 ? invoice[0].invoice_number : null;
@@ -95,17 +109,19 @@ export default async function CitaDetalle({ params }: { params: Promise<{ id: st
         </div>
 
         {/* Botón editar datos del paciente */}
-        <div className="mb-4">
-          <EditPatientModal
-            patient={{
-              id: patient.id,
-              full_name: patient.full_name,
-              phone: patient.phone,
-              email: patient.email,
-              document_number: patient.document_number,
-            }}
-          />
-        </div>
+        {canModifyPatient && (
+          <div className="mb-4">
+            <EditPatientModal
+              patient={{
+                id: patient.id,
+                full_name: patient.full_name,
+                phone: patient.phone,
+                email: patient.email,
+                document_number: patient.document_number,
+              }}
+            />
+          </div>
+        )}
 
         {appt.reason && (
           <div className="bg-lilac-50 rounded-lg p-3 mb-4">
@@ -114,7 +130,13 @@ export default async function CitaDetalle({ params }: { params: Promise<{ id: st
           </div>
         )}
 
-        <AppointmentActions appointment={JSON.parse(JSON.stringify(appt))} isBilled={isBilled} invoiceNumber={invoiceNumber} />
+        <AppointmentActions 
+          appointment={JSON.parse(JSON.stringify(appt))} 
+          isBilled={isBilled} 
+          invoiceNumber={invoiceNumber} 
+          canModifyCalendar={canModifyCalendar}
+          canModifyBilling={canModifyBilling}
+        />
       </div>
 
       {appt.status === "attended" && !consultation && (
@@ -127,14 +149,16 @@ export default async function CitaDetalle({ params }: { params: Promise<{ id: st
               Esta cita ha sido marcada como atendida. Ahora puedes rellenar los antecedentes de salud, realizar el examen estomatognático, interactuar con el odontograma y guardar la evolución clínica.
             </p>
           </div>
-          <div className="flex gap-2 shrink-0">
-            <Link
-              href={`/gestion/citas/${appt.id}/atencion`}
-              className="inline-flex items-center justify-center bg-gold-600 hover:bg-gold-700 text-white font-medium text-sm px-4 py-2 rounded-xl transition-all shadow-sm"
-            >
-              Registrar Ficha
-            </Link>
-          </div>
+          {canModifyPatient && (
+            <div className="flex gap-2 shrink-0">
+              <Link
+                href={`/gestion/citas/${appt.id}/atencion`}
+                className="inline-flex items-center justify-center bg-gold-600 hover:bg-gold-700 text-white font-medium text-sm px-4 py-2 rounded-xl transition-all shadow-sm"
+              >
+                Registrar Ficha
+              </Link>
+            </div>
+          )}
         </div>
       )}
 
@@ -144,14 +168,16 @@ export default async function CitaDetalle({ params }: { params: Promise<{ id: st
             <h2 className="text-lg font-bold text-ink-900 flex items-center gap-2">
               <CheckCircle2 className="text-green-600" size={20} /> Detalles de la Atención Registrada
             </h2>
-            <div className="flex gap-2">
-              <Link
-                href={`/gestion/citas/${appt.id}/atencion`}
-                className="inline-flex items-center justify-center bg-gold-600 hover:bg-gold-700 text-white font-semibold text-xs px-3.5 py-2 rounded-xl transition-all shadow-sm hover:scale-[1.02] active:scale-[0.98]"
-              >
-                Editar Ficha
-              </Link>
-            </div>
+            {canModifyPatient && (
+              <div className="flex gap-2">
+                <Link
+                  href={`/gestion/citas/${appt.id}/atencion`}
+                  className="inline-flex items-center justify-center bg-gold-600 hover:bg-gold-700 text-white font-semibold text-xs px-3.5 py-2 rounded-xl transition-all shadow-sm hover:scale-[1.02] active:scale-[0.98]"
+                >
+                  Editar Ficha
+                </Link>
+              </div>
+            )}
           </div>
           
           <div className="space-y-4">

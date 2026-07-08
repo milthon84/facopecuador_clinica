@@ -1,6 +1,6 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import { redirect } from "next/navigation";
-import { assertPermission } from "@/lib/auth-action";
+import { assertPermission, assertWritePermission, hasWritePermission } from "@/lib/auth-action";
 import { Wallet, Plus, TrendingDown, RefreshCw, ArrowRight, X } from "lucide-react";
 import Link from "next/link";
 
@@ -12,7 +12,7 @@ const r2 = (n: number) => Math.round(n * 100) / 100;
 
 async function setupCajaChica(formData: FormData) {
   "use server";
-  await assertPermission("/gestion/caja-chica");
+  await assertWritePermission("/gestion/caja-chica");
   const supabase = createAdminClient();
   await supabase.from("bank_accounts").insert({
     bank_name: (formData.get("bank_name") as string).trim(),
@@ -26,7 +26,7 @@ async function setupCajaChica(formData: FormData) {
 
 async function addCashExpense(formData: FormData) {
   "use server";
-  await assertPermission("/gestion/caja-chica");
+  await assertWritePermission("/gestion/caja-chica");
   const supabase = createAdminClient();
   await supabase.from("bank_transactions").insert({
     account_id:  formData.get("account_id") as string,
@@ -43,7 +43,7 @@ async function addCashExpense(formData: FormData) {
 
 async function replenishCajaChica(formData: FormData) {
   "use server";
-  await assertPermission("/gestion/caja-chica");
+  await assertWritePermission("/gestion/caja-chica");
   const supabase = createAdminClient();
   const caja_id = formData.get("caja_id") as string;
   const bank_id = formData.get("bank_id") as string;
@@ -85,6 +85,9 @@ type BankTx = { id: string; account_id: string; type: "ingreso" | "egreso"; amou
 export default async function CajaChicaPage({
   searchParams: searchParamsPromise,
 }: { searchParams: Promise<{ action?: string }> }) {
+  await assertPermission("/gestion/caja-chica");
+  const canEdit = await hasWritePermission("/gestion/caja-chica");
+
   const searchParams = await searchParamsPromise;
   const supabase = createAdminClient();
   const [{ data: allAccounts }, { data: allTx }] = await Promise.all([
@@ -123,7 +126,7 @@ export default async function CajaChicaPage({
   }
 
   const today  = new Date().toISOString().split("T")[0];
-  const action = searchParams.action; // "gasto" | "reponer"
+  const action = canEdit ? searchParams.action : undefined; // "gasto" | "reponer"
 
   // ── Sin caja configurada ─────────────────────────────────────────────────
   if (cajaAccounts.length === 0) {
@@ -132,25 +135,32 @@ export default async function CajaChicaPage({
         <h1 className="text-2xl font-bold text-ink-900 flex items-center gap-2 mb-6">
           <Wallet className="text-lilac-600" /> Caja Chica
         </h1>
-        <div className="bg-white border border-lilac-100 rounded-2xl shadow-sm p-6">
-          <h2 className="font-semibold text-ink-900 mb-4">Configurar caja chica</h2>
-          <form action={setupCajaChica} className="space-y-4">
-            <div className="space-y-1">
-              <label className="text-xs font-semibold text-ink-700">Nombre *</label>
-              <input name="bank_name" required defaultValue="Caja Chica Principal"
-                className="w-full bg-lilac-50/50 border border-lilac-100 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-lilac-500" />
-            </div>
-            <div className="space-y-1">
-              <label className="text-xs font-semibold text-ink-700">Fondo inicial ($)</label>
-              <input type="number" name="initial_balance" min="0" step="0.01" defaultValue="100"
-                className="w-full bg-lilac-50/50 border border-lilac-100 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-lilac-500 font-mono" />
-            </div>
-            <button type="submit"
-              className="w-full flex items-center justify-center gap-2 bg-lilac-600 hover:bg-lilac-700 text-white px-6 py-2.5 rounded-xl font-semibold text-sm transition-colors">
-              <Plus size={16} /> Crear caja chica
-            </button>
-          </form>
-        </div>
+        {canEdit ? (
+          <div className="bg-white border border-lilac-100 rounded-2xl shadow-sm p-6">
+            <h2 className="font-semibold text-ink-900 mb-4">Configurar caja chica</h2>
+            <form action={setupCajaChica} className="space-y-4">
+              <div className="space-y-1">
+                <label className="text-xs font-semibold text-ink-700">Nombre *</label>
+                <input name="bank_name" required defaultValue="Caja Chica Principal"
+                  className="w-full bg-lilac-50/50 border border-lilac-100 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-lilac-500" />
+              </div>
+              <div className="space-y-1">
+                <label className="text-xs font-semibold text-ink-700">Fondo inicial ($)</label>
+                <input type="number" name="initial_balance" min="0" step="0.01" defaultValue="100"
+                  className="w-full bg-lilac-50/50 border border-lilac-100 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-lilac-500 font-mono" />
+              </div>
+              <button type="submit"
+                className="w-full flex items-center justify-center gap-2 bg-lilac-600 hover:bg-lilac-700 text-white px-6 py-2.5 rounded-xl font-semibold text-sm transition-colors">
+                <Plus size={16} /> Crear caja chica
+              </button>
+            </form>
+          </div>
+        ) : (
+          <div className="bg-white border border-lilac-100 rounded-2xl shadow-sm p-6 text-center">
+            <h2 className="font-semibold text-ink-900 mb-2">No hay Caja Chica configurada</h2>
+            <p className="text-sm text-ink-500">Contacta al administrador para configurar el fondo inicial de la Caja Chica.</p>
+          </div>
+        )}
       </div>
     );
   }
@@ -181,26 +191,28 @@ export default async function CajaChicaPage({
                 </div>
 
                 {/* Botones de acción */}
-                <div className="flex flex-col sm:flex-row gap-2 shrink-0">
-                  <Link href={action === "gasto" ? "/gestion/caja-chica" : "/gestion/caja-chica?action=gasto"}
-                    className={`flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-semibold transition-colors ${
-                      action === "gasto"
-                        ? "bg-red-600 text-white shadow-sm"
-                        : "bg-white border border-red-300 text-red-700 hover:bg-red-50"
-                    }`}>
-                    <TrendingDown size={15} />
-                    {action === "gasto" ? <X size={13} /> : "Registrar Gasto"}
-                  </Link>
-                  <Link href={action === "reponer" ? "/gestion/caja-chica" : "/gestion/caja-chica?action=reponer"}
-                    className={`flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-semibold transition-colors ${
-                      action === "reponer"
-                        ? "bg-green-600 text-white shadow-sm"
-                        : "bg-white border border-green-300 text-green-700 hover:bg-green-50"
-                    }`}>
-                    <RefreshCw size={15} />
-                    {action === "reponer" ? <X size={13} /> : "Reponer Caja"}
-                  </Link>
-                </div>
+                {canEdit && (
+                  <div className="flex flex-col sm:flex-row gap-2 shrink-0">
+                    <Link href={action === "gasto" ? "/gestion/caja-chica" : "/gestion/caja-chica?action=gasto"}
+                      className={`flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-semibold transition-colors ${
+                        action === "gasto"
+                          ? "bg-red-600 text-white shadow-sm"
+                          : "bg-white border border-red-300 text-red-700 hover:bg-red-50"
+                      }`}>
+                      <TrendingDown size={15} />
+                      {action === "gasto" ? <X size={13} /> : "Registrar Gasto"}
+                    </Link>
+                    <Link href={action === "reponer" ? "/gestion/caja-chica" : "/gestion/caja-chica?action=reponer"}
+                      className={`flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-semibold transition-colors ${
+                        action === "reponer"
+                          ? "bg-green-600 text-white shadow-sm"
+                          : "bg-white border border-green-300 text-green-700 hover:bg-green-50"
+                      }`}>
+                      <RefreshCw size={15} />
+                      {action === "reponer" ? <X size={13} /> : "Reponer Caja"}
+                    </Link>
+                  </div>
+                )}
               </div>
             </div>
 

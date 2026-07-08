@@ -41,6 +41,17 @@ export async function PATCH(req: Request) {
   }
 
   const supabase = createAdminClient();
+  const role = (user.app_metadata?.role as string) ?? "recepcionista";
+  if (role !== "admin") {
+    const { data } = await supabase
+      .from("role_permissions")
+      .select("path")
+      .eq("role_name", role);
+    const paths = (data || []).map((p: any) => p.path);
+    if (!paths.includes("/gestion/pacientes/modificar")) {
+      return NextResponse.json({ error: "Sin permisos" }, { status: 403 });
+    }
+  }
 
   try {
     const body = await req.json();

@@ -149,7 +149,13 @@ export async function middleware(req: NextRequest) {
   // ── Proteger rutas del panel de administración ─────────────────────────
   if (pathname.startsWith("/gestion") && pathname !== "/gestion/login") {
     const supabase = buildSupabaseClient(req, res);
-    const { data: { user } } = await supabase.auth.getUser();
+    let user = null;
+    try {
+      const { data } = await supabase.auth.getUser();
+      user = data.user;
+    } catch (err) {
+      console.error("Error fetching user in middleware path check:", err);
+    }
 
     if (!user) {
       const url = req.nextUrl.clone();
@@ -175,7 +181,13 @@ export async function middleware(req: NextRequest) {
   // ── Proteger rutas API del panel admin ─────────────────────────────────
   if (pathname.startsWith("/api/admin")) {
     const supabase = buildSupabaseClient(req, res);
-    const { data: { user } } = await supabase.auth.getUser();
+    let user = null;
+    try {
+      const { data } = await supabase.auth.getUser();
+      user = data.user;
+    } catch (err) {
+      console.error("Error fetching user in middleware API check:", err);
+    }
 
     if (!user) {
       return NextResponse.json(

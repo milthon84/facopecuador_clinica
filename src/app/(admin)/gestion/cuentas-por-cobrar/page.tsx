@@ -1,6 +1,6 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import { redirect } from "next/navigation";
-import { assertPermission } from "@/lib/auth-action";
+import { assertPermission, assertWritePermission, hasWritePermission } from "@/lib/auth-action";
 import { CircleDollarSign, CheckCircle2, Clock, AlertCircle, FileText, Zap } from "lucide-react";
 import Link from "next/link";
 
@@ -18,7 +18,7 @@ const PM_LABELS: Record<string, string> = {
 
 async function confirmFullPayment(formData: FormData) {
   "use server";
-  await assertPermission("/gestion/cuentas-por-cobrar");
+  await assertWritePermission("/gestion/cuentas-por-cobrar");
 
   const supabase       = createAdminClient();
   const invoice_id     = formData.get("invoice_id") as string;
@@ -71,7 +71,7 @@ async function confirmFullPayment(formData: FormData) {
 
 async function recordPartialPayment(formData: FormData) {
   "use server";
-  await assertPermission("/gestion/cuentas-por-cobrar");
+  await assertWritePermission("/gestion/cuentas-por-cobrar");
 
   const supabase       = createAdminClient();
   const invoice_id     = formData.get("invoice_id") as string;
@@ -116,6 +116,9 @@ async function recordPartialPayment(formData: FormData) {
 export default async function CuentasPorCobrarPage({
   searchParams: searchParamsPromise,
 }: { searchParams: Promise<{ pay?: string }> }) {
+  await assertPermission("/gestion/cuentas-por-cobrar");
+  const canEdit = await hasWritePermission("/gestion/cuentas-por-cobrar");
+
   const searchParams = await searchParamsPromise;
   const supabase = createAdminClient();
 
@@ -141,7 +144,7 @@ export default async function CuentasPorCobrarPage({
   }));
 
   const totalPendiente = r2(list.reduce((s, i) => s + i.pending, 0));
-  const selectedId     = searchParams.pay ?? null;
+  const selectedId     = canEdit ? (searchParams.pay ?? null) : null;
   const today          = new Date().toISOString().split("T")[0];
 
   return (
@@ -212,30 +215,32 @@ export default async function CuentasPorCobrarPage({
                   </div>
 
                   {/* Botones de acción */}
-                  <div className="flex gap-2 shrink-0">
-                    {/* Confirmar pago completo en 1 clic */}
-                    <form action={confirmFullPayment}>
-                      <input type="hidden" name="invoice_id" value={inv.id} />
-                      <input type="hidden" name="amount" value={inv.pending} />
-                      <input type="hidden" name="payment_method" value={inv.payment_method ?? "efectivo"} />
-                      <button type="submit"
-                        className="flex items-center gap-1.5 bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-xl font-semibold text-sm transition-colors shadow-sm">
-                        <CheckCircle2 size={15} /> Cobrado
-                      </button>
-                    </form>
+                  {canEdit && (
+                    <div className="flex gap-2 shrink-0">
+                      {/* Confirmar pago completo en 1 clic */}
+                      <form action={confirmFullPayment}>
+                        <input type="hidden" name="invoice_id" value={inv.id} />
+                        <input type="hidden" name="amount" value={inv.pending} />
+                        <input type="hidden" name="payment_method" value={inv.payment_method ?? "efectivo"} />
+                        <button type="submit"
+                          className="flex items-center gap-1.5 bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-xl font-semibold text-sm transition-colors shadow-sm">
+                          <CheckCircle2 size={15} /> Cobrado
+                        </button>
+                      </form>
 
-                    {/* Abrir formulario extendido */}
-                    <Link
-                      href={`/gestion/cuentas-por-cobrar?pay=${inv.id}`}
-                      className={`flex items-center gap-1.5 px-4 py-2 rounded-xl font-semibold text-sm transition-colors border ${
-                        isSelected
-                          ? "bg-lilac-600 text-white border-lilac-600"
-                          : "bg-white text-lilac-700 border-lilac-200 hover:bg-lilac-50"
-                      }`}
-                    >
-                      <FileText size={14} /> Detalle
-                    </Link>
-                  </div>
+                      {/* Abrir formulario extendido */}
+                      <Link
+                        href={`/gestion/cuentas-por-cobrar?pay=${inv.id}`}
+                        className={`flex items-center gap-1.5 px-4 py-2 rounded-xl font-semibold text-sm transition-colors border ${
+                          isSelected
+                            ? "bg-lilac-600 text-white border-lilac-600"
+                            : "bg-white text-lilac-700 border-lilac-200 hover:bg-lilac-50"
+                        }`}
+                      >
+                        <FileText size={14} /> Detalle
+                      </Link>
+                    </div>
+                  )}
                 </div>
 
                 {/* Panel extendido — comprobante y cobro parcial */}

@@ -1,10 +1,13 @@
 import Link from "next/link";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { FileText, Plus, CheckCircle2, XCircle, AlertCircle, Clock } from "lucide-react";
+import { assertPermission, hasWritePermission } from "@/lib/auth-action";
 
 export const dynamic = "force-dynamic";
 
 export default async function BillingDashboard() {
+  await assertPermission("/gestion/facturacion");
+  const canEdit = await hasWritePermission("/gestion/facturacion");
   const supabase = createAdminClient();
 
   const { data: invoices, count } = await supabase
@@ -39,13 +42,15 @@ export default async function BillingDashboard() {
             Emite y gestiona comprobantes electrónicos autorizados por el SRI.
           </p>
         </div>
-        <Link
-          href="/gestion/facturacion/nueva"
-          className="btn-primary flex items-center gap-2 text-sm bg-lilac-600 hover:bg-lilac-700 text-white px-4 py-2 rounded-xl transition-colors font-medium shadow-md shadow-lilac-200"
-        >
-          <Plus size={16} />
-          Emitir Factura
-        </Link>
+        {canEdit && (
+          <Link
+            href="/gestion/facturacion/nueva"
+            className="btn-primary flex items-center gap-2 text-sm bg-lilac-600 hover:bg-lilac-700 text-white px-4 py-2 rounded-xl transition-colors font-medium shadow-md shadow-lilac-200"
+          >
+            <Plus size={16} />
+            Emitir Factura
+          </Link>
+        )}
       </div>
 
       <div className="bg-white border border-lilac-100 rounded-2xl overflow-hidden shadow-sm">
@@ -67,9 +72,11 @@ export default async function BillingDashboard() {
                     <div className="flex flex-col items-center gap-3">
                       <FileText size={40} className="text-lilac-200" />
                       <p>No se han emitido facturas aún.</p>
-                      <Link href="/gestion/facturacion/nueva" className="text-lilac-600 hover:underline font-medium">
-                        Emitir la primera factura
-                      </Link>
+                      {canEdit && (
+                        <Link href="/gestion/facturacion/nueva" className="text-lilac-600 hover:underline font-medium">
+                          Emitir la primera factura
+                        </Link>
+                      )}
                     </div>
                   </td>
                 </tr>

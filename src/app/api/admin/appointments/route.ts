@@ -13,6 +13,19 @@ export async function PATCH(req: Request) {
     return NextResponse.json({ error: "No autorizado" }, { status: 401 });
   }
 
+  const adminClient = createAdminClient();
+  const role = (user.app_metadata?.role as string) ?? "recepcionista";
+  if (role !== "admin") {
+    const { data } = await adminClient
+      .from("role_permissions")
+      .select("path")
+      .eq("role_name", role);
+    const paths = (data || []).map((p: any) => p.path);
+    if (!paths.includes("/gestion/calendario/modificar")) {
+      return NextResponse.json({ error: "Sin permisos" }, { status: 403 });
+    }
+  }
+
   try {
     const body = await req.json();
     const { id, status, extra } = body;
@@ -20,8 +33,6 @@ export async function PATCH(req: Request) {
     if (!id || !status) {
       return NextResponse.json({ error: "id y status son requeridos" }, { status: 400 });
     }
-
-    const adminClient = createAdminClient();
 
     // Obtener estado anterior para auditoría
     const { data: prevAppt } = await adminClient
@@ -92,6 +103,19 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "No autorizado" }, { status: 401 });
   }
 
+  const adminClient = createAdminClient();
+  const role = (user.app_metadata?.role as string) ?? "recepcionista";
+  if (role !== "admin") {
+    const { data } = await adminClient
+      .from("role_permissions")
+      .select("path")
+      .eq("role_name", role);
+    const paths = (data || []).map((p: any) => p.path);
+    if (!paths.includes("/gestion/calendario/modificar")) {
+      return NextResponse.json({ error: "Sin permisos" }, { status: 403 });
+    }
+  }
+
   try {
     const body = await req.json();
     const { id } = body;
@@ -99,8 +123,6 @@ export async function POST(req: Request) {
     if (!id) {
       return NextResponse.json({ error: "id es requerido" }, { status: 400 });
     }
-
-    const adminClient = createAdminClient();
 
     // Obtener la cita y datos del paciente
     const { data: appt, error: fetchErr } = await adminClient

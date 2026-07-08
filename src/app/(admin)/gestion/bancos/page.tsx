@@ -1,7 +1,7 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import { redirect } from "next/navigation";
-import { assertPermission } from "@/lib/auth-action";
-import { Building2, Plus, TrendingUp, TrendingDown, Wallet } from "lucide-react";
+import { assertPermission, assertWritePermission, hasWritePermission } from "@/lib/auth-action";
+import { Building2, Plus, Wallet } from "lucide-react";
 import Link from "next/link";
 
 export const dynamic = "force-dynamic";
@@ -14,7 +14,7 @@ const ACCOUNT_TYPE_LABELS: Record<string, string> = {
 
 async function createAccount(formData: FormData) {
   "use server";
-  await assertPermission("/gestion/bancos");
+  await assertWritePermission("/gestion/bancos");
 
   const supabase = createAdminClient();
   await supabase.from("bank_accounts").insert({
@@ -30,7 +30,7 @@ async function createAccount(formData: FormData) {
 
 async function toggleAccount(formData: FormData) {
   "use server";
-  await assertPermission("/gestion/bancos");
+  await assertWritePermission("/gestion/bancos");
 
   const supabase = createAdminClient();
   const id = formData.get("id") as string;
@@ -41,7 +41,7 @@ async function toggleAccount(formData: FormData) {
 
 async function setCajaGeneral(formData: FormData) {
   "use server";
-  await assertPermission("/gestion/bancos");
+  await assertWritePermission("/gestion/bancos");
 
   const supabase = createAdminClient();
   const id = formData.get("id") as string;
@@ -71,6 +71,9 @@ type BankTransaction = {
 };
 
 export default async function BancosPage() {
+  await assertPermission("/gestion/bancos");
+  const canEdit = await hasWritePermission("/gestion/bancos");
+
   const supabase = createAdminClient();
 
   const [{ data: accounts }, { data: transactions }] = await Promise.all([
@@ -99,11 +102,13 @@ export default async function BancosPage() {
           <Building2 className="text-lilac-600" />
           Cuentas Bancarias
         </h1>
-        <Link
-          href="/gestion/bancos/nueva"
-          className="flex items-center gap-2 px-4 py-2 rounded-xl font-semibold text-sm transition-colors bg-lilac-600 hover:bg-lilac-700 text-white shadow-md shadow-lilac-200">
-          <Plus size={16} /> Agregar cuenta
-        </Link>
+        {canEdit && (
+          <Link
+            href="/gestion/bancos/nueva"
+            className="flex items-center gap-2 px-4 py-2 rounded-xl font-semibold text-sm transition-colors bg-lilac-600 hover:bg-lilac-700 text-white shadow-md shadow-lilac-200">
+            <Plus size={16} /> Agregar cuenta
+          </Link>
+        )}
       </div>
 
       {/* Stats */}
@@ -135,7 +140,7 @@ export default async function BancosPage() {
         <div className="bg-white border border-lilac-100 rounded-2xl shadow-sm p-12 text-center mb-6">
           <Building2 size={32} className="text-lilac-300 mx-auto mb-3" />
           <p className="text-ink-500 font-medium">Sin cuentas bancarias registradas</p>
-          <p className="text-sm text-ink-400 mt-1">Agrega tu primera cuenta abajo.</p>
+          {canEdit && <p className="text-sm text-ink-400 mt-1">Agrega tu primera cuenta abajo.</p>}
         </div>
       ) : (
         <div className="grid sm:grid-cols-2 gap-4 mb-6">
@@ -185,24 +190,26 @@ export default async function BancosPage() {
 
                 <div className="px-5 py-2.5 bg-lilac-50/40 border-t border-lilac-100 flex items-center justify-between gap-2">
                   {account.notes && <p className="text-xs text-ink-400 truncate mr-2">{account.notes}</p>}
-                  <div className="ml-auto flex items-center gap-3">
-                    {/* Marcar como Caja General (solo para cuentas tipo caja) */}
-                    {account.account_type === "caja" && !account.is_caja_general && (
-                      <form action={setCajaGeneral}>
+                  {canEdit && (
+                    <div className="ml-auto flex items-center gap-3">
+                      {/* Marcar como Caja General (solo para cuentas tipo caja) */}
+                      {account.account_type === "caja" && !account.is_caja_general && (
+                        <form action={setCajaGeneral}>
+                          <input type="hidden" name="id" value={account.id} />
+                          <button type="submit" className="text-xs text-blue-500 hover:text-blue-700 transition-colors">
+                            Marcar como Caja General
+                          </button>
+                        </form>
+                      )}
+                      <form action={toggleAccount}>
                         <input type="hidden" name="id" value={account.id} />
-                        <button type="submit" className="text-xs text-blue-500 hover:text-blue-700 transition-colors">
-                          Marcar como Caja General
+                        <input type="hidden" name="is_active" value={String(account.is_active)} />
+                        <button type="submit" className="text-xs text-ink-400 hover:text-ink-600 transition-colors">
+                          {account.is_active ? "Desactivar" : "Activar"}
                         </button>
                       </form>
-                    )}
-                    <form action={toggleAccount}>
-                      <input type="hidden" name="id" value={account.id} />
-                      <input type="hidden" name="is_active" value={String(account.is_active)} />
-                      <button type="submit" className="text-xs text-ink-400 hover:text-ink-600 transition-colors">
-                        {account.is_active ? "Desactivar" : "Activar"}
-                      </button>
-                    </form>
-                  </div>
+                    </div>
+                  )}
                 </div>
               </div>
             );

@@ -1,6 +1,7 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import { Landmark, Plus, TrendingDown, DollarSign, Package } from "lucide-react";
 import Link from "next/link";
+import { assertPermission, assertWritePermission, hasWritePermission } from "@/lib/auth-action";
 
 export const dynamic = "force-dynamic";
 
@@ -49,6 +50,8 @@ const CATEGORY_COLOR: Record<string, string> = {
 };
 
 export default async function ActivosPage() {
+  await assertPermission("/gestion/activos");
+  const canEdit = await hasWritePermission("/gestion/activos");
   const supabase = createAdminClient();
   const { data: assets } = await supabase
     .from("fixed_assets")
@@ -72,10 +75,12 @@ export default async function ActivosPage() {
           </h1>
           <p className="text-sm text-ink-600">Registro, depreciación y gestión de bienes de capital.</p>
         </div>
-        <Link href="/gestion/activos/nuevo"
-          className="flex items-center gap-2 bg-lilac-600 hover:bg-lilac-700 text-white px-4 py-2 rounded-xl font-semibold text-sm transition-colors shadow-md shadow-lilac-200 shrink-0">
-          <Plus size={16} /> Registrar activo
-        </Link>
+        {canEdit && (
+          <Link href="/gestion/activos/nuevo"
+            className="flex items-center gap-2 bg-lilac-600 hover:bg-lilac-700 text-white px-4 py-2 rounded-xl font-semibold text-sm transition-colors shadow-md shadow-lilac-200 shrink-0">
+            <Plus size={16} /> Registrar activo
+          </Link>
+        )}
       </div>
 
       {/* Stats */}
@@ -101,9 +106,11 @@ export default async function ActivosPage() {
         <div className="bg-white border border-lilac-100 rounded-2xl shadow-sm p-12 text-center">
           <Landmark size={36} className="text-lilac-200 mx-auto mb-3" />
           <p className="text-ink-500 font-medium">Sin activos registrados</p>
-          <Link href="/gestion/activos/nuevo" className="mt-3 inline-flex items-center gap-1.5 text-sm text-lilac-600 hover:underline">
-            <Plus size={14} /> Registrar el primero
-          </Link>
+          {canEdit && (
+            <Link href="/gestion/activos/nuevo" className="mt-3 inline-flex items-center gap-1.5 text-sm text-lilac-600 hover:underline">
+              <Plus size={14} /> Registrar el primero
+            </Link>
+          )}
         </div>
       ) : (
         <div className="bg-white border border-lilac-100 rounded-2xl shadow-sm overflow-hidden">

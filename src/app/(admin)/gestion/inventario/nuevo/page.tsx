@@ -6,6 +6,7 @@ import { ArrowLeft, Save } from "lucide-react";
 import SkuPreviewBanner from "@/components/SkuPreviewBanner";
 import { logAudit } from "@/lib/audit";
 import type { UserRole } from "@/lib/roles";
+import { assertWritePermission } from "@/lib/auth-action";
 
 export const dynamic = "force-dynamic";
 
@@ -32,8 +33,11 @@ async function getNextSku(
 }
 
 export default async function NewProductPage() {
+  await assertWritePermission("/gestion/inventario");
+
   async function saveProduct(formData: FormData) {
     "use server";
+    await assertWritePermission("/gestion/inventario");
     const supabase = createAdminClient();
     const sessionClient = createClient();
     const { data: { user } } = await sessionClient.auth.getUser();

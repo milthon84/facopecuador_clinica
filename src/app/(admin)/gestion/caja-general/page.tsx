@@ -1,6 +1,6 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import { redirect } from "next/navigation";
-import { assertPermission } from "@/lib/auth-action";
+import { assertPermission, assertWritePermission, hasWritePermission } from "@/lib/auth-action";
 import { Banknote, TrendingUp, TrendingDown, ArrowRight, X } from "lucide-react";
 import Link from "next/link";
 
@@ -12,7 +12,7 @@ const r2 = (n: number) => Math.round(n * 100) / 100;
 
 async function transferFromCajaGeneral(formData: FormData) {
   "use server";
-  await assertPermission("/gestion/caja-general");
+  await assertWritePermission("/gestion/caja-general");
 
   const supabase   = createAdminClient();
   const caja_id    = formData.get("caja_id") as string;
@@ -84,9 +84,12 @@ type Tx = {
 export default async function CajaGeneralPage({
   searchParams: searchParamsPromise,
 }: { searchParams: Promise<{ action?: string }> }) {
+  await assertPermission("/gestion/caja-general");
+  const canEdit = await hasWritePermission("/gestion/caja-general");
+
   const searchParams = await searchParamsPromise;
   const supabase    = createAdminClient();
-  const showForm    = searchParams.action === "transferir";
+  const showForm    = canEdit && searchParams.action === "transferir";
   const today       = new Date().toISOString().split("T")[0];
 
   // Buscar la Caja General
@@ -173,15 +176,17 @@ export default async function CajaGeneralPage({
           </div>
 
           {/* Botón transferir */}
-          <Link
-            href={showForm ? "/gestion/caja-general" : "/gestion/caja-general?action=transferir"}
-            className={`flex items-center gap-2 px-4 py-2 rounded-xl font-semibold text-sm transition-colors shrink-0 ${
-              showForm
-                ? "bg-white border border-gray-200 text-ink-600 hover:bg-gray-50"
-                : "bg-green-600 hover:bg-green-700 text-white shadow-md"
-            }`}>
-            {showForm ? <><X size={15} /> Cancelar</> : <><ArrowRight size={15} /> Transferir</>}
-          </Link>
+          {canEdit && (
+            <Link
+              href={showForm ? "/gestion/caja-general" : "/gestion/caja-general?action=transferir"}
+              className={`flex items-center gap-2 px-4 py-2 rounded-xl font-semibold text-sm transition-colors shrink-0 ${
+                showForm
+                  ? "bg-white border border-gray-200 text-ink-600 hover:bg-gray-50"
+                  : "bg-green-600 hover:bg-green-700 text-white shadow-md"
+              }`}>
+              {showForm ? <><X size={15} /> Cancelar</> : <><ArrowRight size={15} /> Transferir</>}
+            </Link>
+          )}
         </div>
       </div>
 

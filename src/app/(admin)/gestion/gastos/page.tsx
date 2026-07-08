@@ -1,6 +1,7 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import Link from "next/link";
 import { ShoppingCart, Plus, TrendingDown, Calendar, Tag } from "lucide-react";
+import { assertPermission, hasWritePermission } from "@/lib/auth-action";
 
 export const dynamic = "force-dynamic";
 
@@ -39,6 +40,8 @@ export default async function GastosPage({
 }: {
   searchParams: Promise<{ month?: string }>;
 }) {
+  await assertPermission("/gestion/gastos");
+  const canEdit = await hasWritePermission("/gestion/gastos");
   const searchParams = await searchParamsPromise;
   const supabase = createAdminClient();
 
@@ -79,12 +82,14 @@ export default async function GastosPage({
           <ShoppingCart size={20} className="text-lilac-600 shrink-0" />
           <h1 className="text-xl font-bold text-ink-900">Gastos / Compras</h1>
         </div>
-        <Link
-          href="/gestion/gastos/nuevo"
-          className="flex items-center gap-1.5 text-sm bg-lilac-600 hover:bg-lilac-700 text-white px-3 py-1.5 rounded-xl transition-colors font-medium shadow-sm"
-        >
-          <Plus size={15} /> Registrar Gasto / Compra
-        </Link>
+        {canEdit && (
+          <Link
+            href="/gestion/gastos/nuevo"
+            className="flex items-center gap-1.5 text-sm bg-lilac-600 hover:bg-lilac-700 text-white px-3 py-1.5 rounded-xl transition-colors font-medium shadow-sm"
+          >
+            <Plus size={15} /> Registrar Gasto / Compra
+          </Link>
+        )}
       </div>
 
       {/* Selector de mes */}
@@ -133,9 +138,11 @@ export default async function GastosPage({
           <div className="py-16 text-center text-ink-500">
             <TrendingDown size={36} className="text-lilac-200 mx-auto mb-3" />
             <p className="text-sm">No hay gastos registrados en {monthLabel}.</p>
-            <Link href="/gestion/gastos/nuevo" className="text-lilac-600 hover:underline text-sm font-medium mt-1 inline-block">
-              Registrar el primero
-            </Link>
+            {canEdit && (
+              <Link href="/gestion/gastos/nuevo" className="text-lilac-600 hover:underline text-sm font-medium mt-1 inline-block">
+                Registrar el primero
+              </Link>
+            )}
           </div>
         ) : (
           <div className="divide-y divide-lilac-50">

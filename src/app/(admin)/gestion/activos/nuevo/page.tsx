@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import Link from "next/link";
 import { ArrowLeft, Save } from "lucide-react";
 import { createAssetPurchaseJournalEntry } from "@/lib/accounting";
+import { assertWritePermission } from "@/lib/auth-action";
 
 export const dynamic = "force-dynamic";
 
@@ -18,6 +19,7 @@ const ASSET_CATEGORIES = [
 
 async function saveAsset(formData: FormData) {
   "use server";
+  await assertWritePermission("/gestion/activos");
   const supabase   = createAdminClient();
   const authClient = createClient();
   const { data: { user } } = await authClient.auth.getUser();
@@ -83,6 +85,7 @@ async function saveAsset(formData: FormData) {
 }
 
 export default async function NuevoActivoPage() {
+  await assertWritePermission("/gestion/activos");
   const supabase = createAdminClient();
   const { data: bankAccounts } = await supabase
     .from("bank_accounts")

@@ -2,7 +2,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import { ArrowLeft, Building2, Save, AlertCircle } from "lucide-react";
-import { assertPermission } from "@/lib/auth-action";
+import { assertPermission, assertWritePermission } from "@/lib/auth-action";
 
 export const dynamic = "force-dynamic";
 
@@ -23,7 +23,7 @@ const BANKS_EC = [
 
 async function createAccount(formData: FormData) {
   "use server";
-  await assertPermission("/gestion/bancos");
+  await assertWritePermission("/gestion/bancos");
 
   const account_type = formData.get("account_type") as string;
   const supabase = createAdminClient();
@@ -52,6 +52,7 @@ async function createAccount(formData: FormData) {
 }
 
 export default async function NuevaCuentaBancariaPage() {
+  await assertWritePermission("/gestion/bancos");
   const supabase = createAdminClient();
 
   // Verificar cuántas cajas existen para mostrar/ocultar la opción

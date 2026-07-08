@@ -3,6 +3,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import { formatTimeLocal } from "@/lib/availability";
 import { hasPermission } from "@/lib/roles";
+import { getCachedUserAndPermissions } from "@/lib/auth-cache";
 
 // Ecuador siempre UTC-5, sin horario de verano
 const EC_TZ = "America/Guayaquil";
@@ -50,22 +51,6 @@ export default async function AdminDashboard({
   const searchParams = await searchParamsPromise;
   const supabase = createAdminClient();
 
-  // Obtener rol y permisos del usuario actual
-  const session = createClient();
-  const { data: { user } } = await session.auth.getUser();
-  const role = (user?.app_metadata?.role as string) ?? "recepcionista";
-
-  let allowedPaths: string[] | null = null;
-  if (role !== "admin") {
-    const { data } = await supabase
-      .from("role_permissions")
-      .select("path")
-      .eq("role_name", role);
-    allowedPaths = (data || []).map((p: any) => p.path);
-  }
-
-  const canModify = hasPermission(role, "/gestion/modificar", allowedPaths);
-
   // Determinar la fecha objetivo en timezone Ecuador
   const todayEc = todayInEcuador(); // "YYYY-MM-DD" en hora Ecuador
   const targetDateParam = searchParams?.date;
@@ -92,14 +77,21 @@ export default async function AdminDashboard({
         weekday: "long",
       });
 
-  const todayRes = await supabase
-    .from("appointments")
-    .select(
-      "id, starts_at, ends_at, status, reason, reminder_sent_at, patient:patients(id, full_name, phone, document_number, email), dental_consultation:dental_consultations(id)"
-    )
-    .gte("starts_at", startOfDay)
-    .lte("starts_at", endOfDay)
-    .order("starts_at");
+  // Ejecutar consulta de citas y datos de usuario en paralelo
+  const [authData, todayRes] = await Promise.all([
+    getCachedUserAndPermissions(),
+    supabase
+      .from("appointments")
+      .select(
+        "id, starts_at, ends_at, status, reason, reminder_sent_at, patient:patients(id, full_name, phone, document_number, email), dental_consultation:dental_consultations(id)"
+      )
+      .gte("starts_at", startOfDay)
+      .lte("starts_at", endOfDay)
+      .order("starts_at")
+  ]);
+
+  const { role, allowedPaths } = authData;
+  const canModify = hasPermission(role, "/gestion/modificar", allowedPaths);
 
   const todayAppts = todayRes.data;
   const targetDateStr = targetEcDate;

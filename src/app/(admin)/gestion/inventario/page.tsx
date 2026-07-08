@@ -5,6 +5,7 @@ import { Package, AlertTriangle, ArrowUpRight, Plus, Layers } from "lucide-react
 import InventoryFilters from "@/components/InventoryFilters";
 import InventoryImportExport from "@/components/InventoryImportExport";
 import { hasPermission } from "@/lib/roles";
+import { getCachedUserAndPermissions } from "@/lib/auth-cache";
 
 export const dynamic = "force-dynamic";
 
@@ -18,23 +19,6 @@ export default async function InventoryDashboard({
   const q = searchParams.q || "";
   const category = searchParams.category || "";
 
-  // Obtener rol y permisos del usuario actual
-  const session = createClient();
-  const { data: { user } } = await session.auth.getUser();
-  const role = (user?.app_metadata?.role as string) ?? "recepcionista";
-
-  let allowedPaths: string[] | null = null;
-  if (role !== "admin") {
-    const { data } = await supabase
-      .from("role_permissions")
-      .select("path")
-      .eq("role_name", role);
-    allowedPaths = (data || []).map((p: any) => p.path);
-  }
-
-  const canViewTx = hasPermission(role, "/gestion/inventario/transacciones", allowedPaths);
-  const canRegisterTx = hasPermission(role, "/gestion/inventario/transacciones/crear", allowedPaths);
-
   let query = supabase
     .from("inventory_products")
     .select("*", { count: "exact" })
@@ -47,15 +31,25 @@ export default async function InventoryDashboard({
     query = query.eq("category", category);
   }
 
-  const { data: products, count } = await query;
+  // Ejecutar consulta de productos, permisos y categorías en paralelo
+  const [authData, productsRes, categoriesRes] = await Promise.all([
+    getCachedUserAndPermissions(),
+    query,
+    supabase.from("inventory_products").select("category")
+  ]);
+
+  const { role, allowedPaths } = authData;
+  const canViewTx = hasPermission(role, "/gestion/inventario/transacciones", allowedPaths);
+  const canRegisterTx = hasPermission(role, "/gestion/inventario/transacciones/crear", allowedPaths);
+  const canEditProduct = hasPermission(role, "/gestion/inventario/modificar", allowedPaths);
+
+  const { data: products, count } = productsRes;
   const items = products || [];
 
   const lowStockCount = items.filter((p) => p.current_stock <= p.minimum_stock).length;
   const totalStock = items.reduce((acc, p) => acc + Number(p.current_stock), 0);
 
-  // Categorías únicas
-  const allCategoriesQuery = await supabase.from("inventory_products").select("category");
-  const uniqueCategories = Array.from(new Set(allCategoriesQuery.data?.map(c => c.category) || []));
+  const uniqueCategories = Array.from(new Set(categoriesRes.data?.map(c => c.category) || []));
 
   return (
     <div className="max-w-5xl mx-auto">
@@ -75,7 +69,7 @@ export default async function InventoryDashboard({
               <span className="hidden sm:inline">Movimientos</span>
             </Link>
           )}
-          {canRegisterTx && (
+          {canEditProduct && (
             <Link
               href="/gestion/inventario/nuevo"
               className="flex items-center gap-1.5 text-sm bg-lilac-600 hover:bg-lilac-700 text-white px-3 py-1.5 rounded-xl transition-colors font-medium shadow-sm"
@@ -89,7 +83,7 @@ export default async function InventoryDashboard({
 
       {/* Import / Export Excel */}
       <div className="bg-white border border-lilac-100 rounded-xl shadow-sm px-4 py-3 mb-4">
-        <InventoryImportExport canImport={canRegisterTx} />
+        <InventoryImportExport canImport={canEditProduct} />
       </div>
 
       {/* Stats compactas */}
